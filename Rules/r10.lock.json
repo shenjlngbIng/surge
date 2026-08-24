@@ -1,10 +1,10 @@
 {
-  "schema": 7,
-  "profile": "Surge iOS Privacy + Push R12.14",
+  "schema": 8,
+  "profile": "Surge iOS Privacy + Push R12.15",
   "generated": "2026-08-24",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "6c3a04cbd5954e3bbccf5c4c1fc49b99eb4cddaafa21d1f5eb5cb9a6dc10d13d",
-  "profile_lines": 260,
+  "profile_sha256": "3c6ca0d1e3bb872a636ebaeadfdc9640ac0dee9a42b5bfa1415561aac0cb6a20",
+  "profile_lines": 265,
   "active_rules": 85,
   "required_invariants": {
     "final": "FINAL,Final,dns-failed",
@@ -15,9 +15,29 @@
     "encrypted_dns": "direct-bypass-no-protocol-rules",
     "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
     "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
-    "allserver_probe": {
-      "interval": 600,
-      "timeout": 5
+    "policy_architecture": {
+      "node_pool": {
+        "mode": "select",
+        "hidden": true,
+        "source": "policy-path"
+      },
+      "all_server": {
+        "mode": "smart",
+        "source": "NodePool",
+        "fail_closed": true
+      },
+      "regions": {
+        "mode": "smart",
+        "source": "NodePool",
+        "fail_closed": true,
+        "names": [
+          "HongKong",
+          "TaiWan",
+          "Japan",
+          "Singapore",
+          "America"
+        ]
+      }
     },
     "applepush_probe": {
       "interval": 60,
