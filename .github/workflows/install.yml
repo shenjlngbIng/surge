@@ -1,31 +1,154 @@
-name: Install Surge package
+name: Install and audit Surge R12.14
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
 
-permissions:
-  contents: write
+concurrency:
+  group: surge-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
 
 jobs:
   install:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-
+    timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Verify and extract package
+      - name: Extract and verify release
+        shell: bash
         run: |
-          echo "7a2c8cb7a7214403b279cc8b3da65e647bf51b805e24000db321933ff6d30654  Surge-R12.14-release.zip" | sha256sum -c -
-          unzip -q -o Surge-R12.14-release.zip
-          sha256sum -c SHA256SUMS.txt
+          python3 - <<'PY'
+          from pathlib import Path, PurePosixPath
+          import shutil
+          import stat
+          import zipfile
+
+          archive = Path("Surge-R12.14-release.zip")
+          stage = Path(".surge-install")
+          if not archive.is_file():
+              raise SystemExit("Surge-R12.14-release.zip was not found in the repository root")
+          if stage.exists():
+              shutil.rmtree(stage)
+          stage.mkdir()
+
+          total_size = 0
+          file_count = 0
+          with zipfile.ZipFile(archive) as source:
+              for item in source.infolist():
+                  if item.is_dir():
+                      continue
+                  file_count += 1
+                  total_size += item.file_size
+                  if file_count > 128 or item.file_size > 8 * 1024 * 1024 or total_size > 32 * 1024 * 1024:
+                      raise SystemExit("release archive exceeds the safety limits")
+                  path = PurePosixPath(item.filename)
+                  mode = item.external_attr >> 16
+                  if path.is_absolute() or ".." in path.parts or "\\" in item.filename:
+                      raise SystemExit(f"unsafe archive path: {item.filename}")
+                  if stat.S_ISLNK(mode) or stat.S_ISCHR(mode) or stat.S_ISBLK(mode) or stat.S_ISFIFO(mode):
+                      raise SystemExit(f"unsafe archive entry: {item.filename}")
+                  destination = stage.joinpath(*path.parts)
+                  destination.parent.mkdir(parents=True, exist_ok=True)
+                  with source.open(item) as input_file, destination.open("wb") as output_file:
+                      shutil.copyfileobj(input_file, output_file)
+
+          required = {
+              "Surge.conf",
+              "README.md",
+              "SHA256SUMS.txt",
+              "Rules/APNs.list",
+              "Rules/Telegram.list",
+              ".github/workflows/install.yml",
+          }
+          missing = sorted(name for name in required if not (stage / name).is_file())
+          if missing:
+              raise SystemExit(f"release archive is incomplete: {missing}")
+          print(f"safe release archive: files={file_count} bytes={total_size}")
+          PY
+          (cd .surge-install && sha256sum -c SHA256SUMS.txt)
+          cp -a .surge-install/. .
+          rm -rf .surge-install
 
       - name: Commit installed files
+        shell: bash
         run: |
           rm -f Surge-R12.14-release.zip
-          rm -f .github/workflows/install.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R12.14"
           git push origin HEAD:main
+
+  audit:
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Detect installed release
+        id: release
+        shell: bash
+        run: |
+          if [[ -f Surge.conf && -f tools/audit_config.py && -f SHA256SUMS.txt ]]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release ZIP is waiting for a manual install run; audit is deferred."
+          fi
+
+      - name: Set up Python
+        if: steps.release.outputs.ready == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile tools
+        if: steps.release.outputs.ready == 'true'
+        run: python -m compileall -q tools
+
+      - name: Audit configuration
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/audit_config.py
+
+      - name: Audit rule sources
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/audit_rules.py
+
+      - name: Audit precise domain sets
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/audit_precise_domains.py
+
+      - name: Run mutation tests
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/test_audit_config.py
+
+      - name: Test ZIP staging
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/test_stage_surge_zip.py
+
+      - name: Verify release manifest
+        if: steps.release.outputs.ready == 'true'
+        run: |
+          python tools/generate_release_manifest.py
+          git diff --exit-code -- RELEASE_MANIFEST.txt
+
+      - name: Verify checksums
+        if: steps.release.outputs.ready == 'true'
+        run: |
+          sha256sum -c SHA256SUMS.txt
+          cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
