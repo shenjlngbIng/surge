@@ -1,5 +1,25 @@
 # 更新日志
 
+## 2026-08-25 R12.16 服务分流冲突修正
+
+### 修正
+
+- 将 Bilibili 国内版和国际版拆为两个规则文件，不新增策略组。国内 API、页面、图片和视频 CDN 进入 `DIRECT`，国际版进入现有 `Streaming`，并通过规则顺序优先接管 `apiintl.biliapi.net`。
+- 从 `ProxyMedia.list` 删除 `apm-misaka.biliapi.net` 与 `cache.video.iqiyi.com`。前者回到 Bilibili 国内直连，后者回到爱奇艺国内直连，消除泛媒体表抢先匹配。
+- 将 `PROTOCOL,STUN,Proxy` 移到 `GEOIP,CN,DIRECT` 前，避免国内 IP 的 STUN 被 GEOIP 提前直连。
+- 将 29 个运行时规则地址从浮动的 `@main` 固定到发布标签 `r12.16-20260825`。安装工作流在提交通过后创建该标签，设备刷新规则时获得同一份发布内容。
+- 将 `Game.list` 移到 OneDrive/Microsoft 之前，使 40 组 Xbox、Minecraft、Bethesda、Forza 等重叠条目真正进入 `Games`，而不是提前落入 `Microsoft`。
+- 从 TikTok 删除会覆盖国内字节服务的 `snssdk.com`；从 Bahamut、Disney、HBO、Microsoft、Game 删除共享 CA、CDN、遥测和第三方 SaaS 后缀，减少无关流量被专用服务组截获。
+- 将 HBO 默认策略从美国改为 `Proxy`，避免 HBO Asia、Now 等区域服务默认被强制送往美国。
+- 删除 `Direct.list` 中 14 条 Google 直连例外，使 Google 更新、推送和基础服务统一进入 `Google` 策略组。
+- 删除 Netflix 上游中的 1,119 条 IPv4/IPv6 宽泛云网段，改用经审核的 `IP-ASN,2906,no-resolve`，避免 AWS 共用地址误命中 Netflix。
+- 扩展固定上游更新器，支持按服务禁用规则类型和加入审核后的本地规则；增加 Bilibili、Netflix 及共享域名排除的回退审计。
+- 基线保持 31 个策略组，活动规则调整为 86 条，远程源调整为 29 个。审计扩展为 56 项故障注入和 17 项 ZIP 白名单回归。
+
+### 保持不变
+
+- `NodePool → Smart` 架构、Telegram 强制代理、`ApplePush = fallback, Proxy, DIRECT`、AliDNS 加密 DNS、CGNAT/局域网边界和失败关闭策略均未改变。
+
 ## 2026-08-24 R12.15 网络切换测速风暴修正
 
 ### 修正
