@@ -1,12 +1,12 @@
 # 规则名称: TikTok
-# 规则统计: 87
+# 规则统计: 86
 # 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
 # 上游文件: rule/Surge/TikTok/TikTok.list
 # 上游 SHA-256: b44559153af1e15e49ea1f2e161230276aee0fd29d697f2a4d635f4a484e2220
 # 上游声明 NAME: TikTok
 # 上游声明 AUTHOR: blackmatrix7
 # 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
-# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。
+# 本地处理: 过滤不适用于 iOS 的规则、共享平台排除项和按服务禁用的宽泛类型；保留经过审核的本地补充。
 
 DOMAIN,lf16-campaign.ttlstatic.com
 DOMAIN,lf16-csp.oecstatic.com
@@ -50,7 +50,6 @@ DOMAIN-SUFFIX,musemuse.cn
 DOMAIN-SUFFIX,musical.ly
 DOMAIN-SUFFIX,sgpstatp.com
 DOMAIN-SUFFIX,sgsnssdk.com
-DOMAIN-SUFFIX,snssdk.com
 DOMAIN-SUFFIX,tik-tokapi.com
 DOMAIN-SUFFIX,tiktok-usts.net
 DOMAIN-SUFFIX,tiktok.com

@@ -1,12 +1,12 @@
 # 规则名称: Microsoft
-# 规则统计: 669
+# 规则统计: 664
 # 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
 # 上游文件: rule/Surge/Microsoft/Microsoft.list
 # 上游 SHA-256: a2854b28dc9f903a64933c74fff5b50166e9bbebc70fdfce18c592f75793ff14
 # 上游声明 NAME: Microsoft
 # 上游声明 AUTHOR: blackmatrix7
 # 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
-# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。
+# 本地处理: 过滤不适用于 iOS 的规则、共享平台排除项和按服务禁用的宽泛类型；保留经过审核的本地补充。
 
 DOMAIN,vsmarketplacebadge.apphb.com
 DOMAIN-SUFFIX,1drv.com
@@ -83,7 +83,6 @@ DOMAIN-SUFFIX,azuredigitaltwins.net
 DOMAIN-SUFFIX,azuredns-prd.info
 DOMAIN-SUFFIX,azuredns-prd.org
 DOMAIN-SUFFIX,azureedge-test.net
-DOMAIN-SUFFIX,azurefd.net
 DOMAIN-SUFFIX,azurefd.us
 DOMAIN-SUFFIX,azurehdinsight.cn
 DOMAIN-SUFFIX,azureiotcentral.com
@@ -182,7 +181,6 @@ DOMAIN-SUFFIX,dwh5.com
 DOMAIN-SUFFIX,dynamics.cn
 DOMAIN-SUFFIX,dynamics.com
 DOMAIN-SUFFIX,e-msedge.net
-DOMAIN-SUFFIX,edgesuite.net
 DOMAIN-SUFFIX,efproject.net
 DOMAIN-SUFFIX,elderscrolls.com
 DOMAIN-SUFFIX,engkoo.com
@@ -212,7 +210,6 @@ DOMAIN-SUFFIX,gotcosmos.com
 DOMAIN-SUFFIX,graphengine.io
 DOMAIN-SUFFIX,groupme.com
 DOMAIN-SUFFIX,hdinsightservices.cn
-DOMAIN-SUFFIX,helpshift.com
 DOMAIN-SUFFIX,here.com
 DOMAIN-SUFFIX,here.net
 DOMAIN-SUFFIX,heremaps.cn
@@ -517,7 +514,6 @@ DOMAIN-SUFFIX,onmicrosoft.com
 DOMAIN-SUFFIX,onmschina.cn
 DOMAIN-SUFFIX,opentranslatorstothings.org
 DOMAIN-SUFFIX,opticsforthecloud.net
-DOMAIN-SUFFIX,optimizely.com
 DOMAIN-SUFFIX,orithegame.com
 DOMAIN-SUFFIX,osdinfra.net
 DOMAIN-SUFFIX,outingsapp.com
@@ -628,7 +624,6 @@ DOMAIN-SUFFIX,windows
 DOMAIN-SUFFIX,windows-int.net
 DOMAIN-SUFFIX,windows-ppe.net
 DOMAIN-SUFFIX,windows.com
-DOMAIN-SUFFIX,windows.net
 DOMAIN-SUFFIX,windows.nl
 DOMAIN-SUFFIX,windows8.hk
 DOMAIN-SUFFIX,windowsazure.cn

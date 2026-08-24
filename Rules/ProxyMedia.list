@@ -1,15 +1,13 @@
 # 规则名称: ProxyMedia
-# 规则统计: 321
+# 规则统计: 319
 
 DOMAIN,44wilhpljf.execute-api.ap-southeast-1.amazonaws.com
 DOMAIN,4gtvfreepcvod-cds.cdn.hinet.net
 DOMAIN,akmcdnoversea-tw.inter.ptqy.gitv.tv
 DOMAIN,ana.video.friday.tw
-DOMAIN,apm-misaka.biliapi.net
 DOMAIN,athome.fandango.com
 DOMAIN,bbc.mp-pxcdn.com
 DOMAIN,bcbolt446c5271-a.akamaihd.net
-DOMAIN,cache.video.iqiyi.com
 DOMAIN,cbsi.live.ott.irdeto.com
 DOMAIN,cbsplaylistserver.aws.syncbak.com
 DOMAIN,cbsservice.aws.syncbak.com

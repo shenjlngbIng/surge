@@ -1,12 +1,12 @@
 # 规则名称: Game
-# 规则统计: 597
+# 规则统计: 596
 # 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
 # 上游文件: rule/Surge/Game/Game.list
 # 上游 SHA-256: 9e1bf6cbd630e9ec1115e28d470de6b41f45e5c1e1996fa5e93990edefddb657
 # 上游声明 NAME: Game
 # 上游声明 AUTHOR: blackmatrix7
 # 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
-# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。
+# 本地处理: 过滤不适用于 iOS 的规则、共享平台排除项和按服务禁用的宽泛类型；保留经过审核的本地补充。
 
 DOMAIN,eaasserts-a.akamaihd.net
 DOMAIN,gog.salesmanago.com
@@ -190,7 +190,6 @@ DOMAIN-SUFFIX,gog.com
 DOMAIN-SUFFIX,gog.qtlglb.com
 DOMAIN-SUFFIX,hackyourconsole.com
 DOMAIN-SUFFIX,hearthstone.nosdn.127.net
-DOMAIN-SUFFIX,helpshift.com
 DOMAIN-SUFFIX,heroes.nos.netease.com
 DOMAIN-SUFFIX,heroesofdragonage.com
 DOMAIN-SUFFIX,heroesofthestorm.com

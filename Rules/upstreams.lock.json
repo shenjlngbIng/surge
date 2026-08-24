@@ -11,7 +11,7 @@
       "PROCESS-NAME",
       "IP-ASN"
     ],
-    "description": "保留本地规则，与固定 Surge 上游精确去重；过滤 iOS 不支持的进程规则、未单独审核的新增 ASN 和非唯一归属的共享平台。"
+    "description": "保留本地规则，与固定 Surge 上游精确去重；过滤 iOS 不支持的进程规则、未单独审核的新增 ASN、按服务禁用的宽泛类型和非唯一归属的共享平台，并允许加入经过审核的本地补充。"
   },
   "precise_domains": {
     "schema": 1,
@@ -41,7 +41,11 @@
       "upstream_path": "rule/Surge/Bahamut/Bahamut.list",
       "upstream_blob": "e6a3b196293251dca0e409cb63b1414280e425de",
       "upstream_sha256": "5c6618ac00734921dae209bb812c1b61cc88523e158b856548153d1d3d8df2fd",
-      "exclude": []
+      "exclude": [
+        "DOMAIN-SUFFIX,digicert.com",
+        "DOMAIN-SUFFIX,gvt1.com",
+        "DOMAIN-SUFFIX,hinet.net"
+      ]
     },
     {
       "ruleset": "RS_BiliBiliIntl",
@@ -49,7 +53,15 @@
       "upstream_path": "rule/Surge/BiliBiliIntl/BiliBiliIntl.list",
       "upstream_blob": "ff117d3008e90880597995ccc8b75354ca0932fe",
       "upstream_sha256": "ccb061a3327eb9e49ff13a90a628577389c89d0c67e0a930be2e4f174434b0ad",
-      "exclude": []
+      "exclude": [],
+      "add": [
+        "DOMAIN,apiintl.biliapi.net",
+        "DOMAIN,p-bstarstatic.akamaized.net",
+        "DOMAIN,p.bstarstatic.com",
+        "DOMAIN,upos-bstar-mirrorakam.akamaized.net",
+        "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
+        "DOMAIN-SUFFIX,biliintl.com"
+      ]
     },
     {
       "ruleset": "RS_ChatGPT",
@@ -89,7 +101,14 @@
       "upstream_blob": "a58d7d7f1ffbfc1816f39870d88b495227b72dd7",
       "upstream_sha256": "d0cfd6aee89d9d3075aef9dfadd98a2a3c6a2dba487f5091c801d1bcd70e9884",
       "exclude": [
-        "DOMAIN-SUFFIX,execute-api.us-east-1.amazonaws.com"
+        "DOMAIN-SUFFIX,adobedtm.com",
+        "DOMAIN-SUFFIX,bam.nr-data.net",
+        "DOMAIN-SUFFIX,braze.com",
+        "DOMAIN-SUFFIX,cdn.optimizely.com",
+        "DOMAIN-SUFFIX,conviva.com",
+        "DOMAIN-SUFFIX,d9.flashtalking.com",
+        "DOMAIN-SUFFIX,execute-api.us-east-1.amazonaws.com",
+        "DOMAIN-SUFFIX,js-agent.newrelic.com"
       ]
     },
     {
@@ -106,7 +125,9 @@
       "upstream_path": "rule/Surge/Game/Game.list",
       "upstream_blob": "40e6728f03c2cf686d06ca98e9189c2432caa4fc",
       "upstream_sha256": "9e1bf6cbd630e9ec1115e28d470de6b41f45e5c1e1996fa5e93990edefddb657",
-      "exclude": []
+      "exclude": [
+        "DOMAIN-SUFFIX,helpshift.com"
+      ]
     },
     {
       "ruleset": "RS_Gemini",
@@ -145,7 +166,9 @@
       "upstream_sha256": "fd78b9a0a2ffedd9102d23256011bf8ec94ad98630c06337fdaa6970f4690832",
       "exclude": [
         "DOMAIN-SUFFIX,execute-api.ap-southeast-1.amazonaws.com",
-        "DOMAIN-SUFFIX,execute-api.us-east-1.amazonaws.com"
+        "DOMAIN-SUFFIX,execute-api.us-east-1.amazonaws.com",
+        "DOMAIN-SUFFIX,manifest.prod.boltdns.net",
+        "DOMAIN-SUFFIX,players.brightcove.net"
       ]
     },
     {
@@ -155,8 +178,13 @@
       "upstream_blob": "1a2f1eb11b1ddbc318d18a7317e1a0ecc2c139f6",
       "upstream_sha256": "a2854b28dc9f903a64933c74fff5b50166e9bbebc70fdfce18c592f75793ff14",
       "exclude": [
+        "DOMAIN-SUFFIX,azurefd.net",
         "DOMAIN-SUFFIX,azureedge.net",
-        "DOMAIN-SUFFIX,azurewebsites.net"
+        "DOMAIN-SUFFIX,azurewebsites.net",
+        "DOMAIN-SUFFIX,edgesuite.net",
+        "DOMAIN-SUFFIX,helpshift.com",
+        "DOMAIN-SUFFIX,optimizely.com",
+        "DOMAIN-SUFFIX,windows.net"
       ]
     },
     {
@@ -169,6 +197,13 @@
         "DOMAIN-SUFFIX,cookielaw.org",
         "DOMAIN-SUFFIX,onetrust.com",
         "DOMAIN-SUFFIX,us-west-2.amazonaws.com"
+      ],
+      "drop_types": [
+        "IP-CIDR",
+        "IP-CIDR6"
+      ],
+      "add": [
+        "IP-ASN,2906,no-resolve"
       ]
     },
     {
@@ -201,7 +236,9 @@
       "upstream_path": "rule/Surge/TikTok/TikTok.list",
       "upstream_blob": "52f387d7ca98558874a5f8adf2e7d8ecd97ac90f",
       "upstream_sha256": "b44559153af1e15e49ea1f2e161230276aee0fd29d697f2a4d635f4a484e2220",
-      "exclude": []
+      "exclude": [
+        "DOMAIN-SUFFIX,snssdk.com"
+      ]
     },
     {
       "ruleset": "RS_Twitter",
