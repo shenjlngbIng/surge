@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R12.14 profile's curated and upstream-hosted rule sources.
+"""Validate the R12.15 profile's curated and upstream-hosted rule sources.
 
 The repository remains the source of truth for curated rule snapshots. The
 Surge profile loads those snapshots through jsDelivr. Broad upstream domain

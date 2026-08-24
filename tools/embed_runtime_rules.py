@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh R12.14 metadata for remote RULE-SET sources.
+"""Refresh R12.15 metadata for remote RULE-SET sources.
 
 The historical filename is retained for compatibility with older maintenance
 commands. It only refreshes metadata and never embeds rule contents into
@@ -49,9 +49,9 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
 
 lock.update(
     {
-        "schema": 7,
+        "schema": 8,
         "mode": "remote-ruleset",
-        "profile": "Surge iOS Privacy + Push R12.14",
+        "profile": "Surge iOS Privacy + Push R12.15",
         "generated": RELEASE_DATE,
         "source_repository": "shenjlngbIng/surge",
         "profile_sha256": hashlib.sha256(text.encode()).hexdigest(),
@@ -70,7 +70,24 @@ lock.update(
             "encrypted_dns": "direct-bypass-no-protocol-rules",
             "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
             "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
-            "allserver_probe": {"interval": 600, "timeout": 5},
+            "policy_architecture": {
+                "node_pool": {
+                    "mode": "select",
+                    "hidden": True,
+                    "source": "policy-path",
+                },
+                "all_server": {
+                    "mode": "smart",
+                    "source": "NodePool",
+                    "fail_closed": True,
+                },
+                "regions": {
+                    "mode": "smart",
+                    "source": "NodePool",
+                    "fail_closed": True,
+                    "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
+                },
+            },
             "applepush_probe": {"interval": 60, "timeout": 5},
             "fail_closed_alert": "suppressed",
             "dns_server": "223.5.5.5, 223.6.6.6",

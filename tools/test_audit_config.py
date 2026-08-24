@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutation tests for the R12.14 configuration auditor."""
+"""Mutation tests for the R12.15 configuration auditor."""
 from __future__ import annotations
 
 import subprocess
@@ -28,6 +28,10 @@ assert run(BASE).returncode == 0, "baseline"
 
 mutations = {
     "final_open": ("\nFINAL,Final,dns-failed\n", "\nFINAL,DIRECT\n"),
+    "final_group_direct": (
+        "\nFinal = select, Proxy, REJECT,",
+        "\nFinal = select, Proxy, DIRECT,",
+    ),
     "telegram_direct": (
         "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Telegram.list,Telegram\n",
         "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Telegram.list,DIRECT\n",
@@ -71,9 +75,70 @@ mutations = {
     ),
     "test_timeout": ("\ntest-timeout = 8\n", "\ntest-timeout = 5\n"),
     "proxy_default": ("\nProxy = select, AllServer,", "\nProxy = select, HongKong,"),
-    "allserver_mode": ("\nAllServer = fallback,", "\nAllServer = select,"),
-    "allserver_interval": ("interval=600, timeout=5", "interval=60, timeout=5"),
-    "allserver_timeout": ("interval=600, timeout=5", "interval=600, timeout=300"),
+    "proxy_direct": (
+        "\nProxy = select, AllServer, HongKong,",
+        "\nProxy = select, AllServer, DIRECT, HongKong,",
+    ),
+    "node_pool_mode": ("\nNodePool = select,", "\nNodePool = url-test,"),
+    "node_pool_hidden": (
+        "update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0",
+        "update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0",
+    ),
+    "node_pool_all_proxies": (
+        "NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL, update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0",
+        "NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL, update-interval=3600, no-alert=0, hidden=1, include-all-proxies=true",
+    ),
+    "node_pool_direct_member": (
+        "\nProxy = select, AllServer, HongKong,",
+        "\nProxy = select, AllServer, NodePool, HongKong,",
+    ),
+    "allserver_mode": ("\nAllServer = smart,", "\nAllServer = select,"),
+    "allserver_sentinel": (
+        "\nAllServer = smart, Fail-Closed,",
+        "\nAllServer = smart,",
+    ),
+    "allserver_source": (
+        "AllServer = smart, Fail-Closed, no-alert=0, hidden=0, include-all-proxies=0, include-other-group=NodePool",
+        "AllServer = smart, Fail-Closed, no-alert=0, hidden=0, include-all-proxies=0, include-other-group=HongKong",
+    ),
+    "allserver_legacy_probe": (
+        "AllServer = smart, Fail-Closed, no-alert=0",
+        "AllServer = smart, Fail-Closed, interval=60, no-alert=0",
+    ),
+    "allserver_direct": (
+        "\nAllServer = smart, Fail-Closed,",
+        "\nAllServer = smart, Fail-Closed, DIRECT,",
+    ),
+    "region_mode": ("\nHongKong = smart,", "\nHongKong = url-test,"),
+    "region_sentinel": ("\nJapan = smart, Fail-Closed,", "\nJapan = smart,"),
+    "region_filter": (
+        "\nSingapore = smart, Fail-Closed, policy-regex-filter=",
+        "\nSingapore = smart, Fail-Closed, policy-filter=",
+    ),
+    "region_legacy_probe": (
+        "\nTaiWan = smart, Fail-Closed,",
+        "\nTaiWan = smart, Fail-Closed, interval=1800,",
+    ),
+    "region_source": (
+        "\nAmerica = smart, Fail-Closed,",
+        "\nAmerica = smart, Fail-Closed, include-other-group=AllServer,",
+    ),
+    "region_direct": (
+        "\nJapan = smart, Fail-Closed,",
+        "\nJapan = smart, Fail-Closed, DIRECT,",
+    ),
+    "rogue_fallback": (
+        "\nChatGPT = select, America,",
+        "\nChatGPT = fallback, America,",
+    ),
+    "rogue_policy_path": (
+        "\nGitHub = select, Proxy,",
+        "\nGitHub = select, policy-path=https://example.invalid/nodes, Proxy,",
+    ),
+    "telegram_direct_member": (
+        "\nTelegram = select, Proxy,",
+        "\nTelegram = select, DIRECT, Proxy,",
+    ),
     "public_subscription": (
         "policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
         "policy-path=https://private.example/subscription",
@@ -110,6 +175,10 @@ mutations = {
         "\nFINAL,Final,dns-failed\n",
         "\nRULE-SET,https://example.invalid/a.list,Proxy\nFINAL,Final,dns-failed\n",
     ),
+    "node_pool_rule_target": (
+        "\nDOMAIN,sub.store,DIRECT\n",
+        "\nDOMAIN,sub.store,NodePool\n",
+    ),
     "remote_host": (
         "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list",
         "https://example.invalid/ChatGPT.list",
@@ -125,4 +194,4 @@ for name, (old, new) in mutations.items():
     result = run(BASE.replace(old, new, 1))
     assert result.returncode != 0, f"mutation unexpectedly passed: {name}"
 
-print(f"PASS mutations={len(mutations)}")
+print(f"PASS R12.15 mutations={len(mutations)}")

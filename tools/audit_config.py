@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the Surge iOS Privacy + Push R12.14 profile."""
+"""Audit the Surge iOS Privacy + Push R12.15 profile."""
 from __future__ import annotations
 import hashlib, json, sys
 from pathlib import Path
@@ -52,33 +52,99 @@ proxies=kv(sec['Proxy'],'Proxy')
 if proxies.get('Fail-Closed')!='http, 127.0.0.1, 1, no-error-alert=true':
     fail('Fail-Closed sentinel must suppress its intentional connection error alert')
 groups=kv(sec['Proxy Group'],'Proxy Group')
-if len(groups)!=30: fail(f'expected 30 groups, got {len(groups)}')
+if len(groups)!=31: fail(f'expected 31 groups, got {len(groups)}')
+def group_members(name):
+    parts=[part.strip() for part in groups.get(name,'').split(',')]
+    return [part for part in parts[1:] if '=' not in part]
 for stale in ('EncryptedDNS','Domestic'):
     if stale in groups: fail(f'stale or unused policy group is forbidden: {stale}')
 proxy_group=[part.strip() for part in groups.get('Proxy','').split(',')]
 if len(proxy_group)<2 or proxy_group[:2]!=['select','AllServer']:
     fail('Proxy must default to AllServer before regional groups')
+if group_members('Proxy') != ['AllServer','HongKong','TaiWan','Japan','Singapore','America']:
+    fail('Proxy members must remain AllServer followed by the five regional Smart groups')
+node_pool=groups.get('NodePool','')
+node_pool_parts=[part.strip() for part in node_pool.split(',')]
+if not node_pool_parts or node_pool_parts[0] != 'select':
+    fail('NodePool must use passive select mode')
+for option in ('policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL','update-interval=3600','no-alert=0','hidden=1','include-all-proxies=0'):
+    if option not in node_pool_parts:
+        fail(f'NodePool missing safety option: {option}')
+for forbidden in ('Fail-Closed','interval=','timeout=','evaluate-before-use=','tolerance=','include-all-proxies=true'):
+    if any(part == forbidden or part.startswith(forbidden) for part in node_pool_parts):
+        fail(f'NodePool must only import policies and never test or route them: {forbidden}')
+if group_members('NodePool'):
+    fail('NodePool cannot contain an explicit routing member')
+
 all_server=groups.get('AllServer','')
-if not all_server.startswith('fallback,'):
-    fail('AllServer must use fallback mode')
 all_server_parts=[part.strip() for part in all_server.split(',')]
-if all_server_parts[:2] != ['fallback','Fail-Closed']:
-    fail('AllServer must start with fallback and the Fail-Closed sentinel')
-for option in ('update-interval=3600','interval=600','timeout=5','evaluate-before-use=true','include-all-proxies=true'):
-    if option not in all_server:
-        fail(f'AllServer missing stability option: {option}')
-if 'policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL' not in all_server:
-    fail('public profile must keep the non-routable subscription placeholder')
+if all_server_parts[:2] != ['smart','Fail-Closed']:
+    fail('AllServer must start with smart and the Fail-Closed sentinel')
+for option in ('include-other-group=NodePool','include-all-proxies=0'):
+    if option not in all_server_parts:
+        fail(f'AllServer missing Smart architecture option: {option}')
+for forbidden in ('policy-path=','interval=','timeout=','evaluate-before-use=','tolerance=','include-all-proxies=true'):
+    if any(part.startswith(forbidden) for part in all_server_parts):
+        fail(f'AllServer must not restore subscription-wide active testing: {forbidden}')
+if group_members('AllServer') != ['Fail-Closed']:
+    fail('AllServer may only declare the Fail-Closed sentinel before importing NodePool')
+
+regions=('HongKong', 'TaiWan', 'Japan', 'Singapore', 'America')
+smart_groups={'AllServer', *regions}
+for name, value in groups.items():
+    mode=value.split(',',1)[0].strip()
+    expected_mode='smart' if name in smart_groups else 'fallback' if name == 'ApplePush' else 'select'
+    if mode != expected_mode:
+        fail(f'{name} must use {expected_mode} mode, got {mode}')
+    if mode in {'url-test','load-balance'}:
+        fail(f'broad active-test group is forbidden: {name}={mode}')
+    if mode == 'fallback' and name != 'ApplePush':
+        fail(f'fallback is reserved for ApplePush: {name}')
+    if 'policy-path=' in value and name != 'NodePool':
+        fail(f'only NodePool may own policy-path: {name}')
+    if 'include-all-proxies=true' in value:
+        fail(f'groups may not bypass the explicit NodePool architecture: {name}')
 if not any(part.strip() == 'REJECT' for part in groups.get('Final','').split(',')):
     fail('Final must expose the strict REJECT choice')
+if group_members('Final') != ['Proxy','REJECT']:
+    fail('Final must contain only Proxy and REJECT')
 apple_push=[part.strip() for part in groups.get('ApplePush','').split(',')]
 if apple_push[:3]!=['fallback','Proxy','DIRECT']:
     fail('ApplePush must use Proxy first and DIRECT as fallback')
+if group_members('ApplePush') != ['Proxy','DIRECT']:
+    fail('ApplePush must contain exactly Proxy and DIRECT')
 for option in ('interval=60','timeout=5'):
     if option not in apple_push: fail(f'ApplePush missing option: {option}')
-for region in ('HongKong', 'TaiWan', 'Japan', 'Singapore', 'America'):
-    if '(?!.*(?:专用|專用|解锁|解鎖))' in groups.get(region, ''):
+for region in regions:
+    region_value=groups.get(region, '')
+    region_parts=[part.strip() for part in region_value.split(',')]
+    if region_parts[:2] != ['smart','Fail-Closed']:
+        fail(f'{region} must start with smart and the Fail-Closed sentinel')
+    region_sources=[part for part in region_parts if part.startswith('include-other-group=')]
+    if region_sources != ['include-other-group=NodePool']:
+        fail(f'{region} must filter the passive NodePool source')
+    if not any(part.startswith('policy-regex-filter=') for part in region_parts):
+        fail(f'{region} must keep an explicit regional filter')
+    if any(part.startswith(('interval=','timeout=','evaluate-before-use=','tolerance=')) for part in region_parts):
+        fail(f'{region} must not restore eager whole-region testing')
+    if group_members(region) != ['Fail-Closed']:
+        fail(f'{region} may only declare the Fail-Closed sentinel before importing NodePool')
+    if '(?!.*(?:专用|專用|解锁|解鎖))' in region_value:
         fail(f'{region} must not exclude streaming-optimized nodes')
+for name, value in groups.items():
+    direct_node_pool_member=any(part.strip() == 'NodePool' for part in value.split(','))
+    if direct_node_pool_member:
+        fail(f'NodePool is hidden infrastructure and cannot be selected directly: {name}')
+    if 'include-other-group=NodePool' in value and name not in {'AllServer', *regions}:
+        fail(f'unexpected NodePool consumer: {name}')
+proxy_only_groups={
+    'ChatGPT','Claude','Gemini','GitHub','YouTube','NETFLIX','Disney+','HBO',
+    'PrimeVideo','Emby','TikTok','Bahamut','Spotify','Streaming','Telegram','X',
+    'Google','Microsoft','Games',
+}
+for name in proxy_only_groups:
+    if 'DIRECT' in group_members(name):
+        fail(f'{name} cannot expose a DIRECT member')
 rules=active(sec['Rule'])
 if rules[-1]!='FINAL,Final,dns-failed': fail('FINAL invariant failed')
 remote_rules = [
@@ -162,6 +228,7 @@ for r in rules:
             fail(f'encrypted DNS protocol rules are inactive while encrypted-dns-follow-outbound-mode=false: {r}')
 if any(('telegram' in r.lower() or ',t.me,' in r.lower()) and target(r)=='DIRECT' for r in rules): fail('Telegram traffic cannot be DIRECT')
 if any(('APNs.list' in r or 'push.apple.com' in r or 'push-apple.com' in r) and target(r)=='DIRECT' for r in rules): fail('APNs traffic cannot be DIRECT')
+if any(target(r)=='NodePool' for r in rules): fail('rules cannot target the hidden NodePool')
 if groups.get('ApplePush','').split(',')[0].strip()!='fallback': fail('ApplePush must be fallback')
 if 'Proxy' not in groups.get('ApplePush','') or 'DIRECT' not in groups.get('ApplePush',''): fail('ApplePush fallback members missing')
 if len(rules)!=len(set(rules)): fail('duplicate active rules detected')
@@ -169,4 +236,4 @@ if LOCK.exists() and PROFILE.resolve()==(ROOT/'Surge.conf').resolve():
     lock=json.loads(LOCK.read_text(encoding='utf-8'))
     if lock['profile_sha256']!=hashlib.sha256(text.encode()).hexdigest(): fail('lock hash stale')
     if lock['active_rules']!=len(rules): fail('lock active rule count stale')
-print(f'PASS R12.14 rules={len(rules)} sha256={hashlib.sha256(text.encode()).hexdigest()}')
+print(f'PASS R12.15 rules={len(rules)} sha256={hashlib.sha256(text.encode()).hexdigest()}')

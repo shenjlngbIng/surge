@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R12.14 remote RULE-SET inventory and published rule sources."""
+"""Validate the R12.15 remote RULE-SET inventory and published rule sources."""
 
 from __future__ import annotations
 
@@ -34,11 +34,11 @@ if not LOCK.is_file():
     fail(f"lock file not found: {LOCK}")
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 7:
+if lock.get("schema") != 8:
     fail(f"unsupported lock schema: {lock.get('schema')!r}")
 if lock.get("mode") != "remote-ruleset":
     fail("lock mode must be remote-ruleset")
-if lock.get("profile") != "Surge iOS Privacy + Push R12.14":
+if lock.get("profile") != "Surge iOS Privacy + Push R12.15":
     fail("lock profile name mismatch")
 invariants = lock.get("required_invariants", {})
 if invariants.get("apns_capture") != "enabled":
@@ -51,8 +51,17 @@ if invariants.get("apple_system_direct") != "DOMAIN-SUFFIX,ls.apple.com,DIRECT":
     fail("lock Apple system direct invariant mismatch")
 if invariants.get("cgnat_direct") != "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve":
     fail("lock CGNAT invariant mismatch")
-if invariants.get("allserver_probe") != {"interval": 600, "timeout": 5}:
-    fail("lock AllServer probe invariant mismatch")
+if invariants.get("policy_architecture") != {
+    "node_pool": {"mode": "select", "hidden": True, "source": "policy-path"},
+    "all_server": {"mode": "smart", "source": "NodePool", "fail_closed": True},
+    "regions": {
+        "mode": "smart",
+        "source": "NodePool",
+        "fail_closed": True,
+        "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
+    },
+}:
+    fail("lock policy architecture invariant mismatch")
 if invariants.get("applepush_probe") != {"interval": 60, "timeout": 5}:
     fail("lock ApplePush probe invariant mismatch")
 if invariants.get("fail_closed_alert") != "suppressed":
@@ -183,6 +192,6 @@ if missing_telegram:
     fail(f"Telegram source is missing core endpoints: {sorted(missing_telegram)}")
 
 print(
-    f"PASS R12.14 remote_sources={len(raw_sources)} "
+    f"PASS R12.15 remote_sources={len(raw_sources)} "
     f"rules={lock.get('active_rules')}"
 )
