@@ -1,0 +1,270 @@
+{
+  "schema": 7,
+  "profile": "Surge iOS Privacy + Push R12.14",
+  "generated": "2026-08-24",
+  "source_repository": "shenjlngbIng/surge",
+  "profile_sha256": "6c3a04cbd5954e3bbccf5c4c1fc49b99eb4cddaafa21d1f5eb5cb9a6dc10d13d",
+  "profile_lines": 260,
+  "active_rules": 85,
+  "required_invariants": {
+    "final": "FINAL,Final,dns-failed",
+    "final_strict_choice": "REJECT",
+    "telegram": "forced-proxy",
+    "apns_capture": "enabled",
+    "apns_fallback": "Proxy_then_DIRECT",
+    "encrypted_dns": "direct-bypass-no-protocol-rules",
+    "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
+    "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
+    "allserver_probe": {
+      "interval": 600,
+      "timeout": 5
+    },
+    "applepush_probe": {
+      "interval": 60,
+      "timeout": 5
+    },
+    "fail_closed_alert": "suppressed",
+    "dns_server": "223.5.5.5, 223.6.6.6",
+    "encrypted_dns_server": "https://dns.alidns.com/dns-query, tls://dns.alidns.com",
+    "dns_bootstrap": {
+      "dns.alidns.com": [
+        "223.5.5.5",
+        "223.6.6.6",
+        "2400:3200::1"
+      ]
+    },
+    "capture": {
+      "include-all-networks": "true",
+      "include-local-networks": "false",
+      "include-apns": "true",
+      "include-cellular-services": "false"
+    }
+  },
+  "mode": "remote-ruleset",
+  "remote_sources": [
+    {
+      "kind": "RULE-SET",
+      "file": "AppleCN.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/AppleCN.list",
+      "policy": "Apple",
+      "active_entries": 166,
+      "sha256": "4e9c6a61c0664915fc7ef3e84779cd0baae8cc9236aed017f696570a3342b95f"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "WeChat.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/WeChat.list",
+      "policy": "DIRECT",
+      "active_entries": 33,
+      "sha256": "6f84eb140617a7335da7358f3eed6f475552e1925a0182e097ea5886b60a2086"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Direct.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Direct.list",
+      "policy": "DIRECT",
+      "active_entries": 23,
+      "sha256": "b9f22808716cb0af951b446532f6610d1133a5b2bc58bd55ea00074b19cdf63e"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Ads.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Ads.list",
+      "policy": "AdBlock",
+      "active_entries": 152,
+      "sha256": "562209616f162e33c9bdd0c8a5fbd17e99a04af5fcc5bcd2da4d58d6ca9f1320"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "ChatGPT.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list",
+      "policy": "ChatGPT",
+      "active_entries": 52,
+      "sha256": "46c8e3b5ae1be413c7107d28689f09d251d987a2cf5250cb3c63847a33dbe866"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Claude.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Claude.list",
+      "policy": "Claude",
+      "active_entries": 6,
+      "sha256": "53c5106b39756280f6ab9eca5aaba81d2472bf529c6c030d619f369c550bb3a5"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Gemini.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Gemini.list",
+      "policy": "Gemini",
+      "active_entries": 21,
+      "sha256": "cc824670ed0b8baee93a12aebeb6c401bfeb4764b63d6d7806e3fd9289c6f228"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "YouTube.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/YouTube.list",
+      "policy": "YouTube",
+      "active_entries": 192,
+      "sha256": "4c8202c27e5f7d321bf7a85a377a15dbd4fc1d572d914956c8c73533007adcb6"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Netflix.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Netflix.list",
+      "policy": "NETFLIX",
+      "active_entries": 1154,
+      "sha256": "7201c869ae378b252d467fe09762ff4e405a8b50e2e359aa8eb6d09d3dc3a91c"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Disney.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Disney.list",
+      "policy": "Disney+",
+      "active_entries": 172,
+      "sha256": "9d676639f5e3a4e9f3b5d0e55d827978e00118b39b25276ccd190919103e500b"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "HBO.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/HBO.list",
+      "policy": "HBO",
+      "active_entries": 47,
+      "sha256": "4b3fd64e4be8b1497bcba563f814702bb0ce0c403734ce55bd3084fa88928d92"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "PrimeVideo.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/PrimeVideo.list",
+      "policy": "PrimeVideo",
+      "active_entries": 18,
+      "sha256": "4466a46e37280b52f60c447dbb9d6a4273b5d656b27f0a5ea72f258c9afb4d01"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Emby.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Emby.list",
+      "policy": "Emby",
+      "active_entries": 218,
+      "sha256": "efdcd06070fdc944351694b8467707b6aa9aa0b5b5ccaa0720c3adb49a771246"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "TikTok.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/TikTok.list",
+      "policy": "TikTok",
+      "active_entries": 87,
+      "sha256": "3d54df7d8bef801e579f9d10fb9c514c7ad142f0b50a7941870d065c1a1a2aee"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Bahamut.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Bahamut.list",
+      "policy": "Bahamut",
+      "active_entries": 10,
+      "sha256": "0b13d4544efaca1e7a2b205abda73a78d782450a885b9803d668ef072a4cb6b5"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "BiliBiliIntl.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/BiliBiliIntl.list",
+      "policy": "Streaming",
+      "active_entries": 1,
+      "sha256": "6972713a9cc71733590b8bb10bb73a28c39092f0a6c469324f90045b10ac92f0"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Spotify.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Spotify.list",
+      "policy": "Spotify",
+      "active_entries": 30,
+      "sha256": "2b415fdf1a57fb6af6a28d1b4f7fd85afe9ce0c58be0f567ad452aa45674d543"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "ProxyMedia.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ProxyMedia.list",
+      "policy": "Streaming",
+      "active_entries": 321,
+      "sha256": "6d99612bb86179253258fcdd90ed337ac1159e4564136464f918f615323676c5"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Telegram.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Telegram.list",
+      "policy": "Telegram",
+      "active_entries": 51,
+      "sha256": "1ba917cd59a143a8255d941938625111709c62a890d66604e6f984fa11f38e92"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Github.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Github.list",
+      "policy": "GitHub",
+      "active_entries": 31,
+      "sha256": "ecefa7e1163dd595b73c4dc2e42d9b48cac48bb2ccbfe0d7d6215bdea7258059"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Twitter.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Twitter.list",
+      "policy": "X",
+      "active_entries": 33,
+      "sha256": "e8a3e2e72cfd546eadca02ea58c9d556da252cdea6b25f2abbd71432c14670d6"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Google.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Google.list",
+      "policy": "Google",
+      "active_entries": 705,
+      "sha256": "ae5daa812c36be55847806bcb098f9b90f13e238c2d90024ff8d5183096fe1cb"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "OneDrive.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/OneDrive.list",
+      "policy": "Microsoft",
+      "active_entries": 16,
+      "sha256": "3735ccb2620f489ee1e77b7ea3c64a9aba82f9ac19d9f0d2a8f8b90e5a5314b0"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Microsoft.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Microsoft.list",
+      "policy": "Microsoft",
+      "active_entries": 669,
+      "sha256": "c6efd7c71cdc19cb80687b020108a406914d6dcb37fdd6973c94bafc39a7bfe3"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "Game.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Game.list",
+      "policy": "Games",
+      "active_entries": 597,
+      "sha256": "5d407cae765790d095a51b44476b94edb433f6193f37d361575d3ddfd340617f"
+    },
+    {
+      "kind": "RULE-SET",
+      "file": "APNs.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/APNs.list",
+      "policy": "ApplePush",
+      "active_entries": 12,
+      "sha256": "244d78195539f818f15cdd871e2512fa350327eaf6832aa5c3fd06ebb331031b"
+    },
+    {
+      "kind": "DOMAIN-SET",
+      "file": "China.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/China.list",
+      "policy": "DIRECT",
+      "active_entries": 306,
+      "sha256": "41bcedfa2bd322cfc2da82359a5eb6ca27d7868bd74a11fa1e88d29658e1f6ec"
+    },
+    {
+      "kind": "DOMAIN-SET",
+      "file": "Global.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Global.list",
+      "policy": "Proxy",
+      "active_entries": 116,
+      "sha256": "99adfaea6b33faab59b7ab55c7a016e9fa4c8e68ce7feec8666da4719b1225ad"
+    }
+  ]
+}

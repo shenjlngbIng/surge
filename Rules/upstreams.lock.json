@@ -1,0 +1,223 @@
+{
+  "schema": 1,
+  "upstream": {
+    "repository": "blackmatrix7/ios_rule_script",
+    "commit": "c00517ce10760a93728b241923a451dfa617be80",
+    "license": "GPL-2.0",
+    "download_base": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/c00517ce10760a93728b241923a451dfa617be80/"
+  },
+  "merge": {
+    "drop_imported_types": [
+      "PROCESS-NAME",
+      "IP-ASN"
+    ],
+    "description": "保留本地规则，与固定 Surge 上游精确去重；过滤 iOS 不支持的进程规则、未单独审核的新增 ASN 和非唯一归属的共享平台。"
+  },
+  "precise_domains": {
+    "schema": 1,
+    "mode": "repository-curated-domain-set",
+    "criteria": "仅收录可明确归属的服务域名；禁止公共后缀、关键词、共享云/CDN和跨策略重叠。",
+    "sources": [
+      {
+        "kind": "DOMAIN-SET",
+        "path": "Rules/China.list",
+        "policy": "DIRECT",
+        "active_entries": 306,
+        "sha256": "41bcedfa2bd322cfc2da82359a5eb6ca27d7868bd74a11fa1e88d29658e1f6ec"
+      },
+      {
+        "kind": "DOMAIN-SET",
+        "path": "Rules/Global.list",
+        "policy": "Proxy",
+        "active_entries": 116,
+        "sha256": "99adfaea6b33faab59b7ab55c7a016e9fa4c8e68ce7feec8666da4719b1225ad"
+      }
+    ]
+  },
+  "services": [
+    {
+      "ruleset": "RS_Bahamut",
+      "local_file": "Bahamut.list",
+      "upstream_path": "rule/Surge/Bahamut/Bahamut.list",
+      "upstream_blob": "e6a3b196293251dca0e409cb63b1414280e425de",
+      "upstream_sha256": "5c6618ac00734921dae209bb812c1b61cc88523e158b856548153d1d3d8df2fd",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_BiliBiliIntl",
+      "local_file": "BiliBiliIntl.list",
+      "upstream_path": "rule/Surge/BiliBiliIntl/BiliBiliIntl.list",
+      "upstream_blob": "ff117d3008e90880597995ccc8b75354ca0932fe",
+      "upstream_sha256": "ccb061a3327eb9e49ff13a90a628577389c89d0c67e0a930be2e4f174434b0ad",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_ChatGPT",
+      "local_file": "ChatGPT.list",
+      "upstream_path": "rule/Surge/OpenAI/OpenAI.list",
+      "upstream_blob": "506c9ec94dad225df23c05a50294d2c440c94dd3",
+      "upstream_sha256": "6f4047cdbf6953cf5d9b38c4ccd6da7bc6f1acb91b7a87134f25d5b8f5d2408b",
+      "exclude": [
+        "DOMAIN,browser-intake-datadoghq.com",
+        "DOMAIN,static.cloudflareinsights.com",
+        "DOMAIN-SUFFIX,algolia.net",
+        "DOMAIN-SUFFIX,auth0.com",
+        "DOMAIN-SUFFIX,identrust.com",
+        "DOMAIN-SUFFIX,intercom.io",
+        "DOMAIN-SUFFIX,intercomcdn.com",
+        "DOMAIN-SUFFIX,launchdarkly.com",
+        "DOMAIN-SUFFIX,observeit.net",
+        "DOMAIN-SUFFIX,segment.io",
+        "DOMAIN-SUFFIX,sentry.io",
+        "DOMAIN-SUFFIX,stripe.com"
+      ]
+    },
+    {
+      "ruleset": "RS_Claude",
+      "local_file": "Claude.list",
+      "upstream_path": "rule/Surge/Claude/Claude.list",
+      "upstream_blob": "222554c6e93219bf5c08da5f331d8ed6a78e3db3",
+      "upstream_sha256": "870e7e25d798e7f00338507f773b0eea4dfd15e25e9df0a27d5ae421ae1ab378",
+      "exclude": [
+        "DOMAIN,cdn.usefathom.com"
+      ]
+    },
+    {
+      "ruleset": "RS_Disney",
+      "local_file": "Disney.list",
+      "upstream_path": "rule/Surge/Disney/Disney.list",
+      "upstream_blob": "a58d7d7f1ffbfc1816f39870d88b495227b72dd7",
+      "upstream_sha256": "d0cfd6aee89d9d3075aef9dfadd98a2a3c6a2dba487f5091c801d1bcd70e9884",
+      "exclude": [
+        "DOMAIN-SUFFIX,execute-api.us-east-1.amazonaws.com"
+      ]
+    },
+    {
+      "ruleset": "RS_Emby",
+      "local_file": "Emby.list",
+      "upstream_path": "rule/Surge/Emby/Emby.list",
+      "upstream_blob": "6a03cd94223dfd11e6f85ba3ce875be7ff7cbfaf",
+      "upstream_sha256": "48ae40d231b5429ef2c11459dd13b88c5ced78cee4dc964ce4e67291b8d59614",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_Game",
+      "local_file": "Game.list",
+      "upstream_path": "rule/Surge/Game/Game.list",
+      "upstream_blob": "40e6728f03c2cf686d06ca98e9189c2432caa4fc",
+      "upstream_sha256": "9e1bf6cbd630e9ec1115e28d470de6b41f45e5c1e1996fa5e93990edefddb657",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_Gemini",
+      "local_file": "Gemini.list",
+      "upstream_path": "rule/Surge/Gemini/Gemini.list",
+      "upstream_blob": "838cafc9a7d51ab7e07c4606b223ce328ea5a4e3",
+      "upstream_sha256": "db8f69154426dca76792ab80b3ad6b0e2d078ebe0e52e76faec1724245a4ec49",
+      "exclude": [
+        "DOMAIN-SUFFIX,apis.google.com",
+        "DOMAIN-KEYWORD,developerprofiles"
+      ]
+    },
+    {
+      "ruleset": "RS_Github",
+      "local_file": "Github.list",
+      "upstream_path": "rule/Surge/GitHub/GitHub.list",
+      "upstream_blob": "1e40581e8ac89fe6aa5e739978dbc22d38c03b96",
+      "upstream_sha256": "ced8ab0ecda5775d04ec8ee6a57b282181108565331a6a1d85e9a26fee25d79b",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_Google",
+      "local_file": "Google.list",
+      "upstream_path": "rule/Surge/Google/Google.list",
+      "upstream_blob": "844947a54e3b3f4afb9a71ba9879de9bbab8b9c3",
+      "upstream_sha256": "4b08fd3ef47e2668d2a4bb79777773e2408394fdda60ac36014e1a4d3456ba6f",
+      "exclude": [
+        "DOMAIN-SUFFIX,appspot.com"
+      ]
+    },
+    {
+      "ruleset": "RS_HBO",
+      "local_file": "HBO.list",
+      "upstream_path": "rule/Surge/HBO/HBO.list",
+      "upstream_blob": "edda666181995e2c3f475839f565658af13933aa",
+      "upstream_sha256": "fd78b9a0a2ffedd9102d23256011bf8ec94ad98630c06337fdaa6970f4690832",
+      "exclude": [
+        "DOMAIN-SUFFIX,execute-api.ap-southeast-1.amazonaws.com",
+        "DOMAIN-SUFFIX,execute-api.us-east-1.amazonaws.com"
+      ]
+    },
+    {
+      "ruleset": "RS_Microsoft",
+      "local_file": "Microsoft.list",
+      "upstream_path": "rule/Surge/Microsoft/Microsoft.list",
+      "upstream_blob": "1a2f1eb11b1ddbc318d18a7317e1a0ecc2c139f6",
+      "upstream_sha256": "a2854b28dc9f903a64933c74fff5b50166e9bbebc70fdfce18c592f75793ff14",
+      "exclude": [
+        "DOMAIN-SUFFIX,azureedge.net",
+        "DOMAIN-SUFFIX,azurewebsites.net"
+      ]
+    },
+    {
+      "ruleset": "RS_Netflix",
+      "local_file": "Netflix.list",
+      "upstream_path": "rule/Surge/Netflix/Netflix.list",
+      "upstream_blob": "5d27df5b41cfd59ddd2c3db7f34b4c56abcb2d57",
+      "upstream_sha256": "aa03f015949e8f6f981d90a7d8b1acf7e88472ee48601632bd964b0bb740f8aa",
+      "exclude": [
+        "DOMAIN-SUFFIX,cookielaw.org",
+        "DOMAIN-SUFFIX,onetrust.com",
+        "DOMAIN-SUFFIX,us-west-2.amazonaws.com"
+      ]
+    },
+    {
+      "ruleset": "RS_OneDrive",
+      "local_file": "OneDrive.list",
+      "upstream_path": "rule/Surge/OneDrive/OneDrive.list",
+      "upstream_blob": "4114bec0370bc1c135c9b0d12e66a4457f69e7ae",
+      "upstream_sha256": "c13255b88e542f92ce26a8cca4367adcea81f9f04e00a41d03dc4869caa070ea",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_PrimeVideo",
+      "local_file": "PrimeVideo.list",
+      "upstream_path": "rule/Surge/PrimeVideo/PrimeVideo.list",
+      "upstream_blob": "7c9d4c7c30287681afc92755dac8f25e044daa66",
+      "upstream_sha256": "4f957e0888cc89f61b3f04402282f50a5cf11d4bde7240d2b330bc9e1ba6ca46",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_Spotify",
+      "local_file": "Spotify.list",
+      "upstream_path": "rule/Surge/Spotify/Spotify.list",
+      "upstream_blob": "39c31e12a50451457c4c7bc8b802de4f61dcff6b",
+      "upstream_sha256": "33bd52e8f23cda9374876259621c8fba21554035e20fa55daffbfcaee2109079",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_TikTok",
+      "local_file": "TikTok.list",
+      "upstream_path": "rule/Surge/TikTok/TikTok.list",
+      "upstream_blob": "52f387d7ca98558874a5f8adf2e7d8ecd97ac90f",
+      "upstream_sha256": "b44559153af1e15e49ea1f2e161230276aee0fd29d697f2a4d635f4a484e2220",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_Twitter",
+      "local_file": "Twitter.list",
+      "upstream_path": "rule/Surge/Twitter/Twitter.list",
+      "upstream_blob": "666db47acb004f886983ca3434c13709b9e1f242",
+      "upstream_sha256": "64c836f2431ca0d4728cc545bb74280ee50c886e346040012e6cdd2f3eee3f97",
+      "exclude": []
+    },
+    {
+      "ruleset": "RS_YouTube",
+      "local_file": "YouTube.list",
+      "upstream_path": "rule/Surge/YouTube/YouTube.list",
+      "upstream_blob": "8f5477e84e7fc9cc6b73cc0dc0e4b895c6fc823e",
+      "upstream_sha256": "42274e143447066e26e1ebbf21ae03ce6efb40827f41e2775a84fb16d390713d",
+      "exclude": []
+    }
+  ]
+}

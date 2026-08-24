@@ -1,0 +1,48 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage/
+htmlcov/
+# Python build and environments
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+.venv/
+venv/
+env/
+# Operating systems
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+Desktop.ini
+# Editors
+.vscode/
+.idea/
+*~
+*.swp
+*.swo
+# Logs, temporary files, and local secrets
+*.log
+*.tmp
+*.temp
+*.bak
+.env
+.env.*
+*.local
+# Archives and generated candidates
+*.zip
+*.7z
+*.rar
+Surge.zip
+artifacts/
+# Optional future tooling
+node_modules/
+*.cache

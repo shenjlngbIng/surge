@@ -1,0 +1,142 @@
+# NAME: Global
+# FORMAT: Surge DOMAIN-SET
+# POLICY: Proxy
+# UPDATED: 2026-08-09
+# SCOPE: 仅收录可明确归属到境外服务且通常需要代理的域名。
+# EXCLUDES: 共享云/CDN、通用证书/统计平台、域名关键词和归属不明域名。
+# MAINTENANCE: 专用服务规则优先；本表同时提供明确境外域名的代理兜底。
+
+# OpenAI / Anthropic / Google AI
+.ai.com
+.anthropic.com
+.claude.ai
+.chat.com
+.chatgpt.com
+.oaistatic.com
+.oaistatsig.com
+.oaiusercontent.com
+.openai.com
+.openaimerge.com
+.sora.com
+# Google / YouTube
+.google.com
+.googleapis.com
+.googleusercontent.com
+.gstatic.com
+.googlevideo.com
+.ggpht.com
+.gvt1.com
+.gvt2.com
+.youtube.com
+.youtube-nocookie.com
+.youtu.be
+.ytimg.com
+.yt.be
+
+# GitHub
+.github.com
+.githubassets.com
+.githubusercontent.com
+.githubstatus.com
+.github.io
+
+# Microsoft global
+.live.com
+.microsoft.com
+.microsoftonline.com
+.office.com
+.office365.com
+.onedrive.com
+.outlook.com
+.skype.com
+.windows.com
+.windows.net
+.xbox.com
+
+# Telegram / X
+.t.me
+.telegram.me
+.telegram.org
+.telesco.pe
+.x.com
+.twitter.com
+.twimg.com
+.t.co
+
+# Meta
+.facebook.com
+.facebook.net
+.fb.com
+.fb.me
+.fbcdn.net
+.instagram.com
+.cdninstagram.com
+.threads.net
+.whatsapp.com
+.whatsapp.net
+
+# Streaming media
+.bamgrid.com
+.disneyplus.com
+.disney-plus.net
+.dssott.com
+.hbomax.com
+.hbo.com
+.max.com
+.netflix.com
+.netflix.net
+.nflxext.com
+.nflximg.com
+.nflxso.net
+.nflxvideo.net
+.primevideo.com
+.spotify.com
+.scdn.co
+.tiktok.com
+.tiktokcdn.com
+.tiktokv.com
+
+# Community / communications
+.discord.com
+.discord.gg
+.discordapp.com
+.discordapp.net
+.discord.media
+.redd.it
+.reddit.com
+.redditmedia.com
+.redditstatic.com
+.signal.org
+.twitch.tv
+.twitchcdn.net
+.jtvnw.net
+
+# Knowledge / productivity
+.dropbox.com
+.dropboxapi.com
+.dropboxstatic.com
+.duckduckgo.com
+.linkedin.com
+.licdn.com
+.medium.com
+.notion.so
+.notion.site
+.proton.me
+.protonmail.com
+.protonmail.ch
+.wikipedia.org
+.wikimedia.org
+.wikimediafoundation.org
+.wikidata.org
+
+# International commerce / media discovery
+.amazon.com
+.amazon.co.jp
+.amzn.to
+.media-amazon.com
+.ebay.com
+.etsy.com
+.imdb.com
+.pinterest.com
+.pinimg.com
+.quora.com

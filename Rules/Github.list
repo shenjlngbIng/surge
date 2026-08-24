@@ -1,0 +1,41 @@
+# 规则名称: Github
+# 规则统计: 31
+# 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
+# 上游文件: rule/Surge/GitHub/GitHub.list
+# 上游 SHA-256: ced8ab0ecda5775d04ec8ee6a57b282181108565331a6a1d85e9a26fee25d79b
+# 上游声明 NAME: GitHub
+# 上游声明 AUTHOR: blackmatrix7
+# 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
+# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。
+
+DOMAIN-SUFFIX,atom.io
+DOMAIN-SUFFIX,dependabot.com
+DOMAIN-SUFFIX,ghcr.io
+DOMAIN-SUFFIX,git.io
+DOMAIN-SUFFIX,github-atom-io-herokuapp-com.freetls.fastly.net
+DOMAIN-SUFFIX,github-avatars.oss-cn-hongkong.aliyuncs.com
+DOMAIN-SUFFIX,github-cloud.s3.amazonaws.com
+DOMAIN-SUFFIX,github.blog
+DOMAIN-SUFFIX,github.com
+DOMAIN-SUFFIX,github.community
+DOMAIN-SUFFIX,github.dev
+DOMAIN-SUFFIX,github.io
+DOMAIN-SUFFIX,githubapp.com
+DOMAIN-SUFFIX,githubassets.com
+DOMAIN-SUFFIX,githubcopilot.com
+DOMAIN-SUFFIX,githubhackathon.com
+DOMAIN-SUFFIX,githubnext.com
+DOMAIN-SUFFIX,githubpreview.dev
+DOMAIN-SUFFIX,githubstatus.com
+DOMAIN-SUFFIX,githubuniverse.com
+DOMAIN-SUFFIX,githubusercontent.com
+DOMAIN-SUFFIX,myoctocat.com
+DOMAIN-SUFFIX,npm.community
+DOMAIN-SUFFIX,npmjs.com
+DOMAIN-SUFFIX,npmjs.org
+DOMAIN-SUFFIX,opensource.guide
+DOMAIN-SUFFIX,rawgit.com
+DOMAIN-SUFFIX,rawgithub.com
+DOMAIN-SUFFIX,repo.new
+DOMAIN-SUFFIX,thegithubshop.com
+DOMAIN-KEYWORD,github

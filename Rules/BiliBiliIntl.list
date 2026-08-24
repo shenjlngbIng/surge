@@ -1,0 +1,11 @@
+# 规则名称: BiliBiliIntl
+# 规则统计: 1
+# 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
+# 上游文件: rule/Surge/BiliBiliIntl/BiliBiliIntl.list
+# 上游 SHA-256: ccb061a3327eb9e49ff13a90a628577389c89d0c67e0a930be2e4f174434b0ad
+# 上游声明 NAME: BiliBiliIntl
+# 上游声明 AUTHOR: blackmatrix7
+# 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
+# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。
+
+DOMAIN-SUFFIX,bilibili.tv

@@ -1,0 +1,16 @@
+# 规则名称: Claude
+# 规则统计: 6
+# 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
+# 上游文件: rule/Surge/Claude/Claude.list
+# 上游 SHA-256: 870e7e25d798e7f00338507f773b0eea4dfd15e25e9df0a27d5ae421ae1ab378
+# 上游声明 NAME: Claude
+# 上游声明 AUTHOR: blackmatrix7
+# 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
+# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。
+
+DOMAIN-SUFFIX,anthropic.com
+DOMAIN-SUFFIX,claude.ai
+DOMAIN-SUFFIX,claude.com
+DOMAIN-SUFFIX,claudeusercontent.com
+IP-CIDR,160.79.104.0/23,no-resolve
+IP-CIDR6,2607:6bc0::/48,no-resolve
