@@ -1,5 +1,21 @@
 # 更新日志
 
+## 2026-08-24 R12.15 网络切换测速风暴修正
+
+### 修正
+
+- 将订阅导入从自动策略组中拆出，新增隐藏的被动 `NodePool = select`，它只负责按小时更新 `policy-path`，不承担路由和自动测速。
+- 将 `AllServer` 从包含全订阅的 `fallback` 改为 `smart`，并通过 `include-other-group=NodePool` 复用节点，避免 Wi-Fi、蜂窝数据切换后立即对整份订阅进行集中 HEAD 探测。
+- 将香港、台湾、日本、新加坡和美国五个地区组从 `url-test` 改为 `smart`，直接筛选 `NodePool`，不再通过 `AllServer` 级联触发重复评估。
+- 在 `AllServer` 和五个地区组中显式保留 `Fail-Closed`。即使订阅为空、下载失败或地区筛选结果为空，也不会因 Smart 组的空组替代策略而静默转为 `DIRECT`。
+- 保留 Telegram 强制代理、`ApplePush = fallback, Proxy, DIRECT`、AliDNS 加密 DNS、53/853/8853 端口控制、APNs 捕获、CGNAT 与局域网边界以及 85 条活动规则，不借测速修复改变流量归属。
+- 将锁文件升级为 schema 8，记录 `NodePool → Smart` 策略架构；配置审计器扩展到 31 个策略组和 49 项故障注入测试。
+- 同步更新 ZIP 白名单、R12.15 发布包名、GitHub Actions、迁移说明、贡献规范、发布清单、两份一致的 SHA-256 清单和完整 README。
+
+### 原因
+
+R12.14 的 `AllServer = fallback` 会在网络切换后丢弃旧测试结果，并在首次使用时对所有订阅节点重新测试。截图中的 310 个请求与约 155 个节点各产生两次探测高度吻合。单纯增加 `interval`、隐藏通知或放宽 `timeout` 都不能阻止网络切换后的结果失效，因此 R12.15 改为被动导入与 Smart 决策分层。
+
 ## 2026-08-24 R12.14 稳定性与推送保全修正
 
 ### 修正
