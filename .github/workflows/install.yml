@@ -1,4 +1,4 @@
-name: Install and audit Surge R12.14
+name: Install and audit Surge R12.15
 
 on:
   push:
@@ -30,10 +30,10 @@ jobs:
           import stat
           import zipfile
 
-          archive = Path("Surge-R12.14-release.zip")
+          archive = Path("Surge-R12.15-release.zip")
           stage = Path(".surge-install")
           if not archive.is_file():
-              raise SystemExit("Surge-R12.14-release.zip was not found in the repository root")
+              raise SystemExit("Surge-R12.15-release.zip was not found in the repository root")
           if stage.exists():
               shutil.rmtree(stage)
           stage.mkdir()
@@ -79,11 +79,11 @@ jobs:
       - name: Commit installed files
         shell: bash
         run: |
-          rm -f Surge-R12.14-release.zip
+          rm -f Surge-R12.15-release.zip
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R12.14"
+          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R12.15"
           git push origin HEAD:main
 
   audit:
