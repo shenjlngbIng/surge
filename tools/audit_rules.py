@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R12.15 remote RULE-SET inventory and published rule sources."""
+"""Validate the R12.16 remote RULE-SET inventory and published rule sources."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from convert_to_remote_rules import REMOTE_BASE, REPOSITORY_RULES
+from convert_to_remote_rules import RELEASE_REF, REMOTE_BASE, REPOSITORY_RULES
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -38,9 +38,11 @@ if lock.get("schema") != 8:
     fail(f"unsupported lock schema: {lock.get('schema')!r}")
 if lock.get("mode") != "remote-ruleset":
     fail("lock mode must be remote-ruleset")
-if lock.get("profile") != "Surge iOS Privacy + Push R12.15":
+if lock.get("profile") != "Surge iOS Privacy + Push R12.16":
     fail("lock profile name mismatch")
 invariants = lock.get("required_invariants", {})
+if invariants.get("release_ref") != RELEASE_REF:
+    fail("lock release reference mismatch")
 if invariants.get("apns_capture") != "enabled":
     fail("lock APNs capture invariant mismatch")
 if invariants.get("apns_fallback") != "Proxy_then_DIRECT":
@@ -79,6 +81,14 @@ if invariants.get("capture") != {
     "include-cellular-services": "false",
 }:
     fail("lock capture invariant mismatch")
+if invariants.get("bilibili") != {
+    "domestic": {"file": "BiliBili.list", "policy": "DIRECT"},
+    "international": {"file": "BiliBiliIntl.list", "policy": "Streaming"},
+    "international_precedes_domestic": True,
+}:
+    fail("lock BiliBili split-routing invariant mismatch")
+if invariants.get("stun_before_geoip") is not True:
+    fail("lock STUN ordering invariant mismatch")
 
 expected_sources = {
     filename: {"kind": kind, "url": f"{REMOTE_BASE}{filename}", "policy": policy}
@@ -191,7 +201,91 @@ missing_telegram = telegram_required - set(active_lines(RULES / "Telegram.list")
 if missing_telegram:
     fail(f"Telegram source is missing core endpoints: {sorted(missing_telegram)}")
 
+bilibili_domestic_required = {
+    "DOMAIN-SUFFIX,acgvideo.com",
+    "DOMAIN-SUFFIX,b23.tv",
+    "DOMAIN-SUFFIX,biliapi.com",
+    "DOMAIN-SUFFIX,biliapi.net",
+    "DOMAIN-SUFFIX,bilibili.cn",
+    "DOMAIN-SUFFIX,bilibili.com",
+    "DOMAIN-SUFFIX,bilicdn1.com",
+    "DOMAIN-SUFFIX,bilicomics.com",
+    "DOMAIN-SUFFIX,biligame.com",
+    "DOMAIN-SUFFIX,biliimg.com",
+    "DOMAIN-SUFFIX,bilivideo.com",
+    "DOMAIN-SUFFIX,hdslb.com",
+}
+bilibili_intl_required = {
+    "DOMAIN,apiintl.biliapi.net",
+    "DOMAIN,p-bstarstatic.akamaized.net",
+    "DOMAIN,p.bstarstatic.com",
+    "DOMAIN,upos-bstar-mirrorakam.akamaized.net",
+    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
+    "DOMAIN-SUFFIX,bilibili.tv",
+    "DOMAIN-SUFFIX,biliintl.com",
+}
+if set(active_lines(RULES / "BiliBili.list")) != bilibili_domestic_required:
+    fail("BiliBili domestic rules do not match the reviewed DIRECT set")
+if set(active_lines(RULES / "BiliBiliIntl.list")) != bilibili_intl_required:
+    fail("BiliBili international rules do not match the reviewed Streaming set")
+
+forbidden_rules = {
+    "Bahamut.list": {
+        "DOMAIN-SUFFIX,digicert.com",
+        "DOMAIN-SUFFIX,gvt1.com",
+        "DOMAIN-SUFFIX,hinet.net",
+    },
+    "Disney.list": {
+        "DOMAIN-SUFFIX,adobedtm.com",
+        "DOMAIN-SUFFIX,bam.nr-data.net",
+        "DOMAIN-SUFFIX,braze.com",
+        "DOMAIN-SUFFIX,cdn.optimizely.com",
+        "DOMAIN-SUFFIX,conviva.com",
+        "DOMAIN-SUFFIX,d9.flashtalking.com",
+        "DOMAIN-SUFFIX,js-agent.newrelic.com",
+    },
+    "Game.list": {"DOMAIN-SUFFIX,helpshift.com"},
+    "HBO.list": {
+        "DOMAIN-SUFFIX,manifest.prod.boltdns.net",
+        "DOMAIN-SUFFIX,players.brightcove.net",
+    },
+    "Microsoft.list": {
+        "DOMAIN-SUFFIX,azurefd.net",
+        "DOMAIN-SUFFIX,azureedge.net",
+        "DOMAIN-SUFFIX,azurewebsites.net",
+        "DOMAIN-SUFFIX,edgesuite.net",
+        "DOMAIN-SUFFIX,helpshift.com",
+        "DOMAIN-SUFFIX,optimizely.com",
+        "DOMAIN-SUFFIX,windows.net",
+    },
+    "TikTok.list": {"DOMAIN-SUFFIX,snssdk.com"},
+    "ProxyMedia.list": {
+        "DOMAIN,apm-misaka.biliapi.net",
+        "DOMAIN,cache.video.iqiyi.com",
+    },
+}
+for filename, forbidden in forbidden_rules.items():
+    leaked = forbidden & set(active_lines(RULES / filename))
+    if leaked:
+        fail(f"{filename} contains intentionally excluded shared/domestic rules: {sorted(leaked)}")
+
+direct_rules = set(active_lines(RULES / "Direct.list"))
+google_bypasses = sorted(
+    rule for rule in direct_rules if "google" in rule.lower() or "gvt1.com" in rule.lower()
+)
+if google_bypasses:
+    fail(f"Direct.list bypasses the Google policy: {google_bypasses}")
+
+netflix_rules = set(active_lines(RULES / "Netflix.list"))
+if "IP-ASN,2906,no-resolve" not in netflix_rules:
+    fail("Netflix.list must use the reviewed Netflix AS2906 route")
+wide_netflix_cidrs = sorted(
+    rule for rule in netflix_rules if rule.startswith(("IP-CIDR,", "IP-CIDR6,"))
+)
+if wide_netflix_cidrs:
+    fail(f"Netflix.list must not import broad cloud CIDRs: {wide_netflix_cidrs[:3]}")
+
 print(
-    f"PASS R12.15 remote_sources={len(raw_sources)} "
+    f"PASS R12.16 remote_sources={len(raw_sources)} "
     f"rules={lock.get('active_rules')}"
 )

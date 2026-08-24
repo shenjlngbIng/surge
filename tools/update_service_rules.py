@@ -106,6 +106,14 @@ def load_lock() -> dict[str, object]:
         exclusions = [str(value) for value in service.get("exclude", [])]
         if len(exclusions) != len(set(exclusions)):
             raise ValueError(f"duplicate exclusion for {local_file}")
+        service_drop_types = [str(value).upper() for value in service.get("drop_types", [])]
+        if len(service_drop_types) != len(set(service_drop_types)):
+            raise ValueError(f"duplicate dropped rule type for {local_file}")
+        if any(value not in TYPE_ORDER for value in service_drop_types):
+            raise ValueError(f"unsupported dropped rule type for {local_file}")
+        additions = [str(value) for value in service.get("add", [])]
+        if len(additions) != len(set(additions)):
+            raise ValueError(f"duplicate local addition for {local_file}")
         if ruleset in seen_rulesets or local_file in seen_files or upstream_path in seen_paths:
             raise ValueError(f"duplicate service identity in lock: {ruleset}")
         seen_rulesets.add(ruleset)
@@ -159,14 +167,27 @@ def render_snapshot(
     local_rules = active_lines(target.read_text(encoding="utf-8-sig"))
     source_text = source_payload.decode("utf-8-sig")
     metadata = declared_metadata(source_text)
+    service_drop_types = {
+        str(value).upper() for value in service.get("drop_types", [])
+    }
+    local_rules = [
+        rule
+        for rule in local_rules
+        if rule.split(",", 1)[0].upper() not in service_drop_types
+    ]
     imported_rules = [
         rule
         for rule in active_lines(source_text)
-        if rule.split(",", 1)[0].upper() not in drop_types
+        if rule.split(",", 1)[0].upper() not in drop_types | service_drop_types
     ]
     exclusions = {str(value) for value in service.get("exclude", [])}
+    additions = [str(value) for value in service.get("add", [])]
     merged = sorted(
-        (rule for rule in dict.fromkeys(local_rules + imported_rules) if rule not in exclusions),
+        (
+            rule
+            for rule in dict.fromkeys(local_rules + imported_rules + additions)
+            if rule not in exclusions
+        ),
         key=sort_key,
     )
     name = str(service["ruleset"]).removeprefix("RS_")
@@ -180,7 +201,7 @@ def render_snapshot(
         f"# 上游声明 NAME: {metadata['NAME']}",
         f"# 上游声明 AUTHOR: {metadata['AUTHOR']}",
         f"# 上游声明 REPO: {metadata['REPO']}",
-        "# 本地处理: 过滤 PROCESS-NAME、未审核新增 IP-ASN 和共享平台排除项；精确去重，域名优先、IP 后置。",
+        "# 本地处理: 过滤不适用于 iOS 的规则、共享平台排除项和按服务禁用的宽泛类型；保留经过审核的本地补充。",
         "",
     ]
     return "\n".join(header + merged) + "\n"
@@ -214,6 +235,22 @@ def verify_committed(
         leaked = sorted(set(rules) & {str(value) for value in service.get("exclude", [])})
         if leaked:
             raise ValueError(f"excluded shared rule leaked into {target.name}: {leaked}")
+        service_drop_types = {
+            str(value).upper() for value in service.get("drop_types", [])
+        }
+        dropped = sorted(
+            rule
+            for rule in rules
+            if rule.split(",", 1)[0].upper() in service_drop_types
+        )
+        if dropped:
+            raise ValueError(f"service-dropped rule type leaked into {target.name}: {dropped[:3]}")
+        missing_additions = set(str(value) for value in service.get("add", [])) - set(rules)
+        if missing_additions:
+            raise ValueError(
+                f"curated local additions are missing from {target.name}: "
+                f"{sorted(missing_additions)}"
+            )
 
 
 def parse_args() -> argparse.Namespace:

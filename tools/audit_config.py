@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Audit the Surge iOS Privacy + Push R12.15 profile."""
+"""Audit the Surge iOS Privacy + Push R12.16 profile."""
 from __future__ import annotations
 import hashlib, json, sys
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    RELEASE_REF,
     REMOTE_BASE,
     REPOSITORY_RULES,
 )
@@ -36,6 +37,16 @@ def target(rule):
     return f[1] if f[0]=='FINAL' else f[2]
 text=PROFILE.read_text(encoding='utf-8')
 if not text.endswith('\n') or '\r' in text or '\ufeff' in text: fail('profile must be UTF-8 LF and end with newline')
+expected_header = [
+    '# > Surge Config Make by .ᐣ',
+    '# > TG Channel: https://t.me/shenjlngbIng',
+    '# > GitHub: https://github.com/shenjlngbIng',
+    '# > Update Date: 2026.08.25',
+]
+if text.splitlines()[:4] != expected_header:
+    fail('profile attribution header mismatch')
+if RELEASE_REF != 'r12.16-20260825' or '@main/Rules/' in text:
+    fail('runtime rule URLs must use the immutable R12.16 release reference')
 sec=parse(text)
 if list(sec)!=['General','Host','Proxy','Proxy Group','Rule']: fail(f'section order mismatch: {list(sec)}')
 g=kv(sec['General'],'General')
@@ -63,6 +74,8 @@ if len(proxy_group)<2 or proxy_group[:2]!=['select','AllServer']:
     fail('Proxy must default to AllServer before regional groups')
 if group_members('Proxy') != ['AllServer','HongKong','TaiWan','Japan','Singapore','America']:
     fail('Proxy members must remain AllServer followed by the five regional Smart groups')
+if group_members('HBO')[:2] != ['Proxy','America']:
+    fail('HBO must default to Proxy so HBO Asia/Now are not forced through America')
 node_pool=groups.get('NodePool','')
 node_pool_parts=[part.strip() for part in node_pool.split(',')]
 if not node_pool_parts or node_pool_parts[0] != 'select':
@@ -193,18 +206,29 @@ def rule_position(prefix: str) -> int:
 
 youtube_pos = rule_position(f'RULE-SET,{REMOTE_BASE}YouTube.list,')
 google_pos = rule_position(f'RULE-SET,{REMOTE_BASE}Google.list,')
+bilibili_intl_pos = rule_position(f'RULE-SET,{REMOTE_BASE}BiliBiliIntl.list,')
+bilibili_domestic_pos = rule_position(f'RULE-SET,{REMOTE_BASE}BiliBili.list,')
+proxy_media_pos = rule_position(f'RULE-SET,{REMOTE_BASE}ProxyMedia.list,')
+game_pos = rule_position(f'RULE-SET,{REMOTE_BASE}Game.list,')
+onedrive_pos = rule_position(f'RULE-SET,{REMOTE_BASE}OneDrive.list,')
+microsoft_pos = rule_position(f'RULE-SET,{REMOTE_BASE}Microsoft.list,')
 china_domain_pos = rule_position(f'DOMAIN-SET,{REMOTE_BASE}China.list,')
 global_domain_pos = rule_position(f'DOMAIN-SET,{REMOTE_BASE}Global.list,')
 geoip_pos = rule_position('GEOIP,CN,DIRECT')
+stun_pos = rule_position('PROTOCOL,STUN,Proxy')
 if youtube_pos >= google_pos:
     fail('YouTube must precede Google')
+if not (bilibili_intl_pos < bilibili_domestic_pos < proxy_media_pos < china_domain_pos):
+    fail('BiliBili international rules must precede domestic and generic media rules')
+if not (game_pos < onedrive_pos < microsoft_pos):
+    fail('Game must precede OneDrive/Microsoft so Xbox and Minecraft rules remain reachable')
 for kind, filename, _label, _policy in REPOSITORY_RULES:
     if kind == 'DOMAIN-SET':
         continue
     if rule_position(f'RULE-SET,{REMOTE_BASE}{filename},') >= china_domain_pos:
         fail(f'{filename} must precede the precise domain fallbacks')
-if not (china_domain_pos < global_domain_pos < geoip_pos):
-    fail('precise China/Global domain sets are out of order')
+if not (china_domain_pos < global_domain_pos < stun_pos < geoip_pos):
+    fail('precise domain, STUN and China GEOIP rules are out of order')
 for forbidden in ('blackmatrix7/ios_rule_script', 'China_Domain.list', 'Global_Domain.list', 'Rules/ChinaDomain.list'):
     if forbidden in text:
         fail(f'broad or retired domain source is forbidden: {forbidden}')
@@ -236,4 +260,4 @@ if LOCK.exists() and PROFILE.resolve()==(ROOT/'Surge.conf').resolve():
     lock=json.loads(LOCK.read_text(encoding='utf-8'))
     if lock['profile_sha256']!=hashlib.sha256(text.encode()).hexdigest(): fail('lock hash stale')
     if lock['active_rules']!=len(rules): fail('lock active rule count stale')
-print(f'PASS R12.15 rules={len(rules)} sha256={hashlib.sha256(text.encode()).hexdigest()}')
+print(f'PASS R12.16 rules={len(rules)} sha256={hashlib.sha256(text.encode()).hexdigest()}')

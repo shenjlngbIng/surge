@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Refresh R12.15 metadata for remote RULE-SET sources.
+"""Refresh R12.16 metadata for remote RULE-SET sources.
 
 The historical filename is retained for compatibility with older maintenance
 commands. It only refreshes metadata and never embeds rule contents into
@@ -12,13 +12,13 @@ import hashlib
 import json
 from pathlib import Path
 
-from convert_to_remote_rules import REMOTE_BASE, REPOSITORY_RULES
+from convert_to_remote_rules import RELEASE_REF, REMOTE_BASE, REPOSITORY_RULES
 
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
 LOCK = ROOT / "Rules/r10.lock.json"
-RELEASE_DATE = "2026-08-24"
+RELEASE_DATE = "2026-08-25"
 
 
 def active_count(path: Path) -> int:
@@ -51,7 +51,7 @@ lock.update(
     {
         "schema": 8,
         "mode": "remote-ruleset",
-        "profile": "Surge iOS Privacy + Push R12.15",
+        "profile": "Surge iOS Privacy + Push R12.16",
         "generated": RELEASE_DATE,
         "source_repository": "shenjlngbIng/surge",
         "profile_sha256": hashlib.sha256(text.encode()).hexdigest(),
@@ -63,6 +63,7 @@ lock.update(
         ),
         "required_invariants": {
             "final": "FINAL,Final,dns-failed",
+            "release_ref": RELEASE_REF,
             "final_strict_choice": "REJECT",
             "telegram": "forced-proxy",
             "apns_capture": "enabled",
@@ -101,6 +102,12 @@ lock.update(
                 "include-apns": "true",
                 "include-cellular-services": "false",
             },
+            "bilibili": {
+                "domestic": {"file": "BiliBili.list", "policy": "DIRECT"},
+                "international": {"file": "BiliBiliIntl.list", "policy": "Streaming"},
+                "international_precedes_domestic": True,
+            },
+            "stun_before_geoip": True,
         },
         "remote_sources": remote_sources,
     }

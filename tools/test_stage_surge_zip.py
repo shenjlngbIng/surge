@@ -13,6 +13,7 @@ def main() -> int:
         "Surge.conf": "Surge.conf",
         "CHANGELOG.md": "CHANGELOG.md",
         "Rules/Ads.list": "Rules/Ads.list",
+        "Rules/BiliBiliIntl.list": "Rules/BiliBiliIntl.list",
         "Rules/upstreams.lock.json": "Rules/upstreams.lock.json",
         "Rules/r10.lock.json": "Rules/r10.lock.json",
         "Surge/NOTICE.md": "NOTICE.md",
@@ -20,6 +21,7 @@ def main() -> int:
         "Surge-R12-Candidate/MIGRATION.md": "MIGRATION.md",
         "Surge-R12.14-Candidate/MIGRATION.md": "MIGRATION.md",
         "Surge-R12.15-Candidate/MIGRATION.md": "MIGRATION.md",
+        "Surge-R12.16-Candidate/MIGRATION.md": "MIGRATION.md",
     }
     for source, expected in allowed.items():
         if normalized_target(source) != PurePosixPath(expected):

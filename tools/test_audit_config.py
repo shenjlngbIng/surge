@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutation tests for the R12.15 configuration auditor."""
+"""Mutation tests for the R12.16 configuration auditor."""
 from __future__ import annotations
 
 import subprocess
@@ -27,18 +27,22 @@ def run(text: str) -> subprocess.CompletedProcess[str]:
 assert run(BASE).returncode == 0, "baseline"
 
 mutations = {
+    "attribution_header": (
+        "# > Surge Config Make by .ᐣ\n",
+        "# > Surge Config Make by unknown\n",
+    ),
     "final_open": ("\nFINAL,Final,dns-failed\n", "\nFINAL,DIRECT\n"),
     "final_group_direct": (
         "\nFinal = select, Proxy, REJECT,",
         "\nFinal = select, Proxy, DIRECT,",
     ),
     "telegram_direct": (
-        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Telegram.list,Telegram\n",
-        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Telegram.list,DIRECT\n",
+        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/Telegram.list,Telegram\n",
+        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/Telegram.list,DIRECT\n",
     ),
     "apns_direct": (
-        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/APNs.list,ApplePush\n",
-        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/APNs.list,DIRECT\n",
+        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/APNs.list,ApplePush\n",
+        "\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/APNs.list,DIRECT\n",
     ),
     "capture_apns": ("\ninclude-apns = true\n", "\ninclude-apns = false\n"),
     "capture_all": ("\ninclude-all-networks = true\n", "\ninclude-all-networks = false\n"),
@@ -78,6 +82,10 @@ mutations = {
     "proxy_direct": (
         "\nProxy = select, AllServer, HongKong,",
         "\nProxy = select, AllServer, DIRECT, HongKong,",
+    ),
+    "hbo_forced_america": (
+        "\nHBO = select, Proxy, America,",
+        "\nHBO = select, America, Proxy,",
     ),
     "node_pool_mode": ("\nNodePool = select,", "\nNodePool = url-test,"),
     "node_pool_hidden": (
@@ -180,12 +188,32 @@ mutations = {
         "\nDOMAIN,sub.store,NodePool\n",
     ),
     "remote_host": (
-        "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list",
+        "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/ChatGPT.list",
         "https://example.invalid/ChatGPT.list",
     ),
     "remote_http": (
+        "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/ChatGPT.list",
+        "http://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/ChatGPT.list",
+    ),
+    "remote_main_ref": (
+        "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/ChatGPT.list",
         "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list",
-        "http://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list",
+    ),
+    "bilibili_wrong_policy": (
+        "Rules/BiliBili.list,DIRECT\n",
+        "Rules/BiliBili.list,Streaming\n",
+    ),
+    "bilibili_intl_wrong_policy": (
+        "Rules/BiliBiliIntl.list,Streaming\n",
+        "Rules/BiliBiliIntl.list,DIRECT\n",
+    ),
+    "stun_after_geoip": (
+        "\nPROTOCOL,STUN,Proxy\n\n# China IP\nGEOIP,CN,DIRECT\n",
+        "\nGEOIP,CN,DIRECT\n\n# China IP\nPROTOCOL,STUN,Proxy\n",
+    ),
+    "game_after_microsoft": (
+        "# Game (before Microsoft so Xbox/Minecraft/Bethesda rules are reachable)\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/Game.list,Games\n# OneDrive\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/OneDrive.list,Microsoft\n# Microsoft\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/Microsoft.list,Microsoft",
+        "# OneDrive\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/OneDrive.list,Microsoft\n# Microsoft\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/Microsoft.list,Microsoft\n# Game (before Microsoft so Xbox/Minecraft/Bethesda rules are reachable)\nRULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.16-20260825/Rules/Game.list,Games",
     ),
 }
 
@@ -194,4 +222,4 @@ for name, (old, new) in mutations.items():
     result = run(BASE.replace(old, new, 1))
     assert result.returncode != 0, f"mutation unexpectedly passed: {name}"
 
-print(f"PASS R12.15 mutations={len(mutations)}")
+print(f"PASS R12.16 mutations={len(mutations)}")

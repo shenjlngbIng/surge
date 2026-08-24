@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R12.15 profile's curated and upstream-hosted rule sources.
+"""Validate the R12.16 profile's curated and upstream-hosted rule sources.
 
 The repository remains the source of truth for curated rule snapshots. The
 Surge profile loads those snapshots through jsDelivr. Broad upstream domain
@@ -18,7 +18,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-REMOTE_BASE = "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/"
+RELEASE_REF = "r12.16-20260825"
+REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
 
 # Keep this order aligned with the remote profile. Earlier rules
 # intentionally win over broader domestic/geoip fallbacks later in the file.
@@ -38,16 +39,17 @@ REMOTE_RULES: tuple[tuple[str, str, str], ...] = (
     ("Emby.list", "Emby", "Emby"),
     ("TikTok.list", "TikTok", "TikTok"),
     ("Bahamut.list", "Bahamut", "Bahamut"),
-    ("BiliBiliIntl.list", "BiliBiliIntl · Streaming", "Streaming"),
+    ("BiliBiliIntl.list", "BiliBili international edition", "Streaming"),
+    ("BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
     ("Spotify.list", "Spotify", "Spotify"),
     ("ProxyMedia.list", "ProxyMedia · Streaming", "Streaming"),
     ("Telegram.list", "Telegram", "Telegram"),
     ("Github.list", "Github", "GitHub"),
     ("Twitter.list", "Twitter", "X"),
     ("Google.list", "Google", "Google"),
+    ("Game.list", "Game (before Microsoft so Xbox/Minecraft/Bethesda rules are reachable)", "Games"),
     ("OneDrive.list", "OneDrive", "Microsoft"),
     ("Microsoft.list", "Microsoft", "Microsoft"),
-    ("Game.list", "Game", "Games"),
     ("APNs.list", "APNs", "ApplePush"),
 )
 
@@ -82,7 +84,7 @@ def render_remote_block() -> str:
         "",
         "# Apple / domestic precedence",
     ]
-    filename, label, policy = REMOTE_RULES[25]
+    filename, label, policy = REMOTE_RULES[26]
     lines[5:5] = ["# APNs", f"# {label}", remote_line(filename, policy), ""]
     for filename, label, policy in REMOTE_RULES[:3]:
         lines.append(f"# {label}")
@@ -95,11 +97,11 @@ def render_remote_block() -> str:
         lines.extend((f"# {label}", remote_line(filename, policy)))
 
     lines.extend(("", "# Streaming"))
-    for filename, label, policy in REMOTE_RULES[7:18]:
+    for filename, label, policy in REMOTE_RULES[7:19]:
         lines.extend((f"# {label}", remote_line(filename, policy)))
 
     lines.extend(("", "# International services"))
-    for filename, label, policy in REMOTE_RULES[18:25]:
+    for filename, label, policy in REMOTE_RULES[19:26]:
         lines.extend((f"# {label}", remote_line(filename, policy)))
 
     lines.extend(("", "# Bounded repository-maintained domain fallbacks"))

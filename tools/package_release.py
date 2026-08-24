@@ -17,7 +17,7 @@ from convert_to_remote_rules import expected_remote_lines
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R12.15-release.zip"
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R12.16-corrected-20260825.zip"
 EXCLUDED_PARTS = {".git", "__pycache__"}
 EXCLUDED_SUFFIXES = {".pyc", ".zip", ".7z", ".rar"}
 
