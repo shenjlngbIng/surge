@@ -172,6 +172,10 @@ if group_members("Security") != ["REJECT", "REJECT-DROP", "DIRECT"]:
     fail("Security must preserve its emergency DIRECT off-switch")
 if group_members("UDP") != ["Proxy", "DIRECT", "REJECT"]:
     fail("UDP must preserve Proxy, DIRECT and REJECT choices")
+for name in ("ApplePush", "AdBlock", "Security", "UDP"):
+    parts = [part.strip() for part in groups[name].split(",")]
+    if "hidden=1" not in parts:
+        fail(f"{name} must remain hidden from the policy selection view")
 if group_members("HBO")[:2] != ["Proxy", "America"]:
     fail("HBO must default to Proxy")
 

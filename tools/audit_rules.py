@@ -54,7 +54,7 @@ def active_lines(path: Path) -> list[str]:
 if not LOCK.is_file():
     fail(f"runtime lock not found: {LOCK}")
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 9 or lock.get("mode") != "repository-ruleset":
+if lock.get("schema") != 10 or lock.get("mode") != "repository-ruleset":
     fail("runtime lock schema/mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -65,6 +65,8 @@ if invariants.get("runtime_static_resources") != "repository-only":
     fail("runtime resources are not locked to the repository")
 if invariants.get("runtime_resource_count") != len(REPOSITORY_RULES):
     fail("runtime resource count invariant mismatch")
+if invariants.get("hidden_function_groups") != ["ApplePush", "AdBlock", "Security", "UDP"]:
+    fail("hidden functional policy group invariant mismatch")
 if invariants.get("security_resource") != {
     "file": "Pegasus.list", "policy": "Security", "entries": 1438
 }:

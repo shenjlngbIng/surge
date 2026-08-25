@@ -59,7 +59,7 @@ active_rules = [
 ]
 
 lock = {
-    "schema": 9,
+    "schema": 10,
     "mode": "repository-ruleset",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -76,6 +76,7 @@ lock = {
         "telegram": "forced-proxy",
         "apns_capture": "enabled",
         "apns_fallback": "Proxy_then_DIRECT",
+        "hidden_function_groups": ["ApplePush", "AdBlock", "Security", "UDP"],
         "applepush_probe": {
             "interval": 60,
             "evaluate_before_use": True,
