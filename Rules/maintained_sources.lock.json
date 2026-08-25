@@ -1,0 +1,129 @@
+{
+  "schema": 1,
+  "scope": "repository-maintained runtime lists outside the 19 pinned service snapshots and Pegasus resource lock",
+  "policy": {
+    "automatic_refresh": "forbidden unless a fixed source and reviewed diff are recorded",
+    "unknown_provenance": "disclosed rather than attributed to an unverified project",
+    "hash_update": "required for every content change"
+  },
+  "files": [
+    {
+      "file": "APNs.list",
+      "active_entries": 12,
+      "sha256": "244d78195539f818f15cdd871e2512fa350327eaf6832aa5c3fd06ebb331031b",
+      "maintenance": "official-data-curation",
+      "sources": [
+        {
+          "url": "https://support.apple.com/en-us/102266",
+          "kind": "Apple APNs support document",
+          "pinned_commit": null
+        }
+      ],
+      "license_status": "published technical support data; redistribution terms not separately stated",
+      "notes": "Local list is reviewed against Apple-published IPv4/IPv6 ranges and APNs host suffixes.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "Ads.list",
+      "active_entries": 152,
+      "sha256": "562209616f162e33c9bdd0c8a5fbd17e99a04af5fcc5bcd2da4d58d6ca9f1320",
+      "maintenance": "historical-source-plus-repository-curation",
+      "sources": [
+        {
+          "url": "https://github.com/SukkaW/Surge",
+          "kind": "historical SukkaW-derived domain input",
+          "pinned_commit": null
+        }
+      ],
+      "license_status": "AGPL-3.0 license copy retained; exact historical input commit is unresolved",
+      "notes": "Do not auto-refresh until the historical source commit and local additions are separately reviewed.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "AppleCN.list",
+      "active_entries": 166,
+      "sha256": "4e9c6a61c0664915fc7ef3e84779cd0baae8cc9236aed017f696570a3342b95f",
+      "maintenance": "repository-maintained-curation",
+      "sources": [],
+      "license_status": "repository maintenance claim; historical third-party provenance unresolved",
+      "notes": "No unverified external URL is asserted; every future change requires reviewed diff and hash update.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "BiliBili.list",
+      "active_entries": 12,
+      "sha256": "de1171b012a98e50fd7a85cbf477848a39bed83460d63ab3afc0315034e65f85",
+      "maintenance": "repository-maintained-reviewed-set",
+      "sources": [],
+      "license_status": "repository maintenance claim",
+      "notes": "Twelve explicit domestic Bilibili suffixes; exact set is enforced by audit_rules.py.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "China.list",
+      "active_entries": 306,
+      "sha256": "41bcedfa2bd322cfc2da82359a5eb6ca27d7868bd74a11fa1e88d29658e1f6ec",
+      "maintenance": "repository-curated-precise-domain-set",
+      "sources": [],
+      "license_status": "repository maintenance claim",
+      "notes": "Scope and zero-conflict criteria are locked in upstreams.lock.json and audit_precise_domains.py.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "Direct.list",
+      "active_entries": 9,
+      "sha256": "2c9f02e478cca63405e553a189ddcb8015b6edc85d295079e05d6153737e6a02",
+      "maintenance": "repository-maintained-curation",
+      "sources": [],
+      "license_status": "repository maintenance claim; historical third-party provenance unresolved",
+      "notes": "Small explicit direct exceptions; Google/GVT bypasses are forbidden by audit_rules.py.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "Global.list",
+      "active_entries": 116,
+      "sha256": "99adfaea6b33faab59b7ab55c7a016e9fa4c8e68ce7feec8666da4719b1225ad",
+      "maintenance": "repository-curated-precise-domain-set",
+      "sources": [],
+      "license_status": "repository maintenance claim",
+      "notes": "Scope and zero-conflict criteria are locked in upstreams.lock.json and audit_precise_domains.py.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "ProxyMedia.list",
+      "active_entries": 319,
+      "sha256": "eab4bdf753b5566d1da22c9336d5bce0cb399838485e41cf3e5e1d8f07ebca03",
+      "maintenance": "repository-maintained-curation",
+      "sources": [],
+      "license_status": "repository maintenance claim; historical third-party provenance unresolved",
+      "notes": "Shared domestic media exceptions are explicitly removed by audit_rules.py.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "Telegram.list",
+      "active_entries": 51,
+      "sha256": "1ba917cd59a143a8255d941938625111709c62a890d66604e6f984fa11f38e92",
+      "maintenance": "official-network-data-plus-repository-curation",
+      "sources": [
+        {
+          "url": "https://core.telegram.org/resources/cidr.txt",
+          "kind": "Telegram-published CIDR list",
+          "pinned_commit": null
+        }
+      ],
+      "license_status": "official network list terms not separately stated; domain and extra-IP curation is repository-maintained",
+      "notes": "All current official CIDRs are covered; repository domains and two additional IPv4 routes remain explicit local curation.",
+      "last_review": "2026-08-25"
+    },
+    {
+      "file": "WeChat.list",
+      "active_entries": 33,
+      "sha256": "6f84eb140617a7335da7358f3eed6f475552e1925a0182e097ea5886b60a2086",
+      "maintenance": "repository-maintained-curation",
+      "sources": [],
+      "license_status": "repository maintenance claim; historical third-party provenance unresolved",
+      "notes": "Explicit WeChat/Tencent domains and user agents; no automatic external refresh.",
+      "last_review": "2026-08-25"
+    }
+  ]
+}

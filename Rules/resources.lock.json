@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "generated": "2026-08-25",
+  "description": "固定第三方静态资源只作为维护输入；Surge 运行时仅加载本仓库副本。",
+  "resources": [
+    {
+      "name": "Pegasus",
+      "format": "DOMAIN-SET",
+      "policy": "Security",
+      "local_file": "Pegasus.list",
+      "active_entries": 1438,
+      "repository": "AmnestyTech/investigations",
+      "commit": "3d8f248a0d015f183724ae7d096a5c46a8bb5fc7",
+      "upstream_path": "2021-07-18_nso/domains.txt",
+      "upstream_url": "https://raw.githubusercontent.com/AmnestyTech/investigations/3d8f248a0d015f183724ae7d096a5c46a8bb5fc7/2021-07-18_nso/domains.txt",
+      "upstream_blob": "b504b555e89b280a41c1b81a87735f214660483e",
+      "upstream_sha256": "780f16136724fbd6f6b1029aed545be7ff84ef4baa4a3238be5acf158f1c48ca",
+      "local_sha256": "2611d760c310b3d51376c2741c204f6f5f297432c3f6c1a5a3616b0c2c680c3e",
+      "local_processing": "逐行保留固定源的全部非空域名，不扩大为后缀，不增加第三方运行时依赖。",
+      "license_note": "固定提交根目录未发现 LICENSE、LICENSE.md、COPYING 或 COPYING.md；保留来源和提交信息，不用根目录 MIT License 覆盖该数据。"
+    }
+  ]
+}
