@@ -1,10 +1,10 @@
 {
-  "schema": 9,
+  "schema": 10,
   "mode": "repository-ruleset",
   "profile": "Surge iOS Privacy + Push R12.17",
   "generated": "2026-08-25",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "edfe95ed1abc2ba8ecaefdb5cd277dab848813bd7a3174f8021e15d2597c83c5",
+  "profile_sha256": "0c12b042eb8b82c8834131a4d896679ce4e35d9f9080d0d68a215a5462648de8",
   "profile_lines": 294,
   "active_rules": 98,
   "required_invariants": {
@@ -16,6 +16,12 @@
     "telegram": "forced-proxy",
     "apns_capture": "enabled",
     "apns_fallback": "Proxy_then_DIRECT",
+    "hidden_function_groups": [
+      "ApplePush",
+      "AdBlock",
+      "Security",
+      "UDP"
+    ],
     "applepush_probe": {
       "interval": 60,
       "evaluate_before_use": true,
