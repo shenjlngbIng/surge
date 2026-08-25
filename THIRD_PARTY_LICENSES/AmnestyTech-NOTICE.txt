@@ -1,0 +1,17 @@
+Amnesty Tech investigations data notice
+
+Local file:
+  Rules/Pegasus.list
+
+Pinned source:
+  Repository: AmnestyTech/investigations
+  Commit: 3d8f248a0d015f183724ae7d096a5c46a8bb5fc7
+  Path: 2021-07-18_nso/domains.txt
+  SHA-256: 780f16136724fbd6f6b1029aed545be7ff84ef4baa4a3238be5acf158f1c48ca
+  Git blob: b504b555e89b280a41c1b81a87735f214660483e
+
+The pinned repository root did not expose LICENSE, LICENSE.md, COPYING, or
+COPYING.md when this snapshot was reviewed on 2026-08-25. This notice preserves
+source attribution and does not claim that the repository root MIT License
+applies to the imported data. Confirm redistribution terms before publishing a
+public derivative if your use requires additional permission.
