@@ -4,8 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
 import stat
 import sys
+import tempfile
+import unicodedata
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -22,20 +26,26 @@ def normalized_target(name: str) -> PurePosixPath | None:
     if source.is_absolute() or ".." in source.parts:
         raise ValueError(f"unsafe archive path: {name!r}")
     parts = list(source.parts)
-    if parts and parts[0] in {"Surge", "Surge-R10-Candidate", "Surge-R12-Candidate", "Surge-R12.14-Candidate", "Surge-R12.15-Candidate", "Surge-R12.16-Candidate"}:
+    if parts and parts[0] in {"Surge", "Surge-R10-Candidate", "Surge-R12-Candidate", "Surge-R12.14-Candidate", "Surge-R12.15-Candidate", "Surge-R12.16-Candidate", "Surge-R12.17-Candidate"}:
         parts.pop(0)
     if not parts:
         return None
     target = PurePosixPath(*parts)
     if str(target) in {"Surge.conf", "README.md", "NOTICE.md", "CHANGELOG.md", "MIGRATION.md"}:
         return target
-    if str(target) in {"Rules/upstreams.lock.json", "Rules/r10.lock.json"}:
+    if str(target) in {"Rules/maintained_sources.lock.json", "Rules/upstreams.lock.json", "Rules/resources.lock.json", "Rules/r10.lock.json"}:
         return target
     if len(target.parts) == 2 and target.parts[0] == "Rules" and target.suffix == ".list":
         return target
     if len(target.parts) == 2 and target.parts[0] == "THIRD_PARTY_LICENSES" and target.suffix == ".txt":
         return target
     raise ValueError(f"file is outside the import allowlist: {name!r}")
+
+
+def collision_key(path: PurePosixPath) -> str:
+    """Model Unicode-normalizing, case-insensitive filesystems such as default macOS."""
+
+    return unicodedata.normalize("NFC", path.as_posix()).casefold()
 
 
 def main() -> int:
@@ -56,7 +66,9 @@ def main() -> int:
             return 2
 
     staged: dict[PurePosixPath, zipfile.ZipInfo] = {}
+    collision_keys: dict[str, PurePosixPath] = {}
     total_size = 0
+    temporary_output: Path | None = None
     try:
         with zipfile.ZipFile(args.archive) as archive:
             entries = [entry for entry in archive.infolist() if not entry.is_dir()]
@@ -78,23 +90,38 @@ def main() -> int:
                     continue
                 if target in staged:
                     raise ValueError(f"duplicate target path: {target}")
+                key = collision_key(target)
+                previous = collision_keys.get(key)
+                if previous is not None:
+                    raise ValueError(f"case or Unicode-colliding target paths: {previous}, {target}")
+                collision_keys[key] = target
                 staged[target] = entry
 
             if PurePosixPath("Surge.conf") not in staged:
                 raise ValueError("archive does not contain Surge.conf")
 
-            args.output.mkdir(parents=True, exist_ok=True)
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            temporary_output = Path(
+                tempfile.mkdtemp(prefix=f".{args.output.name}.stage-", dir=args.output.parent)
+            )
             for target, entry in staged.items():
-                destination = args.output.joinpath(*target.parts)
+                destination = temporary_output.joinpath(*target.parts)
                 destination.parent.mkdir(parents=True, exist_ok=True)
                 with archive.open(entry) as source:
                     data = source.read(MAX_FILE_SIZE + 1)
                 if len(data) != entry.file_size or len(data) > MAX_FILE_SIZE:
                     raise ValueError(f"size mismatch while reading: {entry.filename!r}")
                 destination.write_bytes(data)
+            if args.output.exists():
+                args.output.rmdir()
+            os.replace(temporary_output, args.output)
+            temporary_output = None
     except (ValueError, zipfile.BadZipFile, OSError, RuntimeError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
+    finally:
+        if temporary_output is not None and temporary_output.exists():
+            shutil.rmtree(temporary_output)
 
     print(f"STAGED: files={len(staged)} bytes={total_size} output={args.output}")
     return 0

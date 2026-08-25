@@ -1,33 +1,18 @@
 #!/usr/bin/env python3
-"""Generate the deterministic file manifest shipped with the R12.16 release."""
+"""Generate the deterministic file manifest shipped with the R12.17 release."""
 
 from __future__ import annotations
 
 import hashlib
 from pathlib import Path
 
+from release_inventory import manifest_files
+
 ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "RELEASE_MANIFEST.txt"
-GENERATED = {"RELEASE_MANIFEST.txt", "SHA256SUMS.txt", "SHA256SUMS_fixed.txt"}
-EXCLUDED_PARTS = {".git", "__pycache__"}
-EXCLUDED_SUFFIXES = {".pyc", ".zip", ".7z", ".rar"}
-
-
-def included(path: Path) -> bool:
-    relative = path.relative_to(ROOT)
-    if any(part in EXCLUDED_PARTS for part in relative.parts):
-        return False
-    if path.name in GENERATED or path.suffix in EXCLUDED_SUFFIXES:
-        return False
-    return path.is_file()
-
-
-files = sorted(
-    (path for path in ROOT.rglob("*") if included(path)),
-    key=lambda path: path.relative_to(ROOT).as_posix(),
-)
+files = manifest_files(ROOT)
 lines = [
-    "Surge iOS Privacy + Push R12.16 release manifest",
+    "Surge iOS Privacy + Push R12.17 release manifest",
     "Generated: 2026-08-25",
     f"Files: {len(files)}",
     "",

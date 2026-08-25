@@ -1,14 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the R12.16 profile's curated and upstream-hosted rule sources.
+"""Validate the R12.17 repository-hosted runtime rule inventory.
 
-The repository remains the source of truth for curated rule snapshots. The
-Surge profile loads those snapshots through jsDelivr. Broad upstream domain
-collections are deliberately replaced with two bounded, repository-maintained
-DOMAIN-SET files. No broad upstream routing collection is loaded at runtime.
-
-This maintenance command deliberately never writes rule contents into
-``Surge.conf``.  The historical filename is retained so existing maintenance
-commands continue to work.
+Every static RULE-SET and DOMAIN-SET used by Surge must resolve to the user's
+own immutable repository release. Third-party URLs are maintenance inputs only
+and are recorded in lock files; they may not appear in the runtime profile.
 """
 
 from __future__ import annotations
@@ -18,105 +13,64 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-RELEASE_REF = "r12.16-20260825"
+PROFILE_NAME = "Surge iOS Privacy + Push R12.17"
+RELEASE_DATE = "2026-08-25"
+RELEASE_REF = "r12.17-20260825"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
+UPDATE_OPTION = "update-interval=-1"
 
-# Keep this order aligned with the remote profile. Earlier rules
-# intentionally win over broader domestic/geoip fallbacks later in the file.
-REMOTE_RULES: tuple[tuple[str, str, str], ...] = (
-    ("AppleCN.list", "AppleCN · Apple", "Apple"),
-    ("WeChat.list", "WeChat · Domestic", "DIRECT"),
-    ("Direct.list", "Direct · Domestic", "DIRECT"),
-    ("Ads.list", "Ads · AdBlock", "AdBlock"),
-    ("ChatGPT.list", "ChatGPT", "ChatGPT"),
-    ("Claude.list", "Claude", "Claude"),
-    ("Gemini.list", "Gemini", "Gemini"),
-    ("YouTube.list", "YouTube", "YouTube"),
-    ("Netflix.list", "Netflix", "NETFLIX"),
-    ("Disney.list", "Disney+", "Disney+"),
-    ("HBO.list", "HBO", "HBO"),
-    ("PrimeVideo.list", "PrimeVideo", "PrimeVideo"),
-    ("Emby.list", "Emby", "Emby"),
-    ("TikTok.list", "TikTok", "TikTok"),
-    ("Bahamut.list", "Bahamut", "Bahamut"),
-    ("BiliBiliIntl.list", "BiliBili international edition", "Streaming"),
-    ("BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
-    ("Spotify.list", "Spotify", "Spotify"),
-    ("ProxyMedia.list", "ProxyMedia · Streaming", "Streaming"),
-    ("Telegram.list", "Telegram", "Telegram"),
-    ("Github.list", "Github", "GitHub"),
-    ("Twitter.list", "Twitter", "X"),
-    ("Google.list", "Google", "Google"),
-    ("Game.list", "Game (before Microsoft so Xbox/Minecraft/Bethesda rules are reachable)", "Games"),
-    ("OneDrive.list", "OneDrive", "Microsoft"),
-    ("Microsoft.list", "Microsoft", "Microsoft"),
-    ("APNs.list", "APNs", "ApplePush"),
+# Exact runtime order. The profile can contain reviewed inline overrides between
+# these entries, but repository resources must retain this relative order.
+REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
+    ("DOMAIN-SET", "Pegasus.list", "Pegasus spyware IOC", "Security"),
+    ("RULE-SET", "APNs.list", "APNs", "ApplePush"),
+    ("RULE-SET", "AppleCN.list", "AppleCN · Apple", "Apple"),
+    ("RULE-SET", "WeChat.list", "WeChat · Domestic", "DIRECT"),
+    ("RULE-SET", "Direct.list", "Direct · Domestic", "DIRECT"),
+    ("RULE-SET", "Ads.list", "Ads · AdBlock", "AdBlock"),
+    ("RULE-SET", "ChatGPT.list", "ChatGPT", "ChatGPT"),
+    ("RULE-SET", "Claude.list", "Claude", "Claude"),
+    ("RULE-SET", "Gemini.list", "Gemini", "Gemini"),
+    ("RULE-SET", "YouTube.list", "YouTube", "YouTube"),
+    ("RULE-SET", "Netflix.list", "Netflix", "NETFLIX"),
+    ("RULE-SET", "Disney.list", "Disney+", "Disney+"),
+    ("RULE-SET", "HBO.list", "HBO", "HBO"),
+    ("RULE-SET", "PrimeVideo.list", "PrimeVideo", "PrimeVideo"),
+    ("RULE-SET", "Emby.list", "Emby", "Emby"),
+    ("RULE-SET", "TikTok.list", "TikTok", "TikTok"),
+    ("RULE-SET", "Bahamut.list", "Bahamut", "Bahamut"),
+    ("RULE-SET", "BiliBiliIntl.list", "BiliBili international edition", "Streaming"),
+    ("RULE-SET", "BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
+    ("RULE-SET", "Spotify.list", "Spotify", "Spotify"),
+    ("RULE-SET", "ProxyMedia.list", "ProxyMedia · Streaming", "Streaming"),
+    ("RULE-SET", "Telegram.list", "Telegram", "Telegram"),
+    ("RULE-SET", "Github.list", "GitHub", "GitHub"),
+    ("RULE-SET", "Twitter.list", "X", "X"),
+    ("RULE-SET", "Google.list", "Google", "Google"),
+    ("RULE-SET", "Game.list", "Game", "Games"),
+    ("RULE-SET", "OneDrive.list", "OneDrive", "Microsoft"),
+    ("RULE-SET", "Microsoft.list", "Microsoft", "Microsoft"),
+    ("DOMAIN-SET", "China.list", "China domains · precise", "DIRECT"),
+    ("DOMAIN-SET", "Global.list", "Global domains · precise", "Proxy"),
 )
-
-PRECISE_DOMAIN_RULES: tuple[tuple[str, str, str], ...] = (
-    ("China.list", "China domains · precise", "DIRECT"),
-    ("Global.list", "Global domains · precise", "Proxy"),
-)
-
-REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = tuple(
-    ("RULE-SET", filename, label, policy)
-    for filename, label, policy in REMOTE_RULES
-) + tuple(
-    ("DOMAIN-SET", filename, label, policy)
-    for filename, label, policy in PRECISE_DOMAIN_RULES
-)
-
-
-def remote_line(filename: str, policy: str) -> str:
-    return f"RULE-SET,{REMOTE_BASE}{filename},{policy}"
 
 
 def repository_line(kind: str, filename: str, policy: str) -> str:
-    return f"{kind},{REMOTE_BASE}{filename},{policy}"
-
-
-def render_remote_block() -> str:
-    lines = [
-        "# Repository-hosted remote rule sets",
-        "# The CDN URLs point to the curated files in this repository.",
-        "# Aegis-style modular security feeds are intentionally not enabled here",
-        "# until their threat-intelligence sources are independently reviewed.",
-        "",
-        "# Apple / domestic precedence",
-    ]
-    filename, label, policy = REMOTE_RULES[26]
-    lines[5:5] = ["# APNs", f"# {label}", remote_line(filename, policy), ""]
-    for filename, label, policy in REMOTE_RULES[:3]:
-        lines.append(f"# {label}")
-        lines.append(remote_line(filename, policy))
-
-    lines.extend(("", "# Advertising", f"# {REMOTE_RULES[3][1]}", remote_line(*REMOTE_RULES[3][::2])))
-
-    lines.extend(("", "# Artificial intelligence"))
-    for filename, label, policy in REMOTE_RULES[4:7]:
-        lines.extend((f"# {label}", remote_line(filename, policy)))
-
-    lines.extend(("", "# Streaming"))
-    for filename, label, policy in REMOTE_RULES[7:19]:
-        lines.extend((f"# {label}", remote_line(filename, policy)))
-
-    lines.extend(("", "# International services"))
-    for filename, label, policy in REMOTE_RULES[19:26]:
-        lines.extend((f"# {label}", remote_line(filename, policy)))
-
-    lines.extend(("", "# Bounded repository-maintained domain fallbacks"))
-    for filename, label, policy in PRECISE_DOMAIN_RULES:
-        lines.extend((f"# {label}", repository_line("DOMAIN-SET", filename, policy)))
-
-    return "\n".join(lines)
+    return f"{kind},{REMOTE_BASE}{filename},{policy},{UPDATE_OPTION}"
 
 
 def expected_remote_lines() -> set[str]:
-    lines = {
+    return {
         repository_line(kind, filename, policy)
         for kind, filename, _label, policy in REPOSITORY_RULES
     }
-    return lines
+
+
+def expected_remote_order() -> list[str]:
+    return [
+        repository_line(kind, filename, policy)
+        for kind, filename, _label, policy in REPOSITORY_RULES
+    ]
 
 
 def active_rule_lines(text: str) -> list[str]:
@@ -125,28 +79,35 @@ def active_rule_lines(text: str) -> list[str]:
     return [
         line.strip()
         for line in text.split("[Rule]", 1)[1].splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
+        if line.strip() and not line.lstrip().startswith(("#", ";", "//"))
     ]
 
 
 def main() -> int:
     text = PROFILE.read_text(encoding="utf-8")
     if "# Embedded rules" in text or "embedded_sources" in text:
-        raise SystemExit("embedded rule content is forbidden; use remote RULE-SET/DOMAIN-SET references")
+        raise SystemExit("embedded rule content is forbidden")
     rules = active_rule_lines(text)
-    external = {
-        line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))
-    }
+    external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     expected = expected_remote_lines()
-    if external != expected:
-        missing = sorted(expected - external)
-        unexpected = sorted(external - expected)
+    if set(external) != expected or len(external) != len(expected):
+        missing = sorted(expected - set(external))
+        unexpected = sorted(set(external) - expected)
         raise SystemExit(
-            f"remote rule inventory mismatch: missing={missing}, unexpected={unexpected}"
+            f"repository rule inventory mismatch: missing={missing}, unexpected={unexpected}"
         )
+    positions = [rules.index(line) for line in expected_remote_order()]
+    if positions != sorted(positions):
+        raise SystemExit("repository rule relative order does not match the reviewed inventory")
+    for line in external:
+        fields = [field.strip() for field in line.split(",")]
+        if len(fields) != 4 or fields[3] != UPDATE_OPTION:
+            raise SystemExit(f"repository rule must disable polling of immutable content: {line}")
+        if not fields[1].startswith(REMOTE_BASE) or ".." in fields[1]:
+            raise SystemExit(f"runtime rule is not hosted by the reviewed repository release: {line}")
     print(
-        f"PASS: remote-only profile; external_rules={len(external)} "
-        f"embedded_rule_contents=0"
+        f"PASS: repository-only runtime resources={len(external)} "
+        "third_party_runtime_urls=0 embedded_rule_contents=0"
     )
     return 0
 

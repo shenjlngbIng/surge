@@ -6,8 +6,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -65,8 +67,11 @@ def git_blob_sha(payload: bytes) -> str:
 
 def load_lock() -> dict[str, object]:
     data = json.loads(LOCK_PATH.read_text(encoding="utf-8"))
-    if data.get("schema") != 1:
+    if data.get("schema") != 2:
         raise ValueError("unsupported upstream lock schema")
+    additions_policy = dict(data.get("local_additions_policy", {}))
+    if additions_policy.get("undeclared_rows") != "forbidden":
+        raise ValueError("the lock must forbid undeclared local rows")
     upstream = dict(data["upstream"])
     repository = str(upstream["repository"])
     commit = str(upstream["commit"])
@@ -114,6 +119,16 @@ def load_lock() -> dict[str, object]:
         additions = [str(value) for value in service.get("add", [])]
         if len(additions) != len(set(additions)):
             raise ValueError(f"duplicate local addition for {local_file}")
+        if additions:
+            source = dict(service.get("add_source", {}))
+            if source.get("type") != "repository-maintained-curation":
+                raise ValueError(f"local additions have no declared source for {local_file}")
+            if not source.get("provenance") or not source.get("license_status"):
+                raise ValueError(f"local addition disclosure is incomplete for {local_file}")
+        if not isinstance(service.get("local_active_entries"), int) or int(service["local_active_entries"]) < 1:
+            raise ValueError(f"invalid local entry count for {local_file}")
+        if not re.fullmatch(r"[0-9a-f]{64}", str(service.get("local_sha256", ""))):
+            raise ValueError(f"invalid local SHA-256 for {local_file}")
         if ruleset in seen_rulesets or local_file in seen_files or upstream_path in seen_paths:
             raise ValueError(f"duplicate service identity in lock: {ruleset}")
         seen_rulesets.add(ruleset)
@@ -163,18 +178,11 @@ def render_snapshot(
     drop_types: set[str],
 ) -> str:
     local_file = str(service["local_file"])
-    target = RULES_ROOT / local_file
-    local_rules = active_lines(target.read_text(encoding="utf-8-sig"))
     source_text = source_payload.decode("utf-8-sig")
     metadata = declared_metadata(source_text)
     service_drop_types = {
         str(value).upper() for value in service.get("drop_types", [])
     }
-    local_rules = [
-        rule
-        for rule in local_rules
-        if rule.split(",", 1)[0].upper() not in service_drop_types
-    ]
     imported_rules = [
         rule
         for rule in active_lines(source_text)
@@ -185,7 +193,7 @@ def render_snapshot(
     merged = sorted(
         (
             rule
-            for rule in dict.fromkeys(local_rules + imported_rules + additions)
+            for rule in dict.fromkeys(imported_rules + additions)
             if rule not in exclusions
         ),
         key=sort_key,
@@ -227,6 +235,10 @@ def verify_committed(
             if sum(line.startswith(f"# 上游声明 {key}: ") for line in text.splitlines()) != 1:
                 raise ValueError(f"missing or duplicate upstream {key} attribution in {target.name}")
         rules = active_lines(text)
+        if len(rules) != int(service["local_active_entries"]):
+            raise ValueError(f"local entry count mismatch in {target.name}")
+        if hashlib.sha256(target.read_bytes()).hexdigest() != str(service["local_sha256"]):
+            raise ValueError(f"local SHA-256 mismatch in {target.name}")
         if len(rules) != len(set(rules)):
             raise ValueError(f"duplicate active rule in {target.name}")
         banned = [rule for rule in rules if rule.split(",", 1)[0].upper() == "PROCESS-NAME"]
@@ -297,6 +309,7 @@ def main() -> int:
 
         source_dir: Path | None = args.upstream_dir
         changed: list[str] = []
+        rendered_outputs: dict[str, str] = {}
         for raw_service in services:
             service = dict(raw_service)
             target = RULES_ROOT / str(service["local_file"])
@@ -306,8 +319,18 @@ def main() -> int:
             if current == rendered:
                 continue
             changed.append(target.name)
-            if not args.check:
-                target.write_text(rendered, encoding="utf-8", newline="\n")
+            rendered_outputs[target.name] = rendered
+
+        if not args.check and rendered_outputs:
+            # Finish every download, hash check, decode and render before replacing any
+            # committed snapshot. A late network or validation failure therefore leaves
+            # the entire existing set untouched.
+            with tempfile.TemporaryDirectory(prefix=".service-rules-", dir=RULES_ROOT) as directory:
+                stage = Path(directory)
+                for filename, rendered in rendered_outputs.items():
+                    (stage / filename).write_text(rendered, encoding="utf-8", newline="\n")
+                for filename in changed:
+                    os.replace(stage / filename, RULES_ROOT / filename)
     except (OSError, UnicodeError, ValueError, KeyError, TypeError, urllib.error.URLError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
