@@ -1,5 +1,40 @@
 # 更新日志
 
+## 2026-08-25 R12.17 运行资源自有化与全仓审计同步
+
+### 发布终审修复
+
+- 新增共享的严格发布清单 `tools/release_inventory.py` 和 10 项回归测试。打包、发布清单与校验和不再递归接受任意文件；未知文件、`.env`、日志、符号链接、特殊文件和符号链接输出会直接失败。
+- 将 8 个服务文件中的 278 条历史本地规则全部显式写入 `Rules/upstreams.lock.json`，并把锁升级为 schema 2。更新器改为仅从固定上游、过滤、排除与 `add` 输入生成，19 份快照从零重建 changed=0；所有下载和渲染完成后才替换输出。
+- 新增 `Rules/maintained_sources.lock.json`，逐一记录 10 个仓库维护列表的条目数、哈希、来源状态、许可边界和维护限制，不为历史来源不明的内容伪造第三方归属。
+- 安装工作流新增必填 `archive_sha256`，在解压和执行 ZIP 内工具前验证整包外部哈希。升级只清理旧发布清单明确管理、但新清单已取消的文件。
+- ZIP 暂存器增加大小写与 Unicode 归一化碰撞检测，改为临时目录完整写入后原子替换；CRC 或写入失败不留下半成品。ZIP 回归由 19 项增至 24 项。
+- README 在原内容上补充 jsDelivr/GitHub、Surge GeoIP/ASN、AliDNS/测试端点、加密 DNS 直连与应用内 DoH 的边界，不把“30 个静态规则自有化”扩大为整套网络基础设施自托管。
+
+### 运行资源
+
+- 将主配置唯一剩余的第三方运行时静态资源 Amnesty Tech Pegasus 域名表复制为 `Rules/Pegasus.list`，保留固定提交 `3d8f248a0d015f183724ae7d096a5c46a8bb5fc7` 的 1,438 个域名。
+- 新增 `Rules/resources.lock.json`，记录源仓库、完整提交、文件路径、Git Blob、上游 SHA-256、本地 SHA-256、条目数量和本地处理方式。
+- 新增 `tools/update_external_resources.py`，支持离线验证本地副本，以及联网下载固定提交后执行 Blob、上游哈希和渲染哈希三重核对。
+- `Surge.conf` 的 30 个 `RULE-SET`/`DOMAIN-SET` 现全部指向 `shenjlngbIng/surge@r12.17-20260825`；第三方 URL 只存在于维护锁，不再由设备运行时加载。
+- 增加 `THIRD_PARTY_LICENSES/AmnestyTech-NOTICE.txt`，保留来源信息并明确固定提交根目录未发现通用许可证文件，避免用本仓库 MIT License 覆盖第三方数据。
+
+### 配置与分流
+
+- 保留问题一的 `NodePool` 占位地址及 `Fail-Closed` 哨兵，不改变公开模板的失败关闭设计。
+- 延续已审阅的 `test-timeout=5`、UDP 探测、`block-quic=per-policy`、`ApplePush evaluate-before-use`、`Security`、`UDP`、广告 DIRECT 排错开关和 `GEOIP,CN,DIRECT,no-resolve`。
+- 在 HBO 规则前加入 `DOMAIN-SUFFIX,viu.now.com,Streaming`，避免 HBO 上游的 `now.com` 父级后缀在两个策略组选择不同地区时把 Viu 错分到 HBO。
+- 保留 YouTube/Google、Game/Microsoft 和 `35.192.0.0/12` 的显式共享基础设施覆盖，使专用服务与通用平台边界可复核。
+- 策略组基线为 33 个，主配置活动规则为 98 条，仓库运行资源为 30 个。
+
+### 仓库、文档与验证
+
+- 将运行配置锁升级为 schema 9，补充 Security、UDP/QUIC、Viu/HBO、共享基础设施和仓库唯一运行源不变量。
+- 重写配置与规则审计器，使其与当前配置一致，并检查全部策略引用、CIDR、运行源归属、固定更新间隔、文件数量、条目数量和内容哈希。
+- 配置故障注入测试扩展为 74 项，ZIP 路径回归扩展为 19 项。
+- 在现有 README 基础上补充资源自有化、Pegasus 维护、完整验证、文件说明、发布步骤和发布前清单；同步更新迁移、贡献、安全、来源、工作流、清单和校验和。
+- 发布包改为 `Surge-R12.17-self-maintained-20260825.zip`，仍保持确定性文件顺序、时间戳和权限。
+
 ## 2026-08-25 R12.16 服务分流冲突修正
 
 ### 修正
