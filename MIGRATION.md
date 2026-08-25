@@ -4,6 +4,12 @@ R12.17 把配置需要的最后一份第三方运行时静态资源收进自有�
 
 `NodePool → Smart` 架构、Telegram、APNs、DNS 与失败关闭设计保持不变。公开配置中的订阅地址仍是不可路由占位符，真实订阅和凭据只能放在私有副本中。
 
+## R12.17 策略界面精简补丁
+
+`ApplePush`、`AdBlock`、`Security` 与 `UDP` 已改为 `hidden=1`。隐藏前确认的默认状态分别为 Proxy、REJECT、REJECT 与 Proxy，成员顺序和规则目标均未改变。更新配置后，这四组不再显示于 Surge iOS 的策略选择页面，但仍正常处理 APNs、广告、Pegasus IOC 与 STUN。
+
+如需临时排错，只在私有副本中把对应组改为 `hidden=0`，完成切换和验证后再恢复 `hidden=1`。不要为了隐藏界面删除 DIRECT、REJECT-DROP 或 REJECT 成员，它们仍是明确的故障排查与回滚路径。
+
 ## R12.17 资源迁移
 
 下面第一张表对比的是本次检查过程中产生的 `R12.16 Reviewed v3` 审阅稿。该审阅稿已经启用 Security、UDP、Pegasus 与 98 条规则，但 Pegasus 仍由设备直接读取第三方固定提交；R12.17 将它改为仓库本地副本。
@@ -98,8 +104,9 @@ Bahamut、Disney、HBO、Microsoft 和 Game 中的共享 CA、CDN、遥测与第
 - `AllServer` 与五个地区组仍为 `smart, Fail-Closed`。
 - Telegram 仍强制代理。
 - `ApplePush` 仍为 `Proxy → DIRECT` 回落。
-- `Security` 默认 REJECT，并保留 DIRECT 排错开关。
-- STUN 位于中国 GEOIP 前并进入 `UDP`，该组默认选择 `Proxy`。
+- `ApplePush`、`AdBlock`、`Security` 与 `UDP` 均为隐藏功能组。
+- `Security` 默认 REJECT，并在配置中保留 DIRECT 排错开关。
+- STUN 位于中国 GEOIP 前并进入隐藏的 `UDP`，该组默认选择 `Proxy`。
 - AliDNS DoH/DoT、53/853/8853 控制、CGNAT 与 `ls.apple.com` 直连均保持不变。
 
 ## 回滚

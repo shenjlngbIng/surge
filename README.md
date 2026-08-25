@@ -25,7 +25,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 精确域名交叉冲突 | 0 |
 | Pegasus IOC | 1,438 条 |
 | 第三方运行时 URL | 0 个 |
-| 配置故障注入测试 | 74 项 |
+| 配置故障注入测试 | 78 项 |
 | ZIP 路径回归测试 | 24 项 |
 | 发布清单与升级清理测试 | 10 项 |
 
@@ -77,7 +77,7 @@ Surge 在策略组没有可用代理成员时可能临时使用 DIRECT。R12.17 
 
 Surge 使用首条命中结果，两个正确的规则文件放错先后仍会产生错误分流。R12.17 明确检查 YouTube 位于 Google 前，Game 位于 OneDrive 和 Microsoft 前，专用流媒体位于通用媒体和中国域名兜底前。
 
-`tools/audit_config.py` 会检查这些位置关系。74 项故障注入测试还会故意改坏策略类型、成员、资源归属、规则顺序和失败边界，确认审计器能够拦住错误。配置维护因此不只依赖人工浏览几百行文本。
+`tools/audit_config.py` 会检查这些位置关系。78 项故障注入测试还会故意改坏策略类型、成员、可见性、资源归属、规则顺序和失败边界，确认审计器能够拦住错误。配置维护因此不只依赖人工浏览几百行文本。
 
 ### DNS 和本地网络有明确边界
 
@@ -85,7 +85,7 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 这个设置也意味着 Surge 自己的加密 DNS 连接固定使用 DIRECT，不会跟随 AI、流媒体或地区策略。DoH/DoT 会加密查询内容，但 AliDNS 仍是解析提供方；没有 MITM 时，端口规则也无法识别所有伪装为普通 HTTPS 的应用内置 DoH。因此这里的“DNS 防绕过”指常见端口和已知服务边界，不宣称绝对阻断任意应用自带解析器。
 
-局域网、CGNAT、回环和 IPv6 本地范围均有明确规则。Wi-Fi 代理入口、热点入口和 Web 控制面板默认关闭。节点不支持 UDP 时连接会拒绝，QUIC 采用 `per-policy`，STUN 进入可手动选择的 `UDP` 组且默认仍为 `Proxy`。这些选择共同限定了哪些流量可以离开代理路径。
+局域网、CGNAT、回环和 IPv6 本地范围均有明确规则。Wi-Fi 代理入口、热点入口和 Web 控制面板默认关闭。节点不支持 UDP 时连接会拒绝，QUIC 采用 `per-policy`，STUN 进入隐藏的 `UDP` 组且默认仍为 `Proxy`。这些选择共同限定了哪些流量可以离开代理路径。
 
 ### 保持纯分流配置
 
@@ -93,7 +93,7 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 ### 发布包可以复现和验证
 
-仓库把配置当作一套需要构建和验收的文件发布。四份锁文件分别记录运行配置不变量、服务规则上游、独立静态资源来源和仓库维护列表披露。发布前会执行配置审计、规则审计、精确域名交叉检查、固定来源校验、74 项故障注入、24 项 ZIP 路径测试和 10 项严格发布清单测试。
+仓库把配置当作一套需要构建和验收的文件发布。四份锁文件分别记录运行配置不变量、服务规则上游、独立静态资源来源和仓库维护列表披露。发布前会执行配置审计、规则审计、精确域名交叉检查、固定来源校验、78 项故障注入、24 项 ZIP 路径测试和 10 项严格发布清单测试。
 
 最终 ZIP 使用固定顺序、时间戳和权限，并附带文件清单与两份 SHA-256 清单。`tools/release_inventory.py` 是打包、发布清单和校验和共同使用的唯一允许清单；未知文件、`.env`、日志、符号链接和特殊文件会让构建失败。安装工作流还会先核对用户从包外取得的整包 SHA-256，再限制文件数量、单文件大小、解压总量和路径类型。升级时只清理旧发布清单中存在、但新清单已取消的受管理文件，不碰用户自有路径。
 
@@ -181,10 +181,10 @@ Smart 仍会在首次使用、连接失败和恢复阶段做必要探测。配�
 | --- | --- | --- | --- |
 | Final | select | Proxy | 接收最终未匹配流量，可手动改为 REJECT |
 | Proxy | select | AllServer | 通用代理入口 |
-| ApplePush | fallback | Proxy | APNs 代理优先，失败后回落 DIRECT |
-| AdBlock | select | REJECT | 广告阻断，可切换 REJECT-DROP 或 DIRECT 排错 |
-| Security | select | REJECT | Pegasus IOC 阻断，可切换 DIRECT 排错 |
-| UDP | select | Proxy | STUN/UDP 选择，可手动切 DIRECT 或 REJECT |
+| ApplePush | fallback | Proxy | 隐藏；APNs 代理优先，失败后回落 DIRECT |
+| AdBlock | select | REJECT | 隐藏；广告默认阻断，排错选项继续保留在配置中 |
+| Security | select | REJECT | 隐藏；Pegasus IOC 默认阻断，排错选项继续保留在配置中 |
+| UDP | select | Proxy | 隐藏；STUN/UDP 默认代理，DIRECT 与 REJECT 继续保留在配置中 |
 | NodePool | select | 订阅输出 | 隐藏的节点导入容器 |
 | AllServer | smart | Fail-Closed | 全部节点的 Smart 选择 |
 
@@ -224,10 +224,10 @@ Telegram 应用数据和 Apple 的通知唤醒连接属于两条链路。
 APNs 由 `APNs.list` 进入 `ApplePush`。
 
 ~~~ini
-ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true, no-alert=0, hidden=0
+ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true, no-alert=0, hidden=1
 ~~~
 
-代理可用时，APNs 优先走代理。`evaluate-before-use=true` 会在首次选择前等待首轮评估，失败后再回落直连；单次探测上限由全局 `test-timeout=5` 控制。`include-all-networks=true` 和 `include-apns=true` 均已开启。
+代理可用时，APNs 优先走代理。`evaluate-before-use=true` 会在首次选择前等待首轮评估，失败后再回落直连；单次探测上限由全局 `test-timeout=5` 控制。`include-all-networks=true` 和 `include-apns=true` 均已开启。`ApplePush` 与 `AdBlock`、`Security`、`UDP` 一起设置为 `hidden=1`，只精简策略选择页面，不改变规则调用和默认成员。
 
 `include-cellular-services=false` 只退出运营商专用链路的接管。普通蜂窝数据和 APNs 仍在配置范围内。
 
@@ -277,7 +277,7 @@ block-quic = per-policy
 PROTOCOL,STUN,UDP
 ~~~
 
-节点不支持 UDP 时，连接会明确失败，不会静默直连。Surge 会用国内可达的 DNS 目标检查节点 UDP 能力；QUIC 是否阻断由所选策略能力决定。STUN 默认进入 `UDP=Proxy`，需要兼容性排查时可以手动切换 DIRECT 或 REJECT，其中 DIRECT 会暴露真实公网 IP。
+节点不支持 UDP 时，连接会明确失败，不会静默直连。Surge 会用国内可达的 DNS 目标检查节点 UDP 能力；QUIC 是否阻断由所选策略能力决定。STUN 默认进入 `UDP=Proxy`。需要兼容性排查时，应先在私有副本中把 `UDP` 临时改为 `hidden=0`，再选择 DIRECT 或 REJECT；其中 DIRECT 会暴露真实公网 IP。
 
 某个应用无法正确回落时，应检查该应用和节点协议。全局开放 UDP 直连会改变整个配置的隐私边界。
 
@@ -402,7 +402,7 @@ R12.17 保留并验证下面几类误分流处理。
 | tools/audit_config.py | 配置结构、策略组和规则顺序审计 |
 | tools/audit_rules.py | 规则库存、哈希和语义边界审计 |
 | tools/audit_precise_domains.py | 中国与全球精确域名审计 |
-| tools/test_audit_config.py | 74 项配置故障注入测试 |
+| tools/test_audit_config.py | 78 项配置故障注入测试 |
 | tools/test_stage_surge_zip.py | ZIP 路径白名单回归测试 |
 | tools/release_inventory.py | 打包、清单与校验和共用的严格发布允许清单 |
 | tools/test_release_inventory.py | 未知文件、符号链接与升级清理回归测试 |
@@ -477,7 +477,7 @@ PASS: verified upstream lock services=19
 PASS R12.17 groups=33 rules=98 runtime_resources=30
 PASS R12.17 runtime_sources=30 local_rule_files=30 rules=98 pegasus=1438
 PASS precise domains DIRECT=306 Proxy=116 conflicts=0
-PASS R12.17 mutations=74
+PASS R12.17 mutations=78
 PASS: strict release inventory regression cases=10
 PASS: ZIP allowlist regression cases=24
 ~~~
@@ -530,7 +530,7 @@ python3 tools/update_external_resources.py --download --check
 
 ### Telegram 前台可用但锁屏没有通知
 
-确认 `include-apns=true`，检查 `APNs.list` 是否加载成功，并查看请求是否进入 `ApplePush`。首次使用会等待首轮评估，代理无法连接时再尝试 DIRECT。
+确认 `include-apns=true`，检查 `APNs.list` 是否加载成功，并查看请求是否进入隐藏的 `ApplePush`。首次使用会等待首轮评估，代理无法连接时再尝试 DIRECT；需要人工切换时，先在私有副本中临时设置 `hidden=0`。
 
 ### 网络切换后仍有大量请求
 
@@ -574,6 +574,7 @@ python3 tools/update_external_resources.py --download --check
 
 - [ ] `Surge.conf` 仍使用 `example.invalid` 占位符
 - [ ] `NodePool` 为 `select` 和 `hidden=1`
+- [ ] `ApplePush`、`AdBlock`、`Security`、`UDP` 均为 `hidden=1`，默认成员顺序未改变
 - [ ] 只有 `NodePool` 持有 `policy-path`
 - [ ] `AllServer` 与五个地区组均为 `smart, Fail-Closed`
 - [ ] Telegram 没有 DIRECT 路径
@@ -591,7 +592,7 @@ python3 tools/update_external_resources.py --download --check
 - [ ] `Surge.conf` 中不存在第三方 RULE-SET 或 DOMAIN-SET URL
 - [ ] 上传提交后已创建同名发布标签
 - [ ] 30 个运行资源、33 个策略组与 98 条活动规则审计通过
-- [ ] 74 项配置测试、24 项 ZIP 测试与 10 项发布清单测试通过
+- [ ] 78 项配置测试、24 项 ZIP 测试与 10 项发布清单测试通过
 - [ ] 手动安装使用包外 SHA-256，旧受管理文件清理测试通过
 - [ ] 发布清单与两份 SHA-256 清单已刷新
 - [ ] 完整 ZIP 已重新生成并通过内容检查

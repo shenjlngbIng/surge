@@ -22,7 +22,7 @@ NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_UR
 | 项目 | 结果 |
 | --- | ---: |
 | 主配置行数 | 294 |
-| 主配置 SHA-256 | `edfe95ed1abc2ba8ecaefdb5cd277dab848813bd7a3174f8021e15d2597c83c5` |
+| 主配置 SHA-256 | `0c12b042eb8b82c8834131a4d896679ce4e35d9f9080d0d68a215a5462648de8` |
 | 策略组 | 33 |
 | 活动规则 | 98 |
 | 仓库静态运行资源 | 30 |
@@ -33,7 +33,7 @@ NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_UR
 | China 精确域名 | 306 |
 | Global 精确域名 | 116 |
 | China/Global 冲突 | 0 |
-| 配置故障注入 | 74 项通过 |
+| 配置故障注入 | 78 项通过 |
 | ZIP 路径回归 | 24 项通过 |
 | 严格发布清单回归 | 10 项通过 |
 | 发布清单记录 | 63 个非生成文件 |
@@ -98,11 +98,12 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 | 广告排错 | `REJECT`、`REJECT-DROP` | 增加 DIRECT 临时开关 | 误拦截时无需改配置即可定位 | 用户误选 DIRECT 会暂时放行广告域名 |
 | 安全规则 | 无独立安全组 | `Security` 默认 REJECT，含 REJECT-DROP 与 DIRECT | Pegasus 命中可阻断，也能在误报时人工关闭 | IOC 很旧且不能覆盖新威胁；DIRECT 开关被误选会关闭该层保护 |
 | STUN | 直接进入 Proxy | 进入 `UDP`，默认 Proxy，可选 DIRECT 或 REJECT | 对 WebRTC、游戏与 UDP 故障更容易分离排查 | DIRECT 会暴露真实公网 IP，必须只在明确需要时使用 |
+| 功能组显示 | ApplePush、AdBlock、Security、UDP 显示在策略页 | 四组保持原最优默认值并统一 `hidden=1` | 策略页面更简洁，减少误触 DIRECT 或关闭阻断的风险 | 临时排错前需要编辑私有配置取消隐藏 |
 | YouTube/Google | 依赖大列表首条命中 | `yt3.ggpht.com` 明确给 YouTube；通用 ggpht/gvt 给 Google | 共享基础设施归属更可预测 | 需要持续维护少量显式覆盖；未来域名归属变化要复核 |
 | Viu/HBO | HBO 的 `now.com` 父级后缀可能先命中 | HBO 前增加 `viu.now.com → Streaming` | HBO 与 Streaming 选择不同地区时，Viu 不会走错组 | 只覆盖当前确认的 Viu 后缀；新域名仍需观察 |
 | Game/Microsoft | Game 与 Microsoft 的共享登录、商店和云网段有抢占风险 | 登录/商店主机先给 Microsoft，`35.192.0.0/12` 先给 Proxy，Game 仍位于 Microsoft 前 | Xbox 等专属域名继续进入 Games，共享设施不被整个归入游戏 | IP 字面量命中该大网段时只能走通用 Proxy，不能自动识别具体服务 |
 | 中国 GEOIP | `GEOIP,CN,DIRECT` | `GEOIP,CN,DIRECT,no-resolve` | IP 规则不主动触发额外 DNS 解析，减少副作用 | 域名分流更依赖前面的域名规则是否完整 |
-| 文档与审计 | 规则、来源与测试基线较少 | 四份锁、15 个工具、74 项故障注入、24 项 ZIP 与 10 项发布清单测试 | 修改后可以复现和自动拦截回归 | 维护步骤更多，不能只手改一个列表后直接发布 |
+| 文档与审计 | 规则、来源与测试基线较少 | 四份锁、15 个工具、78 项故障注入、24 项 ZIP 与 10 项发布清单测试 | 修改后可以复现和自动拦截回归 | 维护步骤更多，不能只手改一个列表后直接发布 |
 | GitHub Actions | 官方 Action 使用可移动的大版本标签；ZIP 只用包内校验和 | Action 固定提交；解压前验证包外整包 SHA-256；升级精确清理旧受管理文件 | 防止 ZIP 与内部校验和一起被替换，也避免旧发布文件残留 | 每次手动安装必须从独立渠道复制正确整包哈希；Action 升级仍需人工审阅 |
 
 ## 关键规则顺序检查
@@ -141,6 +142,7 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 - 没有 `[MITM]`、`[Script]`、`[URL Rewrite]` 或外部模块。
 - Telegram 组没有 DIRECT；Final 没有 DIRECT；代理业务组没有 DIRECT。
 - `include-all-networks=true`、`include-apns=true` 保留，APNs 的唯一可用性例外仍是 ApplePush 的 Proxy 到 DIRECT 回落。
+- `ApplePush`、`AdBlock`、`Security`、`UDP` 均为 `hidden=1`；隐藏未改变其规则目标、成员顺序或默认路径。
 - Wi-Fi 代理、热点代理和 Web 控制面板保持关闭。
 - `Fail-Closed` 和 NodePool 占位设计未改。
 
@@ -175,6 +177,6 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 2. 提交完成后创建指向该提交的标签 `r12.17-20260825`。在此之前，配置中的 jsDelivr 地址预期返回 404。
 3. 等待 jsDelivr 同步后再刷新 Surge 外部资源。
 4. 在私有副本中替换 NodePool 占位订阅，不得把真实地址提交到公开仓库。
-5. 在 Surge iOS 真机完成配置解析、节点导入、策略显示、APNs、Telegram、流媒体地区、UDP/STUN、Wi-Fi 到蜂窝再回 Wi-Fi 的回归。
+5. 在 Surge iOS 真机完成配置解析、节点导入、四个功能组隐藏、APNs、Telegram、流媒体地区、UDP/STUN、Wi-Fi 到蜂窝再回 Wi-Fi 的回归。
 
 静态工具可以确认文本、来源、哈希、引用、顺序和包结构，不能模拟真实订阅内容、节点质量、运营商网络、地区版权响应或 Surge App 的运行时状态。因此真机项目属于发布门槛，不应被本报告的“通过”替代。

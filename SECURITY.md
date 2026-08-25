@@ -20,3 +20,5 @@
 R12.17 的静态运行规则必须全部来自本仓库固定标签。`Rules/upstreams.lock.json` 和 `Rules/resources.lock.json` 中的第三方 URL 仅用于维护时核对固定提交，不允许直接复制到 `Surge.conf`；`Rules/maintained_sources.lock.json` 必须披露其余仓库维护列表。若发现运行配置绕过本仓库、锁文件哈希失配、固定标签被移动或出现未声明本地规则，应按供应链问题处理并停止发布。
 
 发布工具使用 `tools/release_inventory.py` 的严格允许清单。未知文件、`.env`、日志、符号链接、特殊文件、路径大小写或 Unicode 碰撞不得进入发布包。安装工作流必须在解压和执行 ZIP 内代码前验证包外提供的整包 SHA-256；ZIP 内的 `SHA256SUMS.txt` 只用于验证归档内部文件，不能代替整包真实性验证。
+
+`ApplePush`、`AdBlock`、`Security` 与 `UDP` 的 `hidden=1` 仅隐藏策略选择界面，不构成安全隔离，也不会删除组内成员。其默认顺序仍由配置审计器和运行锁约束；临时排错必须在私有副本中显式取消隐藏，避免误以为隐藏组无法被规则调用。

@@ -10,6 +10,7 @@
 - 不为 Telegram 增加 `DIRECT` 路径。
 - 不把全部 Apple 流量改为代理；APNs 只进入 `ApplePush` Fallback。
 - 保留 `include-all-networks=true`、`include-apns=true` 和 `ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true`。
+- `ApplePush`、`AdBlock`、`Security` 与 `UDP` 必须保持 `hidden=1`；隐藏只控制界面可见性，不得借此改变其默认成员顺序或删除排错成员。
 - `NodePool` 必须保持隐藏的 `select` 订阅容器，只允许它持有 `policy-path`，不能由规则或可见策略组直接选择。
 - `AllServer` 和五个地区组必须保持 `smart, Fail-Closed`，且只能通过 `include-other-group=NodePool` 读取订阅节点。
 - 除 `ApplePush` 外，不增加 `url-test`、`fallback` 或 `load-balance` 自动组，避免网络切换恢复全订阅集中测速。
@@ -61,4 +62,4 @@ sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
 ```
 
-当前基线应报告 98 条活动规则、30 个仓库运行资源、33 个策略组、74 项故障注入测试、24 个 ZIP 安全回归和 10 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。
+当前基线应报告 98 条活动规则、30 个仓库运行资源、33 个策略组、78 项故障注入测试、24 个 ZIP 安全回归和 10 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。
