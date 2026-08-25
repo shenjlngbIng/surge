@@ -1,17 +1,22 @@
-name: Install and audit Surge R12.16
+name: Install and audit Surge R12.17
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      archive_sha256:
+        description: "Out-of-band SHA-256 of Surge-R12.17-self-maintained-20260825.zip"
+        required: true
+        type: string
 
 concurrency:
   group: surge-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 env:
-  RELEASE_REF: r12.16-20260825
+  RELEASE_REF: r12.17-20260825
 
 jobs:
   install:
@@ -22,27 +27,56 @@ jobs:
       contents: write
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Extract and verify release
+      - name: Authenticate, extract and verify release
         shell: bash
+        env:
+          EXPECTED_ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
         run: |
+          set -euo pipefail
+          archive="Surge-R12.17-self-maintained-20260825.zip"
+          if [[ ! "${EXPECTED_ARCHIVE_SHA256}" =~ ^[0-9A-Fa-f]{64}$ ]]; then
+            echo "::error::archive_sha256 must be exactly 64 hexadecimal characters"
+            exit 1
+          fi
+          actual_archive_sha256="$(sha256sum "${archive}" | awk '{print $1}')"
+          if [[ "${actual_archive_sha256}" != "${EXPECTED_ARCHIVE_SHA256,,}" ]]; then
+            echo "::error::release ZIP SHA-256 does not match the out-of-band value"
+            exit 1
+          fi
           python3 - <<'PY'
           from pathlib import Path, PurePosixPath
           import shutil
           import stat
           import zipfile
 
-          archive = Path("Surge-R12.16-corrected-20260825.zip")
+          archive = Path("Surge-R12.17-self-maintained-20260825.zip")
           stage = Path(".surge-install")
           if not archive.is_file():
-              raise SystemExit("Surge-R12.16-corrected-20260825.zip was not found in the repository root")
+              raise SystemExit("Surge-R12.17-self-maintained-20260825.zip was not found in the repository root")
           if stage.exists():
               shutil.rmtree(stage)
           stage.mkdir()
 
           total_size = 0
           file_count = 0
+          seen = set()
+          allowed_top_level = {
+              ".gitignore",
+              "AUDIT_REPORT.md",
+              "CHANGELOG.md",
+              "CONTRIBUTING.md",
+              "LICENSE",
+              "MIGRATION.md",
+              "NOTICE.md",
+              "README.md",
+              "RELEASE_MANIFEST.txt",
+              "SECURITY.md",
+              "SHA256SUMS.txt",
+              "SHA256SUMS_fixed.txt",
+              "Surge.conf",
+          }
           with zipfile.ZipFile(archive) as source:
               for item in source.infolist():
                   if item.is_dir():
@@ -53,10 +87,24 @@ jobs:
                       raise SystemExit("release archive exceeds the safety limits")
                   path = PurePosixPath(item.filename)
                   mode = item.external_attr >> 16
+                  if item.flag_bits & 0x1:
+                      raise SystemExit(f"encrypted archive entry: {item.filename}")
                   if path.is_absolute() or ".." in path.parts or "\\" in item.filename:
                       raise SystemExit(f"unsafe archive path: {item.filename}")
+                  if item.filename != path.as_posix() or path in seen:
+                      raise SystemExit(f"non-canonical or duplicate archive path: {item.filename}")
+                  seen.add(path)
                   if stat.S_ISLNK(mode) or stat.S_ISCHR(mode) or stat.S_ISBLK(mode) or stat.S_ISFIFO(mode):
                       raise SystemExit(f"unsafe archive entry: {item.filename}")
+                  allowed = (
+                      (len(path.parts) == 1 and path.name in allowed_top_level)
+                      or (len(path.parts) == 2 and path.parts[0] == "Rules" and (path.suffix == ".list" or path.name in {"maintained_sources.lock.json", "r10.lock.json", "resources.lock.json", "upstreams.lock.json"}))
+                      or (len(path.parts) == 2 and path.parts[0] == "tools" and path.suffix == ".py")
+                      or (len(path.parts) == 2 and path.parts[0] == "THIRD_PARTY_LICENSES" and path.suffix == ".txt")
+                      or (path.as_posix() == ".github/workflows/install.yml")
+                  )
+                  if not allowed:
+                      raise SystemExit(f"archive path is outside the release allowlist: {item.filename}")
                   destination = stage.joinpath(*path.parts)
                   destination.parent.mkdir(parents=True, exist_ok=True)
                   with source.open(item) as input_file, destination.open("wb") as output_file:
@@ -65,8 +113,14 @@ jobs:
           required = {
               "Surge.conf",
               "README.md",
+              "AUDIT_REPORT.md",
+              "RELEASE_MANIFEST.txt",
               "SHA256SUMS.txt",
+              "SHA256SUMS_fixed.txt",
               "Rules/APNs.list",
+              "Rules/Pegasus.list",
+              "Rules/maintained_sources.lock.json",
+              "Rules/resources.lock.json",
               "Rules/BiliBili.list",
               "Rules/BiliBiliIntl.list",
               "Rules/Telegram.list",
@@ -77,18 +131,44 @@ jobs:
               raise SystemExit(f"release archive is incomplete: {missing}")
           print(f"safe release archive: files={file_count} bytes={total_size}")
           PY
+          PYTHONDONTWRITEBYTECODE=1 python3 .surge-install/tools/release_inventory.py
           (cd .surge-install && sha256sum -c SHA256SUMS.txt)
+          cmp --silent .surge-install/SHA256SUMS.txt .surge-install/SHA256SUMS_fixed.txt
+          (
+            cd .surge-install
+            export PYTHONDONTWRITEBYTECODE=1
+            python3 tools/convert_to_remote_rules.py
+            python3 tools/update_external_resources.py --verify-lock
+            python3 tools/update_service_rules.py --verify-lock
+            python3 tools/audit_config.py
+            python3 tools/audit_rules.py
+            python3 tools/audit_precise_domains.py
+            python3 tools/test_audit_config.py
+            python3 tools/test_release_inventory.py
+            python3 tools/test_stage_surge_zip.py
+          )
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, ".surge-install/tools")
+          from release_inventory import remove_stale_managed_files
+
+          manifest = Path("RELEASE_MANIFEST.txt")
+          stale = remove_stale_managed_files(Path("."), manifest) if manifest.is_file() else []
+          print(f"removed stale managed release files: {len(stale)}")
+          PY
           cp -a .surge-install/. .
           rm -rf .surge-install
 
       - name: Commit installed files
         shell: bash
         run: |
-          rm -f Surge-R12.16-corrected-20260825.zip
+          rm -f Surge-R12.17-self-maintained-20260825.zip
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R12.16"
+          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R12.17"
           git push origin HEAD:main
 
       - name: Publish immutable rule tag
@@ -118,7 +198,7 @@ jobs:
         python-version: ["3.12", "3.13"]
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Detect installed release
         id: release
@@ -133,7 +213,7 @@ jobs:
 
       - name: Set up Python
         if: steps.release.outputs.ready == 'true'
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -149,6 +229,14 @@ jobs:
         if: steps.release.outputs.ready == 'true'
         run: python tools/audit_rules.py
 
+      - name: Verify pinned third-party maintenance resources
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/update_external_resources.py --verify-lock
+
+      - name: Verify pinned service provenance
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/update_service_rules.py --verify-lock
+
       - name: Audit precise domain sets
         if: steps.release.outputs.ready == 'true'
         run: python tools/audit_precise_domains.py
@@ -160,6 +248,10 @@ jobs:
       - name: Test ZIP staging
         if: steps.release.outputs.ready == 'true'
         run: python tools/test_stage_surge_zip.py
+
+      - name: Test strict release inventory
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/test_release_inventory.py
 
       - name: Verify release manifest
         if: steps.release.outputs.ready == 'true'
