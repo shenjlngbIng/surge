@@ -75,7 +75,7 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.08.25",
+    "# > Update Date: 2026.08.26",
     "# > Surge iOS Privacy + Push R12.17 | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
 ]
 if text.splitlines()[:5] != expected_header:
@@ -139,7 +139,7 @@ if proxies != {"Fail-Closed": "http, 127.0.0.1, 1, no-error-alert=true"}:
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
 expected_groups = {
-    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP",
+    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "Privacy",
     "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
     "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
     "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
@@ -172,6 +172,13 @@ if group_members("Security") != ["REJECT", "REJECT-DROP", "DIRECT"]:
     fail("Security must preserve its emergency DIRECT off-switch")
 if group_members("UDP") != ["Proxy", "DIRECT", "REJECT"]:
     fail("UDP must preserve Proxy, DIRECT and REJECT choices")
+if group_members("Privacy") != ["Fail-Closed", "Proxy"]:
+    fail("Privacy must fail closed before its emergency Proxy fallback")
+privacy_parts = [part.strip() for part in groups["Privacy"].split(",")]
+if "hidden=0" not in privacy_parts or "include-other-group=NodePool" not in privacy_parts:
+    fail("Privacy must expose the concrete NodePool policies for manual pinning")
+if "include-all-proxies=0" not in privacy_parts:
+    fail("Privacy may import only the reviewed NodePool source")
 for name in ("ApplePush", "AdBlock", "Security", "UDP"):
     parts = [part.strip() for part in groups[name].split(",")]
     if "hidden=1" not in parts:
@@ -226,7 +233,7 @@ for region in regions:
 proxy_only_groups = {
     "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX", "Disney+",
     "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut", "Spotify", "Streaming",
-    "Telegram", "X", "Google", "Microsoft", "Games",
+    "Telegram", "X", "Google", "Microsoft", "Games", "Privacy",
 }
 for name in proxy_only_groups:
     if "DIRECT" in group_members(name):
@@ -247,8 +254,11 @@ if actual_external != expected_external:
     fail(f"runtime resource inventory mismatch: missing={sorted(expected_external-actual_external)}, unexpected={sorted(actual_external-expected_external)}")
 for rule in actual_external:
     fields = [field.strip() for field in rule.split(",")]
-    if len(fields) != 4 or not fields[1].startswith(REMOTE_BASE) or fields[3] != "update-interval=-1":
+    expected_fields = 5 if fields[0] == "RULE-SET" else 4
+    if len(fields) != expected_fields or not fields[1].startswith(REMOTE_BASE) or fields[-1] != "update-interval=-1":
         fail(f"runtime resource is not an immutable repository URL: {rule}")
+    if fields[0] == "RULE-SET" and fields[3] != "no-resolve":
+        fail(f"runtime RULE-SET may not trigger local DNS: {rule}")
 if "raw.githubusercontent.com" in text or "blackmatrix7/ios_rule_script" in text:
     fail("third-party runtime rule URL leaked into Surge.conf")
 if "# Embedded rules" in text or "embedded_sources" in text:
@@ -274,6 +284,8 @@ for rule in rules:
             fail(f"rule targets an undefined policy: {rule}")
     if fields[0] in {"IP-CIDR", "IP-CIDR6"}:
         ipaddress.ip_network(fields[1], strict=False)
+        if "no-resolve" not in fields[3:]:
+            fail(f"inline IP rule may not trigger local DNS: {rule}")
     if fields[0] == "PROTOCOL":
         protocol = fields[1].upper()
         if protocol not in valid_protocols:
@@ -306,7 +318,27 @@ microsoft_pos = rule_position(f"RULE-SET,{REMOTE_BASE}Microsoft.list,")
 china_pos = rule_position(f"DOMAIN-SET,{REMOTE_BASE}China.list,")
 global_pos = rule_position(f"DOMAIN-SET,{REMOTE_BASE}Global.list,")
 stun_pos = rule_position("PROTOCOL,STUN,UDP")
-geoip_pos = rule_position("GEOIP,CN,DIRECT,no-resolve")
+public_ipv4_pos = rule_position("IP-CIDR,0.0.0.0/0,Proxy,no-resolve")
+public_ipv6_pos = rule_position("IP-CIDR6,::/0,Proxy,no-resolve")
+diagnostic_rules = {
+    "DOMAIN-SUFFIX,net.coffee,Privacy",
+    "DOMAIN-SUFFIX,ippure.com,Privacy",
+    "DOMAIN-SUFFIX,browserleaks.net,Privacy",
+    "DOMAIN-SUFFIX,surfsharkdns.com,Privacy",
+    "DOMAIN-SUFFIX,fastly-analytics.com,Privacy",
+    "DOMAIN-SUFFIX,icanhazip.com,Privacy",
+    "DOMAIN-SUFFIX,ipinfo.io,Privacy",
+    "DOMAIN-SUFFIX,ipapi.co,Privacy",
+    "DOMAIN-SUFFIX,ipip.net,Privacy",
+    "IP-CIDR,1.1.1.1/32,Privacy,no-resolve",
+}
+if not diagnostic_rules <= set(rules):
+    fail(f"privacy diagnostic guard is incomplete: {sorted(diagnostic_rules-set(rules))}")
+if max(rules.index(rule) for rule in diagnostic_rules) >= rule_position("DOMAIN,dns.alidns.com,Proxy"):
+    fail("privacy diagnostic guard must precede DNS and repository rules")
+for dns_host in ("DOMAIN,dns.alidns.com,Proxy", "DOMAIN,doh.pub,Proxy"):
+    if dns_host not in rules:
+        fail(f"application encrypted DNS endpoint may not be DIRECT: {dns_host}")
 if not (rule_position("DEST-PORT,8853,REJECT") < pegasus_pos < apns_pos):
     fail("security/APNs order changed")
 if not (
@@ -329,15 +361,17 @@ for inline in (
 ):
     if rule_position(inline) >= game_pos:
         fail(f"shared Game/Microsoft override must precede Game.list: {inline}")
-if not (game_pos < onedrive_pos < microsoft_pos < china_pos < global_pos < stun_pos < geoip_pos):
-    fail("Game/Microsoft/fallback/STUN/GEOIP order changed")
+if not (game_pos < onedrive_pos < microsoft_pos < china_pos < global_pos < stun_pos < public_ipv4_pos < public_ipv6_pos):
+    fail("Game/Microsoft/fallback/STUN/public-IP fail-closed order changed")
 
 required_rules = {
     "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
     "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
     "DOMAIN-SUFFIX,viu.now.com,Streaming",
     "PROTOCOL,STUN,UDP",
-    "GEOIP,CN,DIRECT,no-resolve",
+    "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
+    "IP-CIDR6,::/0,Proxy,no-resolve",
+    *diagnostic_rules,
     *expected_external,
 }
 missing_required = required_rules - set(rules)
@@ -347,6 +381,8 @@ if any(("telegram" in rule.lower() or ",t.me," in rule.lower()) and target(rule)
     fail("Telegram traffic cannot be DIRECT")
 if any(target(rule) == "NodePool" for rule in rules):
     fail("rules cannot target NodePool")
+if any(rule.startswith("GEOIP,CN,") and target(rule) == "DIRECT" for rule in rules):
+    fail("China GEOIP may not expose public IP literals through DIRECT")
 
 if LOCK.exists() and PROFILE.resolve() == (ROOT / "Surge.conf").resolve():
     lock = json.loads(LOCK.read_text(encoding="utf-8"))

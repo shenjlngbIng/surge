@@ -54,7 +54,7 @@ def active_lines(path: Path) -> list[str]:
 if not LOCK.is_file():
     fail(f"runtime lock not found: {LOCK}")
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 10 or lock.get("mode") != "repository-ruleset":
+if lock.get("schema") != 11 or lock.get("mode") != "repository-ruleset":
     fail("runtime lock schema/mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -78,6 +78,23 @@ if invariants.get("udp_quic") != {
     "stun_policy": "UDP",
 }:
     fail("UDP/QUIC invariant mismatch")
+privacy = dict(dict(invariants.get("policy_architecture", {})).get("privacy", {}))
+if privacy != {
+    "mode": "select",
+    "default": "Fail-Closed",
+    "source": "NodePool",
+    "manual_concrete_node": True,
+}:
+    fail("privacy concrete-node pinning invariant mismatch")
+if invariants.get("runtime_rulesets_no_resolve") is not True:
+    fail("runtime RULE-SET local-DNS suppression invariant mismatch")
+if invariants.get("public_ip_literals") != {
+    "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
+    "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
+}:
+    fail("public IP literal fail-closed invariant mismatch")
+if invariants.get("privacy_diagnostic_ip_literals") != ["1.1.1.1/32"]:
+    fail("privacy diagnostic IP literal invariant mismatch")
 
 expected_sources = {
     filename: {

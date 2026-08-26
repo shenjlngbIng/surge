@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
 PROFILE_NAME = "Surge iOS Privacy + Push R12.17"
-RELEASE_DATE = "2026-08-25"
+RELEASE_DATE = "2026-08-26"
 RELEASE_REF = "r12.17-20260825"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
@@ -56,7 +56,8 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
 
 
 def repository_line(kind: str, filename: str, policy: str) -> str:
-    return f"{kind},{REMOTE_BASE}{filename},{policy},{UPDATE_OPTION}"
+    options = f"no-resolve,{UPDATE_OPTION}" if kind == "RULE-SET" else UPDATE_OPTION
+    return f"{kind},{REMOTE_BASE}{filename},{policy},{options}"
 
 
 def expected_remote_lines() -> set[str]:
@@ -101,8 +102,11 @@ def main() -> int:
         raise SystemExit("repository rule relative order does not match the reviewed inventory")
     for line in external:
         fields = [field.strip() for field in line.split(",")]
-        if len(fields) != 4 or fields[3] != UPDATE_OPTION:
+        expected_fields = 5 if fields[0] == "RULE-SET" else 4
+        if len(fields) != expected_fields or fields[-1] != UPDATE_OPTION:
             raise SystemExit(f"repository rule must disable polling of immutable content: {line}")
+        if fields[0] == "RULE-SET" and fields[3] != "no-resolve":
+            raise SystemExit(f"repository RULE-SET may not trigger local DNS: {line}")
         if not fields[1].startswith(REMOTE_BASE) or ".." in fields[1]:
             raise SystemExit(f"runtime rule is not hosted by the reviewed repository release: {line}")
     print(

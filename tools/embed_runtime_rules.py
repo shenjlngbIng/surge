@@ -59,7 +59,7 @@ active_rules = [
 ]
 
 lock = {
-    "schema": 10,
+    "schema": 11,
     "mode": "repository-ruleset",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -87,7 +87,7 @@ lock = {
             "policy": "Security",
             "entries": 1438,
         },
-        "encrypted_dns": "direct-bypass-no-protocol-rules",
+        "encrypted_dns": "surge-direct-bootstrap-app-doh-proxy",
         "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
         "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
         "policy_architecture": {
@@ -98,6 +98,12 @@ lock = {
                 "source": "NodePool",
                 "fail_closed": True,
                 "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
+            },
+            "privacy": {
+                "mode": "select",
+                "default": "Fail-Closed",
+                "source": "NodePool",
+                "manual_concrete_node": True,
             },
         },
         "fail_closed_alert": "suppressed",
@@ -129,8 +135,24 @@ lock = {
             "game_google_cloud": "IP-CIDR,35.192.0.0/12,Proxy,no-resolve",
             "viu_hbo": "DOMAIN-SUFFIX,viu.now.com,Streaming",
         },
-        "stun_before_geoip": True,
-        "geoip_no_resolve": True,
+        "runtime_rulesets_no_resolve": True,
+        "privacy_diagnostic_domains": [
+            "net.coffee",
+            "ippure.com",
+            "browserleaks.net",
+            "surfsharkdns.com",
+            "fastly-analytics.com",
+            "icanhazip.com",
+            "ipinfo.io",
+            "ipapi.co",
+            "ipip.net",
+        ],
+        "privacy_diagnostic_ip_literals": ["1.1.1.1/32"],
+        "public_ip_literals": {
+            "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
+            "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
+        },
+        "stun_before_public_ip_literals": True,
     },
     "remote_sources": remote_sources,
 }
