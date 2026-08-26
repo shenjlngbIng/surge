@@ -4,20 +4,20 @@
 
 - 不提交真实订阅、节点、Token、密码或证书。
 - 不引入未经固定版本或本仓库审计的远程脚本、`RULE-SET` 或 `DOMAIN-SET`。
-- 运行时规则地址必须固定到当前发布标签 `r12.17-20260825`，不得恢复为 `@main`。
-- `Surge.conf` 中的全部静态运行资源必须来自本仓库固定标签；第三方 URL 只能作为维护输入写入锁文件。
+- 运行时规则地址必须固定到完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`，不得恢复为标签、`@main` 或短 SHA。
+- `Surge.conf` 中的全部静态运行资源必须来自本仓库固定提交；第三方 URL 只能作为维护输入写入锁文件。
 - Pegasus 必须由 `Rules/Pegasus.list` 提供，并同时通过 `Rules/resources.lock.json` 的提交、Blob、上游哈希、本地哈希和条目数量校验。
 - 不为 Telegram 增加 `DIRECT` 路径。
 - 不把全部 Apple 流量改为代理；APNs 只进入 `ApplePush` Fallback。
 - 保留 `include-all-networks=true`、`include-apns=true` 和 `ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true`。
 - `ApplePush`、`AdBlock`、`Security` 与 `UDP` 必须保持 `hidden=1`；隐藏只控制界面可见性，不得借此改变其默认成员顺序或删除排错成员。
-- `NodePool` 必须保持隐藏的 `select` 订阅容器，只允许它持有 `policy-path`，不能作为规则目标或显式策略成员；`Privacy` 只可通过 `include-other-group=NodePool` 展开具体节点。
+- `NodePool` 必须保持隐藏的 `select` 订阅容器，只允许它持有 `policy-path`，不能作为规则目标或显式策略成员；`PrivacyAuto` 只可通过 `include-other-group=NodePool` 复制具体节点。
 - `AllServer` 和五个地区组必须保持 `smart, Fail-Closed`，且只能通过 `include-other-group=NodePool` 读取订阅节点。
-- `Privacy` 必须保持可见的 `select, Fail-Closed, Proxy`，不得加入 DIRECT；9 个受审计的 DNS/出口检测域名必须在远程和国内规则前进入 Privacy。
-- 除 `ApplePush` 外，不增加 `url-test`、`fallback` 或 `load-balance` 自动组，避免网络切换恢复全订阅集中测速。
+- `PrivacyAuto` 必须保持隐藏的 `url-test, Fail-Closed`，固定 `interval=600`、`tolerance=100`、`evaluate-before-use=true`、`no-alert=1`，不得加入 DIRECT 或嵌套策略组；9 个受审计的 DNS/出口检测域名必须在远程和国内规则前进入 `PrivacyAuto`。
+- 除 `ApplePush` 与受严格参数约束的 `PrivacyAuto` 外，不增加 `url-test`、`fallback` 或 `load-balance` 自动组，避免网络切换恢复不必要的全订阅集中测速。
 - 不删除 Smart 组中的显式 `Fail-Closed`。Smart 空组可能使用替代策略，显式哨兵是公开配置不静默直连的必要边界。
 - 不重新启用 `include-cellular-services`，除非同时给出运营商兼容性验证与回滚方案。
-- DNS 必须保持加密出站，禁止恢复 `system` 上游或明文直连绕过。
+- DNS 必须保持加密出站，禁止恢复 `system` 上游或明文直连绕过；`encrypted-dns-skip-cert-verification` 必须显式保持 `false`。
 - `encrypted-dns-follow-outbound-mode=false` 时，不增加不会参与内部解析链的 DOH、DOH3、DOQ 规则组。
 - `dns.alidns.com` 与 `doh.pub` 的应用连接不得恢复 DIRECT；Surge 内部加密 DNS 的规则外直连由 General 设置负责。
 - 所有运行时 `RULE-SET` 必须带 `no-resolve`，避免其中的 IP 子规则为代理域名触发本地解析。
@@ -35,6 +35,8 @@
 - 服务规则的每条本地补充必须进入对应 `add` 数组并披露来源状态；更新器不得读取旧输出作为生成输入。
 - 10 个仓库维护列表的内容、条目数、哈希与许可状态必须同步记录在 `Rules/maintained_sources.lock.json`。
 - 发布清单必须使用 `tools/release_inventory.py`；不得通过扩大排除后缀来静默跳过 `.env`、日志、未知目录或符号链接。
+- 发布树中的文本必须为无 BOM 的 UTF-8、LF 换行、无 NUL 且以换行结束；不能只在本机临时转码后绕过发布清单测试。
+- 公布的基线测试必须关闭所有未逐行审阅的 Surge 模块。模块可覆盖 General 并把规则插入主配置规则列表顶部，任何模块变更都要单独审查和真机复测。
 
 ## 修改流程
 
@@ -60,9 +62,9 @@ python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
 python3 tools/update_external_resources.py --verify-lock
 python3 tools/update_service_rules.py --verify-lock
-python3 tools/package_release.py --output ../Surge-R12.17-self-maintained-20260825.zip
+python3 tools/package_release.py --output ../Surge-R12.17-Privacy-Auto-20260826.zip
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
 ```
 
-当前基线应报告 109 条活动规则、30 个仓库运行资源、34 个策略组、90 项故障注入测试、24 个 ZIP 安全回归和 10 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。
+当前基线应报告 109 条活动规则、30 个仓库运行资源、34 个策略组、97 项故障注入测试、24 个 ZIP 安全回归和 15 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。

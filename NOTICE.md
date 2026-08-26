@@ -13,12 +13,18 @@
 - [Thoseyearsbrian Aegis](https://github.com/Thoseyearsbrian/Aegis) 及其 [Aegis_TC.conf](https://raw.githubusercontent.com/Thoseyearsbrian/Aegis/main/config/Aegis_TC.conf)
 - [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script)
 - [AmnestyTech/investigations](https://github.com/AmnestyTech/investigations)
+- [Surge 官方 Quick Start](https://manual.nssurge.com/getting-started/quick-start.html)
+- [GetSomeCats Surge](https://github.com/getsomecat/GetSomeCats/blob/Surge/Surge.conf)
+- [iFaNGMiNGi Surge-Config](https://github.com/iFaNGMiNGi/Surge-Config)
+- [chenyk1219 Surge iPhone](https://github.com/chenyk1219/surge/blob/main/iPhone.conf)
 
-上述项目用于比较 Surge 章节组织、DNS 处理、规则集引用、策略组设计和安全边界。当前仓库重新维护自己的配置、策略组、规则顺序、审计工具和发布流程，公开包不包含这些项目的节点、订阅、Token、脚本或证书材料。19 个服务规则的维护来源以 `Rules/upstreams.lock.json` 为准，独立 Pegasus 资源的维护来源以 `Rules/resources.lock.json` 为准，其余 10 个仓库维护列表的来源状态、哈希和许可说明以 `Rules/maintained_sources.lock.json` 为准。
+上述项目用于比较 Surge 章节组织、DNS 处理、规则集引用、策略组设计和安全边界。它们是截至 2026-08-26 的代表性样本，不表示穷举互联网全部 Surge 配置。当前仓库重新维护自己的配置、策略组、规则顺序、审计工具和发布流程，公开包不包含这些项目的节点、订阅、Token、脚本或证书材料。19 个服务规则的维护来源以 `Rules/upstreams.lock.json` 为准，独立 Pegasus 资源的维护来源以 `Rules/resources.lock.json` 为准，其余 10 个仓库维护列表的来源状态、哈希和许可说明以 `Rules/maintained_sources.lock.json` 为准。
 
-R12.17 的设备运行时只加载 `shenjlngbIng/surge` 固定发布标签中的 30 个本地规则快照，不直接访问上述第三方规则仓库。第三方 URL 只用于维护时下载固定提交，并接受完整提交、Git Blob 和 SHA-256 校验。该范围不包含 jsDelivr/GitHub 交付、Surge 内建 ASN 数据、AliDNS、连通性测试端点和私有订阅地址；这些系统或在线依赖在 README 中单独披露。
+R12.17 的设备运行时只加载 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df` 中的 30 个本地规则快照，不直接访问上述第三方规则仓库。第三方 URL 只用于维护时下载固定提交，并接受完整提交、Git Blob 和 SHA-256 校验。该范围不包含 jsDelivr/GitHub 交付、Surge 内建 ASN 数据、AliDNS、连通性测试端点和私有订阅地址；这些系统或在线依赖在 README 中单独披露。
 
-2026-08-26 的 DNS/出口完整性补丁通过运行时 RULE-SET 的 `no-resolve`、Privacy 单节点检测组和公网 IPv4/IPv6 字面量代理兜底收紧客户端路径。它不复制参考配置，也不声称能控制私有代理节点服务器上的 DNS、NAT 或目的地分流。
+2026-08-26 的 DNS/出口完整性补丁通过运行时 RULE-SET 的 `no-resolve`、隐藏自动单节点 PrivacyAuto 检测组和公网 IPv4/IPv6 字面量代理兜底收紧客户端路径。它不复制参考配置，也不声称能控制私有代理节点服务器上的 DNS、NAT 或目的地分流。
+
+用户曾提供 `dandanvip.sgmodule` 的公开链接用于排查。该模块不属于本仓库来源或发布内容；真机日志显示它的 RULE-SET 会在主配置隐私检测规则前要求 DNS lookup，卸载后检测恢复正常，因此本包明确不附带或启用该模块。
 
 R12.15 的被动 `NodePool` 与 Smart 决策分层是本仓库针对网络切换集中测速问题做出的组合设计。参考配置只用于验证 Surge 支持的策略组组织方式，没有复制其中的订阅、节点或私有资源。
 

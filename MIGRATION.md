@@ -6,13 +6,13 @@ R12.17 把配置需要的最后一份第三方运行时静态资源收进自有�
 
 ## 2026-08-26 DNS 与出口完整性补丁
 
-- 新增可见的 `Privacy = select, Fail-Closed, Proxy, ... include-other-group=NodePool`。Net.Coffee 与 IPPure 使用的 9 组站点/探测域名全部进入该组；检测前必须直接选择一个具体订阅节点，避免 Smart 的逐站点记忆在同一次测试中使用多个节点。
+- 新增隐藏的 `PrivacyAuto = url-test, Fail-Closed, ... include-other-group=NodePool`。Net.Coffee 与 IPPure 使用的 9 组站点/探测域名全部进入该组；新名称会在配置重载时清除旧 `Privacy` 组可能遗留的临时手动覆盖，再由它在首次使用前自动选择一个统一订阅节点，避免 Smart 的逐站点记忆在同一次测试中使用多个节点。
 - 27 个运行时 `RULE-SET` 统一增加 `no-resolve`。域名请求经过其中的 IP 子规则时不再触发本地 DNS；规则集中的域名项以及 IP 字面量匹配仍正常工作。
 - `dns.alidns.com` 与 `doh.pub` 的应用连接从 DIRECT 改为 Proxy。Surge 自己的 AliDNS DoH/DoT 仍由 `encrypted-dns-follow-outbound-mode=false` 在规则外直连，避免域名型代理节点产生 DNS—代理循环。
 - 删除 `GEOIP,CN,DIRECT,no-resolve`，改为 IPv4/IPv6 公网字面量统一进入 Proxy。明确的局域网、CGNAT 和已审阅服务 IP 规则仍在前面优先命中。
-- 基线由 33 个策略组、98 条活动规则和 78 项故障注入更新为 34 个策略组、109 条活动规则和 90 项故障注入。
+- 基线由 33 个策略组、98 条活动规则和 78 项故障注入更新为 34 个策略组、109 条活动规则和 97 项故障注入。
 
-配置只能控制客户端接管、规则触发的本地解析和出口策略，不能替代理节点选择服务器端递归 DNS。固定具体节点后仍显示中国移动、阿里或与出口地区不一致的解析器时，应更换节点或要求节点提供方修正远端 DNS。
+配置只能控制客户端接管、规则触发的本地解析和出口策略，不能替代理节点选择服务器端递归 DNS。PrivacyAuto 自动选中的具体节点仍显示中国移动、阿里或与出口地区不一致的解析器时，应停用该节点或要求节点提供方修正远端 DNS。
 
 ## R12.17 策略界面精简补丁
 
@@ -33,7 +33,7 @@ R12.17 把配置需要的最后一份第三方运行时静态资源收进自有�
 | 活动规则 | 98 条 | 98 条 |
 | 资源来源锁 | 服务上游锁 | 服务上游锁、`resources.lock.json` 与 `maintained_sources.lock.json` |
 
-Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀。设备只访问 `shenjlngbIng/surge@r12.17-20260825`，维护工具才会访问锁定的第三方提交。
+Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀。设备的 30 个规则 URL 只访问 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df`；维护工具才会访问锁定的第三方提交。
 
 如果从仓库当前公开的 R12.16 发布版直接升级，还会同时得到审阅稿中已经完成的配置修正：策略组从 31 个增至 33 个，活动规则从 86 条增至 98 条，新增 Security 与 UDP 开关、Pegasus IOC、UDP 探测、Viu/HBO 覆盖、Google/YouTube 与 Game/Microsoft 共享基础设施覆盖，并把 `GEOIP,CN,DIRECT` 收紧为 `GEOIP,CN,DIRECT,no-resolve`。完整利弊见 `AUDIT_REPORT.md`。
 
@@ -43,9 +43,9 @@ Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀�
 2. 用 R12.17 完整仓库文件替换公开基线，不要只替换主配置；使用安装工作流时填写包外公布的 `archive_sha256`。
 3. 从旧私有配置中只复制 `NodePool.policy-path` 的 URL。
 4. 不要复制旧版 `[Rule]`、服务策略组或规则文件，以免带回已修复的顺序和域名冲突。
-5. 确认固定规则标签 `r12.17-20260825` 已存在；该标签属于原规则快照，不得移动到补丁提交。
+5. 确认规则快照标签 `r12.17-20260825` 仍指向 `d1d714d575d5494ef1a7613238f4f301e1b293df`；运行 URL 本身使用该完整提交，不依赖标签。
 6. 在 Surge 中重新载入配置并刷新全部外部资源。
-7. 在 `Privacy` 中直接选一个具体节点，再执行 DNS/出口检测；不要用 Proxy 或地区 Smart 组做单节点验收。
+7. 直接执行 DNS/出口检测；隐藏的 `PrivacyAuto` 会先评估并自动选择一个具体节点，无需在策略页手动操作。
 
 不要只上传 `Pegasus.list` 或只替换 `Surge.conf`。两者必须和 `Rules/r10.lock.json`、`Rules/resources.lock.json`、`Rules/maintained_sources.lock.json`、审计工具、清单及校验和保持同一版本。安装工作流只删除旧发布清单明确管理、而新版本已取消的文件，不会把用户自有文件当作发布残留清理。
 
@@ -54,8 +54,8 @@ Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀�
 新版使用两个规则文件，共用现有策略，不增加 Bilibili 策略组。
 
 ~~~ini
-RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBiliIntl.list,Streaming,no-resolve,update-interval=-1
-RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBili.list,DIRECT,no-resolve,update-interval=-1
+RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBiliIntl.list,Streaming,no-resolve,update-interval=-1
+RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list,DIRECT,no-resolve,update-interval=-1
 ~~~
 
 国际版规则排在国内版之前，先接住 `apiintl.biliapi.net`、`bilibili.tv`、`biliintl.com` 和国际版专用 CDN。国内版随后接管 `bilibili.com`、`biliapi.com`、`biliapi.net`、图片域名和视频 CDN。
@@ -73,7 +73,7 @@ RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Bi
 | 活动规则 | 85 | 86 |
 | 远程源 | 28 | 29 |
 | STUN | 位于中国 GEOIP 后 | 位于中国 GEOIP 前并强制进入 Proxy |
-| 规则地址 | 跟随 `@main` | 固定到 `r12.17-20260825` |
+| 规则地址 | 跟随 `@main` | 固定到完整规则快照提交 |
 | Xbox/Minecraft 等 | 先被 Microsoft 命中 | 先命中 Games |
 | HBO 默认 | America | Proxy |
 | Google 直连例外 | 14 条 | 删除，统一进入 Google |
@@ -86,7 +86,7 @@ Bahamut、Disney、HBO、Microsoft 和 Game 中的共享 CA、CDN、遥测与第
 
 ### 运行资源
 
-1. 确认 `Surge.conf` 中 30 个 `RULE-SET`/`DOMAIN-SET` 全部包含 `shenjlngbIng/surge@r12.17-20260825/Rules/`。
+1. 确认 `Surge.conf` 中 30 个 `RULE-SET`/`DOMAIN-SET` 全部包含 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/`。
 2. 确认不存在 `raw.githubusercontent.com`、Blackmatrix7 或 Amnesty Tech 的第三方运行时规则 URL。
 3. 确认 `Rules/Pegasus.list` 有 1,438 个活动域名，并通过 `python3 tools/update_external_resources.py --verify-lock`。
 4. 确认 `viu.now.com` 命中 `Streaming`，不会被 HBO 的 `now.com` 父级后缀抢先接管。
@@ -98,7 +98,7 @@ Bahamut、Disney、HBO、Microsoft 和 Game 中的共享 CA、CDN、遥测与第
 3. 确认 `*.bilibili.tv` 也命中 `Streaming`。
 4. 确认实际视频 CDN，如 `*.bilivideo.com`、`*.hdslb.com`，命中 `DIRECT`。
 
-国内版评论仍慢时，应检查请求是否错误命中 `Streaming`，并确认设备加载的是当前发布标签。国际版异常时再检查已有 `Streaming` 的节点选择。
+国内版评论仍慢时，应检查请求是否错误命中 `Streaming`，并确认设备加载的是当前完整提交规则快照。国际版异常时再检查已有 `Streaming` 的节点选择。
 
 ### 其他服务
 
@@ -113,7 +113,7 @@ Bahamut、Disney、HBO、Microsoft 和 Game 中的共享 CA、CDN、遥测与第
 
 - `NodePool` 仍为隐藏的 `select` 订阅容器，只有它持有 `policy-path`。
 - `AllServer` 与五个地区组仍为 `smart, Fail-Closed`。
-- `Privacy` 默认 Fail-Closed；DNS/出口检测前直接选择一个具体订阅节点。
+- `PrivacyAuto` 隐藏并自动选择统一节点；无可用订阅节点时使用 Fail-Closed 明确失败。
 - Telegram 仍强制代理。
 - `ApplePush` 仍为 `Proxy → DIRECT` 回落。
 - `ApplePush`、`AdBlock`、`Security` 与 `UDP` 均为隐藏功能组。

@@ -4,7 +4,7 @@
 
 R12.17 在既有分流修正上完成运行资源自有化。Xbox、Minecraft、Bethesda 和 Forza 会先进入 `Games`，不会被 Microsoft 规则提前截获；Viu 也不会再被 HBO 的 `now.com` 父级后缀误分流。Netflix 删除了宽泛云网段，改用 `IP-ASN,2906,no-resolve`。Pegasus IOC 固定副本现已进入本仓库，Surge 运行时不再直接访问第三方规则仓库。
 
-2026-08-26 的 DNS/出口完整性补丁进一步禁止运行时 `RULE-SET` 为域名请求触发本地解析，移除公网 IP 字面量的中国 GEOIP 直连，并新增可固定单一真实节点的 `Privacy` 组。Net.Coffee 与 IPPure 使用的站点和探测端点会先进入该组，避免 Smart 按站点选择不同节点而把多个节点侧解析器混在同一次检测中。
+2026-08-26 的 DNS/出口完整性补丁进一步禁止运行时 `RULE-SET` 为域名请求触发本地解析，移除公网 IP 字面量的中国 GEOIP 直连，并新增隐藏的自动单节点 `PrivacyAuto` 组。Net.Coffee 与 IPPure 使用的站点和探测端点会先进入该组；`url-test` 在后台选出一个统一节点，避免 Smart 按站点选择不同节点而把多个节点侧解析器混在同一次检测中。
 
 公开主配置地址
 
@@ -27,33 +27,33 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 精确域名交叉冲突 | 0 |
 | Pegasus IOC | 1,438 条 |
 | 第三方运行时 URL | 0 个 |
-| 配置故障注入测试 | 90 项 |
+| 配置故障注入测试 | 97 项 |
 | ZIP 路径回归测试 | 24 项 |
-| 发布清单与升级清理测试 | 10 项 |
+| 发布清单、文本编码与升级清理测试 | 15 项 |
 
 配置依赖 Smart 策略组。设备无法识别 `smart` 时，应更新 Surge 或恢复相应功能授权。不要把 Smart 组自行改回包含全部订阅节点的 `fallback` 或 `url-test`，这会重新带来网络切换后的集中探测。
 
 ## 与常见公开配置相比
 
-公开配置各有侧重。这里对照 README 末尾列出的公开模板，重点观察订阅接入、自动选路、规则来源、失败处理和发布方式。差异用于说明本配置的取向，不作优劣排名。
+公开配置各有侧重。这里先概括结构差异；Rabbit Developer、Lucky、Rabbit Surge-EN、Coldvvater、Aegis、Blackmatrix7，以及另外抽样的 Surge 官方 Quick Start、GetSomeCats、iFaNGMiNGi 和 chenyk1219 逐份结果见 `AUDIT_REPORT.md`。比较快照日期为 2026-08-26，属于代表性抽样，不声称覆盖互联网全部配置，也不作脱离用途的绝对排名。
 
 | 对照维度 | 公开配置中的常见写法 | R12.17 的处理 | 使用上的区别 |
 | --- | --- | --- | --- |
 | 订阅接入 | 多个自动组或地区组分别填写 `policy-path` | 只有隐藏的 `NodePool` 持有订阅地址 | 订阅只下载和解析一次，来源关系更容易检查 |
 | 自动选路 | 用 `url-test`、`fallback` 按固定间隔测试整组节点 | `AllServer` 与五个地区组使用 Smart，并从 `NodePool` 取节点 | 自动选择会参考真实连接质量和站点记录，减少多个组重复测试同一订阅 |
 | 空订阅处理 | 自动组没有可用成员时可能被 Surge 临时替换为 DIRECT | 每个 Smart 组都显式保留 `Fail-Closed` 哨兵 | 订阅失效和地区零匹配会明确失败，避免无提示直连 |
-| DNS 检测 | 测试流量跟随自动组，多个探测域名可能使用不同节点 | `Privacy` 直接展开 `NodePool`，默认 Fail-Closed，检测前固定一个真实节点 | 同一次测试只观察一个节点；不合格节点可以明确淘汰 |
+| DNS 检测 | 测试流量跟随 Smart，多个探测域名可能使用不同节点 | 隐藏的 `PrivacyAuto` 用 `url-test` 从 `NodePool` 自动选出一个统一节点，并保留 Fail-Closed | 无需显示或手选策略；首次检测会等待后台评估，同一轮测试保持单节点边界 |
 | 本地解析 | 混合 RULE-SET 中的 IP 规则可能为域名触发 DNS | 所有运行时 RULE-SET 统一带 `no-resolve` | 代理域名不会为了检查 IP 子规则而交给本地 AliDNS |
 | 服务策略 | 不少模板给流媒体、AI 或最终策略同时提供代理和 DIRECT | 代理服务组不提供 DIRECT，`Final` 只提供 `Proxy` 与 `REJECT` | 临时选错策略时也不容易越过代理边界 |
 | 推送可达性 | Telegram 数据与 Apple 推送经常跟随同一个代理组 | Telegram 保持代理，APNs 单独进入 `ApplePush` | 代理故障时只有 APNs 可以按顺序回落直连，应用数据仍受原策略约束 |
-| 规则来源 | 直接引用第三方仓库当前分支，内容会随上游更新 | 19 个服务源和 1 个安全资源固定提交、Blob 与 SHA-256；Surge 只加载本仓库发布标签 | 每次发布所用规则可以复查，第三方异常变化不会直接进入设备 |
+| 规则来源 | 直接引用第三方仓库当前分支，内容会随上游更新 | 19 个服务源和 1 个安全资源固定提交、Blob 与 SHA-256；Surge 只加载本仓库完整提交 SHA | 每次发布所用规则可以复查，第三方异常变化不会直接进入设备 |
 | 规则精度 | 完整接收上游共享 CDN、云平台、遥测和宽网段 | 按服务删除非唯一归属项，并维护精确的中国与全球域名表 | 降低共享基础设施把无关应用带进错误策略的概率 |
 | 规则顺序 | 主要依靠维护者手工保持先后关系 | 关键先后关系写入审计器和故障注入测试 | 服务规则被大规则提前截获时，验证命令会直接失败 |
 | 发布方式 | 以单个配置文件或规则目录为主要交付内容 | 配置、规则、锁文件、工具、清单、校验和与工作流一同发布 | 下载者可以核对文件完整性，维护者可以复现同一份 ZIP |
 
 ### 节点来源只有一个入口
 
-`NodePool` 是隐藏的订阅容器。它使用 `select`，只负责读取 `policy-path`，不会承担业务流量，也不会主动测试整份订阅。`AllServer`、五个地区组和可见的 `Privacy` 通过 `include-other-group=NodePool` 取得真实节点；日常服务选择 Smart 上层策略，隐私检测则在 `Privacy` 中直接固定一个具体节点。
+`NodePool` 是隐藏的订阅容器。它使用 `select`，只负责读取 `policy-path`，不会承担业务流量，也不会主动测试整份订阅。`AllServer`、五个地区组和隐藏的 `PrivacyAuto` 通过 `include-other-group=NodePool` 取得真实节点；日常服务使用 Smart，隐私检测则由 `PrivacyAuto` 的 `url-test` 自动选出一个统一节点。
 
 这种分层把节点来源、自动选择和业务分流拆开了。订阅地址只出现一次，地区正则也只作用于同一个节点池。节点重复、策略组各自下载订阅、多个自动组同时测试等问题都更容易定位。
 
@@ -71,7 +71,7 @@ Surge 在策略组没有可用代理成员时可能临时使用 DIRECT。R12.17 
 
 ### 第三方规则先经过本地筛选
 
-第三方列表在这里充当待审核输入，生成后的仓库快照才会交给 Surge。`Rules/upstreams.lock.json` 记录 19 个服务上游的提交、文件路径、Git Blob、SHA-256、排除项和显式本地补充；`Rules/resources.lock.json` 单独记录 Pegasus 的固定来源与本地副本；`Rules/maintained_sources.lock.json` 披露其余 10 个仓库维护列表的来源状态、哈希、条目数和许可边界。两个更新工具只在维护时访问第三方，设备运行时只访问 `shenjlngbIng/surge` 的固定发布标签。
+第三方列表在这里充当待审核输入，生成后的仓库快照才会交给 Surge。`Rules/upstreams.lock.json` 记录 19 个服务上游的提交、文件路径、Git Blob、SHA-256、排除项和显式本地补充；`Rules/resources.lock.json` 单独记录 Pegasus 的固定来源与本地副本；`Rules/maintained_sources.lock.json` 披露其余 10 个仓库维护列表的来源状态、哈希、条目数和许可边界。两个更新工具只在维护时访问第三方，设备运行时只访问 `shenjlngbIng/surge` 的固定提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
 
 终审曾发现 8 个服务文件中有 278 条历史本地行只存在于生成结果，没有写入锁。现在这些行已经全部进入对应服务的 `add` 数组。更新器只使用固定上游、类型过滤、排除项和显式 `add` 生成文件，不再读取旧输出作为输入；从空目录重建与当前 19 个服务快照逐字节一致。历史来源不明确的行不会伪造第三方归属，锁文件会保留“仓库既有审阅内容、历史许可仍需所有者复核”的披露。
 
@@ -81,7 +81,7 @@ Surge 在策略组没有可用代理成员时可能临时使用 DIRECT。R12.17 
 
 Surge 使用首条命中结果，两个正确的规则文件放错先后仍会产生错误分流。R12.17 明确检查 YouTube 位于 Google 前，Game 位于 OneDrive 和 Microsoft 前，专用流媒体位于通用媒体和中国域名兜底前。
 
-`tools/audit_config.py` 会检查这些位置关系。90 项故障注入测试还会故意改坏策略类型、成员、可见性、资源归属、规则顺序、DNS 本地解析抑制、IPv4/IPv6 字面量和失败边界，确认审计器能够拦住错误。配置维护因此不只依赖人工浏览几百行文本。
+`tools/audit_config.py` 会检查这些位置关系。97 项故障注入测试还会故意改坏策略类型、成员、可见性、自动评估参数、资源归属、规则顺序、DNS 本地解析抑制、IPv4/IPv6 字面量和失败边界，确认审计器能够拦住错误。配置维护因此不只依赖人工浏览几百行文本。
 
 ### DNS 和本地网络有明确边界
 
@@ -89,7 +89,7 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 这个设置也意味着 Surge 自己的加密 DNS 连接固定使用 DIRECT，不会跟随 AI、流媒体或地区策略。应用自己连接 `dns.alidns.com`、`doh.pub` 或其他已知公共 DNS 域名时则进入代理，不再复用内部引导的 DIRECT 例外。全部运行时 `RULE-SET` 带 `no-resolve`，所以其中的 IP 子规则不会为了尚未解析的代理域名启动本地查询。
 
-这仍不能替代理节点决定服务器端解析器。代理协议通常把原始域名交给远端节点解析；如果固定单一节点后仍出现 China Mobile、AliDNS 或与节点出口不一致的解析器，问题位于节点服务端，只能更换节点或由节点提供方调整 DNS。没有 MITM 时也无法按协议识别任意伪装成普通 HTTPS 的未知 DoH，但这类连接会受域名规则、Privacy/Proxy 与最终失败关闭约束，不会获得全局 DIRECT 兜底。
+这仍不能替代理节点决定服务器端解析器。代理协议通常把原始域名交给远端节点解析；如果 `PrivacyAuto` 自动选出的单一节点仍出现 China Mobile、AliDNS 或与节点出口不一致的解析器，问题位于节点服务端，只能更换节点或由节点提供方调整 DNS。没有 MITM 时也无法按协议识别任意伪装成普通 HTTPS 的未知 DoH，但这类连接会受域名规则、PrivacyAuto/Proxy 与最终失败关闭约束，不会获得全局 DIRECT 兜底。
 
 局域网、CGNAT、回环和 IPv6 本地范围均有明确规则。Wi-Fi 代理入口、热点入口和 Web 控制面板默认关闭。节点不支持 UDP 时连接会拒绝，QUIC 采用 `per-policy`，STUN 进入隐藏的 `UDP` 组且默认仍为 `Proxy`。这些选择共同限定了哪些流量可以离开代理路径。
 
@@ -99,7 +99,7 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 ### 发布包可以复现和验证
 
-仓库把配置当作一套需要构建和验收的文件发布。四份锁文件分别记录运行配置不变量、服务规则上游、独立静态资源来源和仓库维护列表披露。发布前会执行配置审计、规则审计、精确域名交叉检查、固定来源校验、90 项故障注入、24 项 ZIP 路径测试和 10 项严格发布清单测试。
+仓库把配置当作一套需要构建和验收的文件发布。四份锁文件分别记录运行配置不变量、服务规则上游、独立静态资源来源和仓库维护列表披露。发布前会执行配置审计、规则审计、精确域名交叉检查、固定来源校验、97 项故障注入、24 项 ZIP 路径测试和 15 项严格发布清单测试。
 
 最终 ZIP 使用固定顺序、时间戳和权限，并附带文件清单与两份 SHA-256 清单。`tools/release_inventory.py` 是打包、发布清单和校验和共同使用的唯一允许清单；未知文件、`.env`、日志、符号链接和特殊文件会让构建失败。安装工作流还会先核对用户从包外取得的整包 SHA-256，再限制文件数量、单文件大小、解压总量和路径类型。升级时只清理旧发布清单中存在、但新清单已取消的受管理文件，不碰用户自有路径。
 
@@ -109,7 +109,7 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 1. Surge 接管符合条件的网络和 DNS 请求。
 2. 本地网段、CGNAT、回环地址和必要的 Apple 系统查询先行直连。
-3. DNS/出口检测端点先进入可固定具体节点的 `Privacy`。
+3. DNS/出口检测端点先进入隐藏且自动选定统一节点的 `PrivacyAuto`。
 4. Pegasus IOC 先进入可关闭的 `Security` 阻断组。
 5. APNs、广告、AI、流媒体和国际服务按专用规则匹配。
 6. 中国与全球精确域名表负责补充常用服务边界。
@@ -192,6 +192,7 @@ Smart 仍会在首次使用、连接失败和恢复阶段做必要探测。配�
 | AdBlock | select | REJECT | 隐藏；广告默认阻断，排错选项继续保留在配置中 |
 | Security | select | REJECT | 隐藏；Pegasus IOC 默认阻断，排错选项继续保留在配置中 |
 | UDP | select | Proxy | 隐藏；STUN/UDP 默认代理，DIRECT 与 REJECT 继续保留在配置中 |
+| PrivacyAuto | url-test | Fail-Closed 后自动选出的具体节点 | 隐藏；统一 DNS/出口检测节点，无可用节点时失败关闭 |
 | NodePool | select | 订阅输出 | 隐藏的节点导入容器 |
 | AllServer | smart | Fail-Closed | 全部节点的 Smart 选择 |
 
@@ -248,6 +249,7 @@ ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true, no-a
 dns-server = 223.5.5.5, 223.6.6.6
 encrypted-dns-server = https://dns.alidns.com/dns-query, tls://dns.alidns.com
 encrypted-dns-follow-outbound-mode = false
+encrypted-dns-skip-cert-verification = false
 hijack-dns = *:53
 ~~~
 
@@ -263,9 +265,15 @@ hijack-dns = *:53
 
 ### DNS 泄漏检测
 
-`Privacy` 默认选择 `Fail-Closed`，并直接展示 `NodePool` 中的具体代理。检测前在该组里手动选择一个真实节点，不要选择 `Proxy`、`AllServer` 或地区 Smart 组；随后先断开再重连 Surge，清理 Safari 对应网站数据或使用新的无痕标签页，再依次打开 Net.Coffee 与 IPPure。
+`PrivacyAuto` 是隐藏的 `url-test` 自动组，从 `NodePool` 取得真实代理。首次使用会先等待一轮评估，随后统一使用当前最佳节点；测试结果有效 600 秒，只有当前节点失败或新节点快 100 ms 以上才切换，从而减少频繁换出口。无需在策略页手动选择，清理 Safari 对应网站数据或使用新的无痕标签页后，依次打开 Net.Coffee 与 IPPure 即可。
 
-同一轮检测中，网页出口、IPv4/IPv6 出口和解析器应属于所选节点或其明确使用的远端 DNS。Net.Coffee 用于读取网页出口的 `1.1.1.1/32` 也固定进入 Privacy。若仍看到本机中国移动 IPv4/IPv6，先检查 `Privacy` 是否确实命中具体节点以及 `UDP` 是否仍为 Proxy；若只看到中国移动/阿里等解析器而网页出口仍在香港，则是节点服务端解析器，不是客户端配置能重写的链路，应更换节点。
+同一轮检测中，网页出口、IPv4/IPv6 出口和解析器应属于 `PrivacyAuto` 自动选中的节点或其明确使用的远端 DNS。Net.Coffee 用于读取网页出口的 `1.1.1.1/32` 也固定进入 PrivacyAuto。若仍看到本机中国移动 IPv4/IPv6，检查最近请求的路径是否为 `PrivacyAuto → 具体节点`，并确认 `UDP` 仍为 Proxy；若只看到中国移动/阿里等解析器而网页出口仍在境外，则是节点服务端解析器，不是客户端配置能重写的链路，应停止使用该节点。
+
+### 模块优先级
+
+Surge 模块是对主配置的高优先级补丁。模块的 General 项会覆盖主配置，Rule、Host、Script 和 Rewrite 行会插到主配置内容前面。因此，一个缺少 `no-resolve` 的模块 RULE-SET 可以在 `PrivacyAuto` 规则命中之前触发本地 DNS；主配置无法在后面反向阻止它。
+
+本次真机记录中，启用 `dandanvip.sgmodule` 时，最近请求明确出现了 `Rule evaluating requires DNS lookup for rule: RULE-SET dandan.list`，同时检测页出现中国移动解析器；卸载该模块并重新测试后，Net.Coffee 显示“未检测到 DNS 泄露”，IPPure 只显示所选日本节点的 Cloudflare IPv4/IPv6 解析器。该模块不进入发布包，建议继续保持卸载；其他未逐行审阅的模块也应关闭后再做基线测试。
 
 ### 本地网络
 
@@ -340,9 +348,9 @@ Game 排在 Microsoft 前。这样，两个规则集中重叠的 Xbox、Minecraf
 
 ## 远程规则库存
 
-Surge.conf 通过 jsDelivr 加载仓库中的 30 个规则文件。运行地址统一固定到发布标签 `r12.17-20260825`。其中 19 份服务快照保留固定上游、提交、Blob、SHA-256 和本地处理说明；Pegasus 另有独立来源锁；其余 10 个文件由仓库直接维护，并在 `maintained_sources.lock.json` 中逐一披露。设备运行时没有第三方静态规则 URL。
+Surge.conf 通过 jsDelivr 加载仓库中的 30 个规则文件。运行地址统一固定到完整 Git 提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`；便于人工识别的标签 `r12.17-20260825` 已核实指向同一提交，但运行时不依赖标签可移动性。其中 19 份服务快照保留固定上游、提交、Blob、SHA-256 和本地处理说明；Pegasus 另有独立来源锁；其余 10 个文件由仓库直接维护，并在 `maintained_sources.lock.json` 中逐一披露。设备运行时没有第三方静态规则 URL。
 
-这里的“运行资源自有化”专指 30 个外部 `RULE-SET`/`DOMAIN-SET` 的内容进入自己的仓库，不表示所有网络基础设施都由仓库托管。文件仍由 jsDelivr/GitHub 标签交付；9 条 `IP-ASN` 使用 Surge 应用内置 ASN 数据；AliDNS、Cloudflare、华为连通性测试和私有 `NodePool` 也是外部服务。ASN 数据随 Surge 应用更新。这些属于公开披露的系统依赖，不计入 30 个静态规则文件。
+这里的“运行资源自有化”专指 30 个外部 `RULE-SET`/`DOMAIN-SET` 的内容进入自己的仓库，不表示所有网络基础设施都由仓库托管。文件仍由 jsDelivr/GitHub 按提交 SHA 交付；9 条 `IP-ASN` 使用 Surge 应用内置 ASN 数据；AliDNS、Cloudflare、华为连通性测试和私有 `NodePool` 也是外部服务。ASN 数据随 Surge 应用更新。这些属于公开披露的系统依赖，不计入 30 个静态规则文件。
 
 | 规则文件 | 策略 | 活动条目 |
 | --- | --- | ---: |
@@ -415,10 +423,10 @@ R12.17 保留并验证下面几类误分流处理。
 | tools/audit_config.py | 配置结构、策略组和规则顺序审计 |
 | tools/audit_rules.py | 规则库存、哈希和语义边界审计 |
 | tools/audit_precise_domains.py | 中国与全球精确域名审计 |
-| tools/test_audit_config.py | 90 项配置故障注入测试 |
+| tools/test_audit_config.py | 97 项配置故障注入测试 |
 | tools/test_stage_surge_zip.py | ZIP 路径白名单回归测试 |
 | tools/release_inventory.py | 打包、清单与校验和共用的严格发布允许清单 |
-| tools/test_release_inventory.py | 未知文件、符号链接与升级清理回归测试 |
+| tools/test_release_inventory.py | 未知文件、符号链接、UTF-8/LF 文本与升级清理回归测试 |
 | tools/update_service_rules.py | 固定上游下载、合并与验证 |
 | tools/update_external_resources.py | 验证或刷新固定的独立静态资源 |
 | tools/embed_runtime_rules.py | 刷新锁文件元数据 |
@@ -440,20 +448,20 @@ R12.17 保留并验证下面几类误分流处理。
 
 ### 已有仓库直接更新
 
-解压完整发布包，把其中全部文件按原目录结构上传到仓库。`Rules`、`tools`、`.github` 和 `THIRD_PARTY_LICENSES` 都要保留。提交到 `main` 后，创建指向本次提交的标签 `r12.17-20260825`。标签创建完成并等待 jsDelivr 同步后，再在 Surge 中刷新外部资源。
+解压完整发布包，把其中全部文件按原目录结构上传到仓库。`Rules`、`tools`、`.github` 和 `THIRD_PARTY_LICENSES` 都要保留。提交到 `main` 后不要移动或重建旧规则标签；当前 30 个运行 URL 已固定到此前核验过的规则快照提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
 
 只上传 `Surge.conf` 会让规则快照、服务筛选和锁文件缺失，完整审计也无法运行。
 
 ### 使用安装工作流
 
-也可以把未解压的 `Surge-R12.17-self-maintained-20260825.zip` 放在仓库根目录，并保留 `.github/workflows/install.yml`。随后在 Actions 中手动运行 `Install and audit Surge R12.17`，并在必填的 `archive_sha256` 输入框填写包外公布的整包 SHA-256。
+也可以把未解压的 `Surge-R12.17-Privacy-Auto-20260826.zip` 放在仓库根目录，并保留 `.github/workflows/install.yml`。随后在 Actions 中手动运行 `Install and audit Surge R12.17`，并在必填的 `archive_sha256` 输入框填写包外公布的整包 SHA-256。
 
-安装任务会在解压和执行 ZIP 内工具之前验证整包 SHA-256，再检查文件数量、单文件大小、解压总量和路径安全。它拒绝绝对路径、路径穿越、反斜杠、未知发布文件、大小写或 Unicode 碰撞和特殊设备条目。升级时只删除旧发布清单明确管理、但新版本已经取消的文件，用户自有文件不会因为发布同步而被清理。验证完成后任务才会提交，并创建固定的规则发布标签。
+安装任务会在解压和执行 ZIP 内工具之前验证整包 SHA-256，再检查文件数量、单文件大小、解压总量和路径安全。它拒绝绝对路径、路径穿越、反斜杠、未知发布文件、大小写或 Unicode 碰撞和特殊设备条目。升级时只删除旧发布清单明确管理、但新版本已经取消的文件，用户自有文件不会因为发布同步而被清理。验证完成后任务才会提交，并核对旧规则标签仍精确指向已审计提交，不再尝试把旧标签移动到新配置提交。
 
 ### 本地生成发布包
 
 ~~~bash
-python3 tools/package_release.py --output ../Surge-R12.17-self-maintained-20260825.zip
+python3 tools/package_release.py --output ../Surge-R12.17-Privacy-Auto-20260826.zip
 ~~~
 
 ZIP 使用固定时间戳、固定顺序和统一权限。同一份内容可以生成一致的归档结构。Git 元数据、缓存、pyc 和已知的候选压缩包不会进入发布包；其他未知文件不会被静默忽略，而是直接阻止构建。整包 SHA-256 必须在 ZIP 之外发布，因为归档不能可靠地把自身哈希写入自身。
@@ -478,7 +486,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R12.17-self-maintained-20260825.zip
+python3 tools/package_release.py --output ../Surge-R12.17-Privacy-Auto-20260826.zip
 ~~~
 
 正常基线会出现下面的关键结果。
@@ -490,8 +498,8 @@ PASS: verified upstream lock services=19
 PASS R12.17 groups=34 rules=109 runtime_resources=30
 PASS R12.17 runtime_sources=30 local_rule_files=30 rules=109 pegasus=1438
 PASS precise domains DIRECT=306 Proxy=116 conflicts=0
-PASS R12.17 mutations=90
-PASS: strict release inventory regression cases=10
+PASS R12.17 mutations=97
+PASS: strict release inventory regression cases=15
 PASS: ZIP allowlist regression cases=24
 ~~~
 
@@ -553,19 +561,19 @@ python3 tools/update_external_resources.py --download --check
 
 ### 规则文件出现 404
 
-确认仓库已经创建标签 `r12.17-20260825`，文件大小写和目录结构必须与 `Surge.conf` 完全一致。新标签需要等待 jsDelivr 同步，随后再刷新外部资源。
+确认 `r12.17-20260825` 仍指向 `d1d714d575d5494ef1a7613238f4f301e1b293df`，并确认 `Surge.conf` 的 30 个 URL 都使用该完整提交 SHA。该提交的 30 个 jsDelivr 文件已在线逐一校验；若仍出现 404，先检查仓库可见性、文件大小写和本地网络对 jsDelivr 的访问。
 
 ### DNS 解析异常
 
-确认 `dns.alidns.com` 的 Host 映射仍在，并且三个引导地址位于同一行。检查 AliDNS 的 HTTPS 与 TLS 端点是否可达，也要确认私有模块没有覆盖 `encrypted-dns-server`。
+确认 `dns.alidns.com` 的 Host 映射仍在，并且三个引导地址位于同一行。检查 AliDNS 的 HTTPS 与 TLS 端点是否可达，也要确认私有模块没有覆盖 `encrypted-dns-server`、`hijack-dns`、IPv6/VIF 或规则顺序。
 
 恢复 `system` DNS 可能暂时掩盖问题，也会改变公开配置的解析边界。先定位订阅服务器、代理节点域名或网络本身的解析故障。
 
 ### DNS 检测仍显示中国移动或真实 IPv6
 
-先确认 `Privacy` 不是默认的 `Fail-Closed`，也没有选 `Proxy`，而是直接选中了一个订阅里的具体节点。Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip、ipinfo、ipapi 与 IPIP 的相关端点都应命中 `Privacy`。
+查看最近请求，确认 Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip、ipinfo、ipapi 与 IPIP 的相关端点都命中 `PrivacyAuto → 具体节点`。首次使用若没有完成评估，请等待数秒后刷新；若路径为 `Fail-Closed`，说明订阅节点全部未通过测试，配置不会回落 DIRECT。
 
-如果网页出口和 DNS 解析器随所选节点一起变化，原结果来自 Smart 的逐站点选路；保持固定节点即可。如果网页出口是香港而解析器仍是中国移动或阿里，说明该节点在服务端使用这些解析器，应换节点。如果页面仍直接显示本机 `111.*` 或 `2409:*`，查看最近请求并确认没有私有模块覆盖 `include-all-networks`、`ipv6-vif`、`UDP` 或这些 Privacy 规则。
+如果网页出口与 DNS 解析器在一次刷新过程中属于不同代理节点，检查是否有私有模块在 PrivacyAuto 规则之前覆盖了检测域名。尤其检查最近请求中是否出现 `requires DNS lookup for rule: RULE-SET ...`；出现时先关闭对应模块并重新载入配置。若网页出口在境外而解析器仍是中国移动或阿里，说明自动选中的节点在服务端使用这些解析器，应在订阅中停用该节点或由提供方修复。如果页面仍直接显示本机 `111.*` 或 `2409:*`，查看最近请求并确认没有私有模块覆盖 `include-all-networks`、`ipv6-vif`、`UDP` 或这些 PrivacyAuto 规则。
 
 ### 局域网设备无法访问代理
 
@@ -593,29 +601,29 @@ python3 tools/update_external_resources.py --download --check
 
 - [ ] `Surge.conf` 仍使用 `example.invalid` 占位符
 - [ ] `NodePool` 为 `select` 和 `hidden=1`
-- [ ] `Privacy` 可见、默认 Fail-Closed、只从 `NodePool` 展开具体节点且不含 DIRECT
+- [ ] `PrivacyAuto` 为隐藏的 `url-test`，只从 `NodePool` 自动选择具体节点，含 Fail-Closed 且不含 DIRECT/嵌套组
 - [ ] `ApplePush`、`AdBlock`、`Security`、`UDP` 均为 `hidden=1`，默认成员顺序未改变
 - [ ] 只有 `NodePool` 持有 `policy-path`
 - [ ] `AllServer` 与五个地区组均为 `smart, Fail-Closed`
 - [ ] Telegram 没有 DIRECT 路径
 - [ ] ApplePush 顺序为 Proxy、DIRECT
 - [ ] BiliBiliIntl 位于 BiliBili 国内规则前，策略分别为 Streaming 与 DIRECT
-- [ ] `Pegasus.list` 从本仓库固定标签加载，`Security` 保留 DIRECT 排错开关
+- [ ] `Pegasus.list` 从本仓库固定提交加载，`Security` 保留 DIRECT 排错开关
 - [ ] STUN 位于公网 IPv4/IPv6 失败关闭规则前并进入 UDP 组
 - [ ] `IP-CIDR,0.0.0.0/0` 与 `IP-CIDR6,::/0` 均进入 Proxy 且带 `no-resolve`
-- [ ] 9 个隐私检测域名与 `1.1.1.1/32` 出口探针均进入 Privacy，AliDNS/DNSPod 应用 DoH 域名不再 DIRECT
+- [ ] 9 个隐私检测域名与 `1.1.1.1/32` 出口探针均进入 PrivacyAuto，AliDNS/DNSPod 应用 DoH 域名不再 DIRECT
 - [ ] `viu.now.com` 位于 HBO.list 前并进入 Streaming
 - [ ] Google/YouTube 与 Microsoft/Game 的共享基础设施覆盖仍在专用规则前
 - [ ] Game 位于 OneDrive 和 Microsoft 前
 - [ ] Netflix 不含 IP-CIDR 与 IP-CIDR6
 - [ ] AliDNS 的三个引导地址仍在同一 Host 行
 - [ ] 53、853 和 8853 端口控制仍在
-- [ ] 30 个运行时规则地址均属于本仓库并固定到 `r12.17-20260825`
+- [ ] 30 个运行时规则地址均属于本仓库并固定到 `d1d714d575d5494ef1a7613238f4f301e1b293df`
 - [ ] 27 个运行时 RULE-SET 均带 `no-resolve`
 - [ ] `Surge.conf` 中不存在第三方 RULE-SET 或 DOMAIN-SET URL
-- [ ] 上传提交后已创建同名发布标签
+- [ ] `r12.17-20260825` 仍精确指向上述规则快照提交，未被移动
 - [ ] 30 个运行资源、34 个策略组与 109 条活动规则审计通过
-- [ ] 90 项配置测试、24 项 ZIP 测试与 10 项发布清单测试通过
+- [ ] 97 项配置测试、24 项 ZIP 测试与 15 项发布清单测试通过
 - [ ] 手动安装使用包外 SHA-256，旧受管理文件清理测试通过
 - [ ] 发布清单与两份 SHA-256 清单已刷新
 - [ ] 完整 ZIP 已重新生成并通过内容检查
@@ -632,6 +640,7 @@ Surge 官方资料
 - [Policy Including](https://manual.nssurge.com/policy-groups/policy-including.html)
 - [策略组通用参数](https://manual.nssurge.com/policy-groups/parameters.html)
 - [自动策略组测试](https://kb.nssurge.com/surge-knowledge-base/technotes/testing-group)
+- [Module 优先级与插入规则](https://manual.nssurge.com/profile/module.html)
 
 参考配置
 

@@ -2,13 +2,19 @@
 
 ## 2026-08-26 R12.17 DNS 与出口完整性补丁
 
-- 新增可见的 `Privacy` 单节点选择组，默认 `Fail-Closed`，并从唯一的 `NodePool` 展开真实代理。Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip、ipinfo、ipapi 与 IPIP 相关域名，以及 Net.Coffee 的 `1.1.1.1/32` 出口探针，在所有业务/国内规则前固定进入该组。
+- 新增隐藏的 `PrivacyAuto` 自动单节点组，通过 `url-test` 从唯一的 `NodePool` 选择一个统一代理。它使用 `interval=600`、`tolerance=100`、`evaluate-before-use=true` 和 `no-alert=1`，首次请求先完成评估，后台更新且不在策略页显示；显式 `Fail-Closed` 保证无可用节点时不会回落直连。
+- PrivacyAuto 不使用 Smart，避免其逐站点记忆给不同 DNS/IP 探测端点分配不同节点。新名称同时清除旧 Privacy 组可能遗留的临时手动覆盖。Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip、ipinfo、ipapi 与 IPIP 相关域名，以及 Net.Coffee 的 `1.1.1.1/32` 出口探针，在所有业务/国内规则前固定进入该组。
 - 27 个运行时 `RULE-SET` 统一加入 `no-resolve`，阻止尚未解析的代理域名因为规则集内的 IP 子规则触发本地 AliDNS 查询。
 - 将应用生成的 `dns.alidns.com` 与 `doh.pub` 连接从 DIRECT 改为 Proxy；Surge 自己的 AliDNS DoH/DoT 仍以 `encrypted-dns-follow-outbound-mode=false` 在规则外直连，避免域名型节点形成解析循环。
+- 显式固定 `encrypted-dns-skip-cert-verification=false`，并把证书校验加入配置审计与运行锁。
 - 删除公网 IP 字面量的 `GEOIP,CN,DIRECT,no-resolve` 兜底，改为 `0.0.0.0/0` 与 `::/0` 在本地/服务规则之后统一进入 Proxy。IPv6 保持 `ipv6-vif=auto`，不会用禁用 VIF 的方式制造原始 IPv6 绕过。
-- 运行配置锁升级为 schema 11，加入 Privacy、检测域名、运行规则无本地解析及 IPv4/IPv6 字面量失败关闭不变量。
-- 配置基线更新为 34 个策略组和 109 条活动规则；故障注入由 78 项扩展到 90 项，并同步审计器、迁移、README、报告、清单和校验和。
-- 明确节点侧边界：固定具体节点后仍出现与出口不一致的中国移动/阿里解析器，属于远端节点 DNS，只能换节点或由提供方修复，客户端配置不能替远端代理决定递归解析器。
+- 30 个运行规则 URL 从便于人工识别的标签改为完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`；安装工作流不再尝试把既有 `r12.17-20260825` 标签移动到配置补丁提交，只核对标签仍指向原快照。
+- 运行配置锁升级为 schema 13，加入 PrivacyAuto 隐藏自动单节点、加密 DNS 证书校验、提交 SHA 规则快照、检测域名、运行规则无本地解析及 IPv4/IPv6 字面量失败关闭不变量。
+- 配置基线保持 34 个策略组和 109 条活动规则；故障注入由 78 项扩展到 97 项，并同步审计器、迁移、README、报告、清单和校验和。
+- 严格发布清单新增无 BOM UTF-8、LF、无 NUL 与末尾换行校验，回归测试从 10 项扩展到 15 项。
+- 完整包更新为 `Surge-R12.17-Privacy-Auto-20260826.zip`，安装工作流、确定性打包器和临时归档白名单同步更新。
+- 明确节点侧边界：PrivacyAuto 自动选中的具体节点仍出现与出口不一致的中国移动/阿里解析器，属于远端节点 DNS，只能停用该节点或由提供方修复，客户端配置不能替远端代理决定递归解析器。
+- 记录真机根因：未审阅模块可覆盖 General 并把规则插在主配置顶部；本次 `dandanvip.sgmodule` 的 RULE-SET 曾在 PrivacyAuto 前触发 DNS lookup，卸载模块后 Net.Coffee 与 IPPure 均只显示所选日本节点的 Cloudflare 解析器。
 
 ## 2026-08-25 R12.17 运行资源自有化与全仓审计同步
 
@@ -33,7 +39,7 @@
 - 将主配置唯一剩余的第三方运行时静态资源 Amnesty Tech Pegasus 域名表复制为 `Rules/Pegasus.list`，保留固定提交 `3d8f248a0d015f183724ae7d096a5c46a8bb5fc7` 的 1,438 个域名。
 - 新增 `Rules/resources.lock.json`，记录源仓库、完整提交、文件路径、Git Blob、上游 SHA-256、本地 SHA-256、条目数量和本地处理方式。
 - 新增 `tools/update_external_resources.py`，支持离线验证本地副本，以及联网下载固定提交后执行 Blob、上游哈希和渲染哈希三重核对。
-- `Surge.conf` 的 30 个 `RULE-SET`/`DOMAIN-SET` 现全部指向 `shenjlngbIng/surge@r12.17-20260825`；第三方 URL 只存在于维护锁，不再由设备运行时加载。
+- `Surge.conf` 的 30 个 `RULE-SET`/`DOMAIN-SET` 现全部指向 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df`；第三方 URL 只存在于维护锁，不再由设备运行时加载。
 - 增加 `THIRD_PARTY_LICENSES/AmnestyTech-NOTICE.txt`，保留来源信息并明确固定提交根目录未发现通用许可证文件，避免用本仓库 MIT License 覆盖第三方数据。
 
 ### 配置与分流
@@ -235,7 +241,7 @@ R12.14 的 `AllServer = fallback` 会在网络切换后丢弃旧测试结果，�
 ### 边界
 
 - 不在公开配置中写入节点 IP、真实订阅链接或其他私有信息。
-- 不通过 `DOMAIN,gd.bjnet2.com,DIRECT` 等规则掩盖代理服务器自身的 DNS 引导问题。
+- 不通过 `DOMAIN,proxy-bootstrap.example.invalid,DIRECT` 等规则掩盖代理服务器自身的 DNS 引导问题。
 
 ## 2026-08-09 R12.1 代理回落修正版
 
