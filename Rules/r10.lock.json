@@ -1,12 +1,12 @@
 {
-  "schema": 10,
+  "schema": 11,
   "mode": "repository-ruleset",
   "profile": "Surge iOS Privacy + Push R12.17",
-  "generated": "2026-08-25",
+  "generated": "2026-08-26",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "0c12b042eb8b82c8834131a4d896679ce4e35d9f9080d0d68a215a5462648de8",
-  "profile_lines": 294,
-  "active_rules": 98,
+  "profile_sha256": "b845363d2f21d9cd3ec72f21c176d5810f0281ccc7320ad6beb07142492fa3fe",
+  "profile_lines": 313,
+  "active_rules": 109,
   "required_invariants": {
     "final": "FINAL,Final,dns-failed",
     "release_ref": "r12.17-20260825",
@@ -32,7 +32,7 @@
       "policy": "Security",
       "entries": 1438
     },
-    "encrypted_dns": "direct-bypass-no-protocol-rules",
+    "encrypted_dns": "surge-direct-bootstrap-app-doh-proxy",
     "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
     "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
     "policy_architecture": {
@@ -57,6 +57,12 @@
           "Singapore",
           "America"
         ]
+      },
+      "privacy": {
+        "mode": "select",
+        "default": "Fail-Closed",
+        "source": "NodePool",
+        "manual_concrete_node": true
       }
     },
     "fail_closed_alert": "suppressed",
@@ -98,8 +104,26 @@
       "game_google_cloud": "IP-CIDR,35.192.0.0/12,Proxy,no-resolve",
       "viu_hbo": "DOMAIN-SUFFIX,viu.now.com,Streaming"
     },
-    "stun_before_geoip": true,
-    "geoip_no_resolve": true
+    "runtime_rulesets_no_resolve": true,
+    "privacy_diagnostic_domains": [
+      "net.coffee",
+      "ippure.com",
+      "browserleaks.net",
+      "surfsharkdns.com",
+      "fastly-analytics.com",
+      "icanhazip.com",
+      "ipinfo.io",
+      "ipapi.co",
+      "ipip.net"
+    ],
+    "privacy_diagnostic_ip_literals": [
+      "1.1.1.1/32"
+    ],
+    "public_ip_literals": {
+      "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
+      "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve"
+    },
+    "stun_before_public_ip_literals": true
   },
   "remote_sources": [
     {
