@@ -1,15 +1,16 @@
 {
-  "schema": 11,
+  "schema": 13,
   "mode": "repository-ruleset",
   "profile": "Surge iOS Privacy + Push R12.17",
   "generated": "2026-08-26",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "b845363d2f21d9cd3ec72f21c176d5810f0281ccc7320ad6beb07142492fa3fe",
-  "profile_lines": 313,
+  "profile_sha256": "8f81e6eab5755c8a5af2235d6dc44c5eead60916e7e45d954224611c24223296",
+  "profile_lines": 314,
   "active_rules": 109,
   "required_invariants": {
     "final": "FINAL,Final,dns-failed",
-    "release_ref": "r12.17-20260825",
+    "rule_snapshot_tag": "r12.17-20260825",
+    "rule_snapshot_commit": "d1d714d575d5494ef1a7613238f4f301e1b293df",
     "runtime_static_resources": "repository-only",
     "runtime_resource_count": 30,
     "final_strict_choice": "REJECT",
@@ -33,6 +34,7 @@
       "entries": 1438
     },
     "encrypted_dns": "surge-direct-bootstrap-app-doh-proxy",
+    "encrypted_dns_certificate_verification": true,
     "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
     "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
     "policy_architecture": {
@@ -59,10 +61,15 @@
         ]
       },
       "privacy": {
-        "mode": "select",
-        "default": "Fail-Closed",
+        "name": "PrivacyAuto",
+        "mode": "url-test",
+        "hidden": true,
         "source": "NodePool",
-        "manual_concrete_node": true
+        "fail_closed": true,
+        "automatic_single_policy": true,
+        "interval": 600,
+        "tolerance": 100,
+        "evaluate_before_use": true
       }
     },
     "fail_closed_alert": "suppressed",
@@ -129,7 +136,7 @@
     {
       "kind": "DOMAIN-SET",
       "file": "Pegasus.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Pegasus.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Pegasus.list",
       "policy": "Security",
       "update_interval": -1,
       "active_entries": 1438,
@@ -138,7 +145,7 @@
     {
       "kind": "RULE-SET",
       "file": "APNs.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/APNs.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/APNs.list",
       "policy": "ApplePush",
       "update_interval": -1,
       "active_entries": 12,
@@ -147,7 +154,7 @@
     {
       "kind": "RULE-SET",
       "file": "AppleCN.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/AppleCN.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/AppleCN.list",
       "policy": "Apple",
       "update_interval": -1,
       "active_entries": 166,
@@ -156,7 +163,7 @@
     {
       "kind": "RULE-SET",
       "file": "WeChat.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/WeChat.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/WeChat.list",
       "policy": "DIRECT",
       "update_interval": -1,
       "active_entries": 33,
@@ -165,7 +172,7 @@
     {
       "kind": "RULE-SET",
       "file": "Direct.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Direct.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Direct.list",
       "policy": "DIRECT",
       "update_interval": -1,
       "active_entries": 9,
@@ -174,7 +181,7 @@
     {
       "kind": "RULE-SET",
       "file": "Ads.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Ads.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Ads.list",
       "policy": "AdBlock",
       "update_interval": -1,
       "active_entries": 152,
@@ -183,7 +190,7 @@
     {
       "kind": "RULE-SET",
       "file": "ChatGPT.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/ChatGPT.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/ChatGPT.list",
       "policy": "ChatGPT",
       "update_interval": -1,
       "active_entries": 52,
@@ -192,7 +199,7 @@
     {
       "kind": "RULE-SET",
       "file": "Claude.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Claude.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Claude.list",
       "policy": "Claude",
       "update_interval": -1,
       "active_entries": 6,
@@ -201,7 +208,7 @@
     {
       "kind": "RULE-SET",
       "file": "Gemini.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Gemini.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Gemini.list",
       "policy": "Gemini",
       "update_interval": -1,
       "active_entries": 21,
@@ -210,7 +217,7 @@
     {
       "kind": "RULE-SET",
       "file": "YouTube.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/YouTube.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/YouTube.list",
       "policy": "YouTube",
       "update_interval": -1,
       "active_entries": 192,
@@ -219,7 +226,7 @@
     {
       "kind": "RULE-SET",
       "file": "Netflix.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Netflix.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Netflix.list",
       "policy": "NETFLIX",
       "update_interval": -1,
       "active_entries": 36,
@@ -228,7 +235,7 @@
     {
       "kind": "RULE-SET",
       "file": "Disney.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Disney.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Disney.list",
       "policy": "Disney+",
       "update_interval": -1,
       "active_entries": 165,
@@ -237,7 +244,7 @@
     {
       "kind": "RULE-SET",
       "file": "HBO.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/HBO.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/HBO.list",
       "policy": "HBO",
       "update_interval": -1,
       "active_entries": 45,
@@ -246,7 +253,7 @@
     {
       "kind": "RULE-SET",
       "file": "PrimeVideo.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/PrimeVideo.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/PrimeVideo.list",
       "policy": "PrimeVideo",
       "update_interval": -1,
       "active_entries": 18,
@@ -255,7 +262,7 @@
     {
       "kind": "RULE-SET",
       "file": "Emby.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Emby.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Emby.list",
       "policy": "Emby",
       "update_interval": -1,
       "active_entries": 218,
@@ -264,7 +271,7 @@
     {
       "kind": "RULE-SET",
       "file": "TikTok.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/TikTok.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/TikTok.list",
       "policy": "TikTok",
       "update_interval": -1,
       "active_entries": 86,
@@ -273,7 +280,7 @@
     {
       "kind": "RULE-SET",
       "file": "Bahamut.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Bahamut.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Bahamut.list",
       "policy": "Bahamut",
       "update_interval": -1,
       "active_entries": 7,
@@ -282,7 +289,7 @@
     {
       "kind": "RULE-SET",
       "file": "BiliBiliIntl.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBiliIntl.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBiliIntl.list",
       "policy": "Streaming",
       "update_interval": -1,
       "active_entries": 7,
@@ -291,7 +298,7 @@
     {
       "kind": "RULE-SET",
       "file": "BiliBili.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBili.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list",
       "policy": "DIRECT",
       "update_interval": -1,
       "active_entries": 12,
@@ -300,7 +307,7 @@
     {
       "kind": "RULE-SET",
       "file": "Spotify.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Spotify.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Spotify.list",
       "policy": "Spotify",
       "update_interval": -1,
       "active_entries": 30,
@@ -309,7 +316,7 @@
     {
       "kind": "RULE-SET",
       "file": "ProxyMedia.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/ProxyMedia.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/ProxyMedia.list",
       "policy": "Streaming",
       "update_interval": -1,
       "active_entries": 319,
@@ -318,7 +325,7 @@
     {
       "kind": "RULE-SET",
       "file": "Telegram.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Telegram.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Telegram.list",
       "policy": "Telegram",
       "update_interval": -1,
       "active_entries": 51,
@@ -327,7 +334,7 @@
     {
       "kind": "RULE-SET",
       "file": "Github.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Github.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Github.list",
       "policy": "GitHub",
       "update_interval": -1,
       "active_entries": 31,
@@ -336,7 +343,7 @@
     {
       "kind": "RULE-SET",
       "file": "Twitter.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Twitter.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Twitter.list",
       "policy": "X",
       "update_interval": -1,
       "active_entries": 33,
@@ -345,7 +352,7 @@
     {
       "kind": "RULE-SET",
       "file": "Google.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Google.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Google.list",
       "policy": "Google",
       "update_interval": -1,
       "active_entries": 705,
@@ -354,7 +361,7 @@
     {
       "kind": "RULE-SET",
       "file": "Game.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Game.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Game.list",
       "policy": "Games",
       "update_interval": -1,
       "active_entries": 596,
@@ -363,7 +370,7 @@
     {
       "kind": "RULE-SET",
       "file": "OneDrive.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/OneDrive.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/OneDrive.list",
       "policy": "Microsoft",
       "update_interval": -1,
       "active_entries": 16,
@@ -372,7 +379,7 @@
     {
       "kind": "RULE-SET",
       "file": "Microsoft.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Microsoft.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Microsoft.list",
       "policy": "Microsoft",
       "update_interval": -1,
       "active_entries": 664,
@@ -381,7 +388,7 @@
     {
       "kind": "DOMAIN-SET",
       "file": "China.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/China.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/China.list",
       "policy": "DIRECT",
       "update_interval": -1,
       "active_entries": 306,
@@ -390,7 +397,7 @@
     {
       "kind": "DOMAIN-SET",
       "file": "Global.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/Global.list",
+      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Global.list",
       "policy": "Proxy",
       "update_interval": -1,
       "active_entries": 116,
