@@ -17,6 +17,7 @@ from convert_to_remote_rules import (
     RELEASE_REF,
     REMOTE_BASE,
     REPOSITORY_RULES,
+    RULE_SNAPSHOT_TAG,
     repository_line,
 )
 
@@ -59,7 +60,7 @@ active_rules = [
 ]
 
 lock = {
-    "schema": 11,
+    "schema": 13,
     "mode": "repository-ruleset",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -69,7 +70,8 @@ lock = {
     "active_rules": len(active_rules),
     "required_invariants": {
         "final": "FINAL,Final,dns-failed",
-        "release_ref": RELEASE_REF,
+        "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
+        "rule_snapshot_commit": RELEASE_REF,
         "runtime_static_resources": "repository-only",
         "runtime_resource_count": len(REPOSITORY_RULES),
         "final_strict_choice": "REJECT",
@@ -88,6 +90,7 @@ lock = {
             "entries": 1438,
         },
         "encrypted_dns": "surge-direct-bootstrap-app-doh-proxy",
+        "encrypted_dns_certificate_verification": True,
         "apple_system_direct": "DOMAIN-SUFFIX,ls.apple.com,DIRECT",
         "cgnat_direct": "IP-CIDR,100.64.0.0/10,DIRECT,no-resolve",
         "policy_architecture": {
@@ -100,10 +103,15 @@ lock = {
                 "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
             },
             "privacy": {
-                "mode": "select",
-                "default": "Fail-Closed",
+                "name": "PrivacyAuto",
+                "mode": "url-test",
+                "hidden": True,
                 "source": "NodePool",
-                "manual_concrete_node": True,
+                "fail_closed": True,
+                "automatic_single_policy": True,
+                "interval": 600,
+                "tolerance": 100,
+                "evaluate_before_use": True,
             },
         },
         "fail_closed_alert": "suppressed",

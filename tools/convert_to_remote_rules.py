@@ -2,7 +2,7 @@
 """Validate the R12.17 repository-hosted runtime rule inventory.
 
 Every static RULE-SET and DOMAIN-SET used by Surge must resolve to the user's
-own immutable repository release. Third-party URLs are maintenance inputs only
+own immutable repository commit. Third-party URLs are maintenance inputs only
 and are recorded in lock files; they may not appear in the runtime profile.
 """
 
@@ -15,7 +15,8 @@ ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
 PROFILE_NAME = "Surge iOS Privacy + Push R12.17"
 RELEASE_DATE = "2026-08-26"
-RELEASE_REF = "r12.17-20260825"
+RULE_SNAPSHOT_TAG = "r12.17-20260825"
+RELEASE_REF = "d1d714d575d5494ef1a7613238f4f301e1b293df"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
 
@@ -108,7 +109,7 @@ def main() -> int:
         if fields[0] == "RULE-SET" and fields[3] != "no-resolve":
             raise SystemExit(f"repository RULE-SET may not trigger local DNS: {line}")
         if not fields[1].startswith(REMOTE_BASE) or ".." in fields[1]:
-            raise SystemExit(f"runtime rule is not hosted by the reviewed repository release: {line}")
+            raise SystemExit(f"runtime rule is not hosted by the reviewed repository commit: {line}")
     print(
         f"PASS: repository-only runtime resources={len(external)} "
         "third_party_runtime_urls=0 embedded_rule_contents=0"

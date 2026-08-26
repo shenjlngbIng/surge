@@ -20,7 +20,7 @@ from release_inventory import validate_release_tree
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R12.17-self-maintained-20260825.zip"
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R12.17-Privacy-Auto-20260826.zip"
 def active_rule_lines(text: str) -> set[str]:
     if "[Rule]" not in text:
         raise ValueError("Surge.conf has no [Rule] section")

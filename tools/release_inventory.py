@@ -74,6 +74,7 @@ CHECKSUM_EXCLUDED = {
 TRANSIENT_ARCHIVES = {
     PurePosixPath("Surge.zip"),
     PurePosixPath("Surge-R12.17-self-maintained-20260825.zip"),
+    PurePosixPath("Surge-R12.17-Privacy-Auto-20260826.zip"),
 }
 IGNORED_DIRECTORY_NAMES = {".git", "__pycache__"}
 ALLOWED_DIRECTORIES = frozenset(
@@ -86,6 +87,24 @@ ALLOWED_DIRECTORIES = frozenset(
 
 def _relative(root: Path, path: Path) -> PurePosixPath:
     return PurePosixPath(path.relative_to(root).as_posix())
+
+
+def _validate_text_file(path: Path, relative: PurePosixPath) -> None:
+    """Reject byte patterns that can be parsed differently across release consumers."""
+
+    data = path.read_bytes()
+    if data.startswith(b"\xef\xbb\xbf"):
+        raise ValueError(f"UTF-8 BOM is forbidden in a release file: {relative}")
+    if b"\x00" in data:
+        raise ValueError(f"NUL byte is forbidden in a release file: {relative}")
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"release file is not valid UTF-8: {relative}") from exc
+    if b"\r" in data:
+        raise ValueError(f"release file must use LF line endings: {relative}")
+    if data and not data.endswith(b"\n"):
+        raise ValueError(f"release file must end with a newline: {relative}")
 
 
 def validate_release_tree(
@@ -134,7 +153,10 @@ def validate_release_tree(
     missing = sorted(RELEASE_PATHS - found, key=str)
     if missing:
         raise ValueError("release files are missing: " + ", ".join(map(str, missing)))
-    return [root.joinpath(*path.parts) for path in sorted(RELEASE_PATHS, key=str)]
+    paths = [root.joinpath(*path.parts) for path in sorted(RELEASE_PATHS, key=str)]
+    for path in paths:
+        _validate_text_file(path, _relative(root, path))
+    return paths
 
 
 def manifest_files(root: Path = ROOT) -> list[Path]:

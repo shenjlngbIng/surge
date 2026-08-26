@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from convert_to_remote_rules import REMOTE_BASE, repository_line
+from convert_to_remote_rules import REMOTE_BASE, RULE_SNAPSHOT_TAG, repository_line
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,6 +56,7 @@ mutations = {
     "capture_cellular_services": ("\ninclude-cellular-services = false\n", "\ninclude-cellular-services = true\n"),
     "auto_suspend": ("\nauto-suspend = true\n", "\nauto-suspend = false\n"),
     "encrypted_dns_follow": ("\nencrypted-dns-follow-outbound-mode = false\n", "\nencrypted-dns-follow-outbound-mode = true\n"),
+    "encrypted_dns_certificate_verification": ("\nencrypted-dns-skip-cert-verification = false\n", "\nencrypted-dns-skip-cert-verification = true\n"),
     "dns_server": ("\ndns-server = 223.5.5.5, 223.6.6.6\n", "\ndns-server = system, 223.5.5.5\n"),
     "encrypted_dns_server": ("\nencrypted-dns-server = https://dns.alidns.com/dns-query, tls://dns.alidns.com\n", "\nencrypted-dns-server = https://1.1.1.1/dns-query\n"),
     "dns_bootstrap": ("dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1", "dns.alidns.com = 1.1.1.1"),
@@ -100,16 +101,21 @@ mutations = {
     "security_visible": ("Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0"),
     "udp_choices": ("UDP = select, Proxy, DIRECT, REJECT,", "UDP = select, Proxy, REJECT,"),
     "udp_visible": ("UDP = select, Proxy, DIRECT, REJECT, no-alert=0, hidden=1", "UDP = select, Proxy, DIRECT, REJECT, no-alert=0, hidden=0"),
-    "privacy_default": ("Privacy = select, Fail-Closed, Proxy,", "Privacy = select, Proxy, Fail-Closed,"),
-    "privacy_direct": ("Privacy = select, Fail-Closed, Proxy,", "Privacy = select, Fail-Closed, DIRECT, Proxy,"),
-    "privacy_visible": ("Privacy = select, Fail-Closed, Proxy, no-alert=0, hidden=0", "Privacy = select, Fail-Closed, Proxy, no-alert=0, hidden=1"),
-    "privacy_source": ("Privacy = select, Fail-Closed, Proxy, no-alert=0, hidden=0, include-all-proxies=0, include-other-group=NodePool", "Privacy = select, Fail-Closed, Proxy, no-alert=0, hidden=0, include-all-proxies=0"),
+    "privacy_mode": ("PrivacyAuto = url-test, Fail-Closed,", "PrivacyAuto = smart, Fail-Closed,"),
+    "privacy_direct": ("PrivacyAuto = url-test, Fail-Closed,", "PrivacyAuto = url-test, Fail-Closed, DIRECT,"),
+    "privacy_legacy_name": ("PrivacyAuto = url-test, Fail-Closed,", "Privacy = url-test, Fail-Closed,"),
+    "privacy_visible": ("no-alert=1, hidden=1, include-all-proxies=0, include-other-group=NodePool", "no-alert=1, hidden=0, include-all-proxies=0, include-other-group=NodePool"),
+    "privacy_source": ("hidden=1, include-all-proxies=0, include-other-group=NodePool", "hidden=1, include-all-proxies=0"),
+    "privacy_evaluation": (", evaluate-before-use=true, no-alert=1, hidden=1", ", no-alert=1, hidden=1"),
+    "privacy_interval": ("PrivacyAuto = url-test, Fail-Closed, interval=600,", "PrivacyAuto = url-test, Fail-Closed, interval=60,"),
+    "privacy_alert": ("evaluate-before-use=true, no-alert=1, hidden=1", "evaluate-before-use=true, no-alert=0, hidden=1"),
+    "privacy_nested_group": ("PrivacyAuto = url-test, Fail-Closed, interval=600,", "PrivacyAuto = url-test, Fail-Closed, Proxy, interval=600,"),
     "stale_encrypted_dns_group": ("\nApplePush = fallback,", "\nEncryptedDNS = fallback, Proxy, DIRECT\nApplePush = fallback,"),
     "inactive_doh_rule": ("\nDOMAIN,dns.alidns.com,Proxy\n", "\nPROTOCOL,DOH,Proxy\nDOMAIN,dns.alidns.com,Proxy\n"),
     "alidns_app_direct": ("\nDOMAIN,dns.alidns.com,Proxy\n", "\nDOMAIN,dns.alidns.com,DIRECT\n"),
     "dnspub_app_direct": ("\nDOMAIN,doh.pub,Proxy\n", "\nDOMAIN,doh.pub,DIRECT\n"),
-    "privacy_guard_missing": ("\nDOMAIN-SUFFIX,browserleaks.net,Privacy\n", "\n"),
-    "privacy_guard_smart": ("\nDOMAIN-SUFFIX,ippure.com,Privacy\n", "\nDOMAIN-SUFFIX,ippure.com,Proxy\n"),
+    "privacy_guard_missing": ("\nDOMAIN-SUFFIX,browserleaks.net,PrivacyAuto\n", "\n"),
+    "privacy_guard_smart": ("\nDOMAIN-SUFFIX,ippure.com,PrivacyAuto\n", "\nDOMAIN-SUFFIX,ippure.com,Proxy\n"),
     "unsupported_protocol": ("\nPROTOCOL,STUN,UDP\n", "\nPROTOCOL,BOGUS,UDP\n"),
     "stun_old_policy": ("\nPROTOCOL,STUN,UDP\n", "\nPROTOCOL,STUN,Proxy\n"),
     "cgnat_rule": ("\nIP-CIDR,100.64.0.0/10,DIRECT,no-resolve\n", "\n"),
@@ -119,6 +125,7 @@ mutations = {
     "remote_host": (f"{REMOTE_BASE}ChatGPT.list", "https://example.invalid/ChatGPT.list"),
     "remote_http": (f"{REMOTE_BASE}ChatGPT.list", REMOTE_BASE.replace("https://", "http://") + "ChatGPT.list"),
     "remote_main_ref": (f"{REMOTE_BASE}ChatGPT.list", "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list"),
+    "remote_tag_ref": (f"{REMOTE_BASE}ChatGPT.list", f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RULE_SNAPSHOT_TAG}/Rules/ChatGPT.list"),
     "missing_update_interval": (rr("RULE-SET", "Claude.list", "Claude"), rr("RULE-SET", "Claude.list", "Claude").replace(",update-interval=-1", "")),
     "bilibili_wrong_policy": (rr("RULE-SET", "BiliBili.list", "DIRECT"), rr("RULE-SET", "BiliBili.list", "Streaming")),
     "bilibili_intl_wrong_policy": (rr("RULE-SET", "BiliBiliIntl.list", "Streaming"), rr("RULE-SET", "BiliBiliIntl.list", "DIRECT")),

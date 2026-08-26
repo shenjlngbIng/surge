@@ -43,6 +43,11 @@ def main() -> int:
     rejected(lambda root: (root / "LEAK.txt").symlink_to("/etc/hosts"))
     rejected(lambda root: (root / "Surge.zip").symlink_to("/etc/hosts"))
     rejected(lambda root: (root / "README.md").unlink())
+    rejected(lambda root: (root / "README.md").write_bytes(b"invalid: \xff\n"))
+    rejected(lambda root: (root / "README.md").write_bytes(b"NUL\x00byte\n"))
+    rejected(lambda root: (root / "README.md").write_bytes(b"CRLF\r\n"))
+    rejected(lambda root: (root / "README.md").write_bytes(b"missing final newline"))
+    rejected(lambda root: (root / "README.md").write_bytes(b"\xef\xbb\xbfBOM\n"))
 
     with tempfile.TemporaryDirectory() as directory:
         base = Path(directory)
@@ -90,7 +95,7 @@ def main() -> int:
         if result.returncode == 0 or target.read_text() != "safe\n":
             raise AssertionError("symbolic-link package output was accepted")
 
-    print("PASS: strict release inventory regression cases=10")
+    print("PASS: strict release inventory regression cases=15")
     return 0
 
 

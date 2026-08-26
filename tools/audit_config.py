@@ -80,8 +80,10 @@ expected_header = [
 ]
 if text.splitlines()[:5] != expected_header:
     fail("profile attribution/version header mismatch")
-if RELEASE_REF != "r12.17-20260825" or "@main/Rules/" in text:
-    fail("runtime rule URLs must use the immutable R12.17 release reference")
+if RELEASE_REF != "d1d714d575d5494ef1a7613238f4f301e1b293df" or "@main/Rules/" in text:
+    fail("runtime rule URLs must use the immutable R12.17 rule-snapshot commit")
+if len(RELEASE_REF) != 40 or any(char not in "0123456789abcdef" for char in RELEASE_REF):
+    fail("runtime rule reference must be a full lowercase Git commit SHA")
 
 sections = parse(text)
 if list(sections) != ["General", "Host", "Proxy", "Proxy Group", "Rule"]:
@@ -110,6 +112,7 @@ required_general = {
     "dns-server": "223.5.5.5, 223.6.6.6",
     "encrypted-dns-server": "https://dns.alidns.com/dns-query, tls://dns.alidns.com",
     "encrypted-dns-follow-outbound-mode": "false",
+    "encrypted-dns-skip-cert-verification": "false",
     "allow-wifi-access": "false",
     "allow-hotspot-access": "false",
     "http-api-web-dashboard": "false",
@@ -139,7 +142,7 @@ if proxies != {"Fail-Closed": "http, 127.0.0.1, 1, no-error-alert=true"}:
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
 expected_groups = {
-    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "Privacy",
+    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "PrivacyAuto",
     "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
     "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
     "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
@@ -172,13 +175,18 @@ if group_members("Security") != ["REJECT", "REJECT-DROP", "DIRECT"]:
     fail("Security must preserve its emergency DIRECT off-switch")
 if group_members("UDP") != ["Proxy", "DIRECT", "REJECT"]:
     fail("UDP must preserve Proxy, DIRECT and REJECT choices")
-if group_members("Privacy") != ["Fail-Closed", "Proxy"]:
-    fail("Privacy must fail closed before its emergency Proxy fallback")
-privacy_parts = [part.strip() for part in groups["Privacy"].split(",")]
-if "hidden=0" not in privacy_parts or "include-other-group=NodePool" not in privacy_parts:
-    fail("Privacy must expose the concrete NodePool policies for manual pinning")
-if "include-all-proxies=0" not in privacy_parts:
-    fail("Privacy may import only the reviewed NodePool source")
+if group_members("PrivacyAuto") != ["Fail-Closed"]:
+    fail("PrivacyAuto may only declare Fail-Closed before importing NodePool")
+privacy_parts = [part.strip() for part in groups["PrivacyAuto"].split(",")]
+for option in (
+    "interval=600", "tolerance=100", "evaluate-before-use=true",
+    "no-alert=1", "hidden=1", "include-all-proxies=0",
+    "include-other-group=NodePool",
+):
+    if option not in privacy_parts:
+        fail(f"PrivacyAuto missing hidden automatic-selection option: {option}")
+if any(part.startswith(("timeout=", "policy-path=")) for part in privacy_parts):
+    fail("PrivacyAuto must use the global test timeout and the reviewed NodePool source")
 for name in ("ApplePush", "AdBlock", "Security", "UDP"):
     parts = [part.strip() for part in groups[name].split(",")]
     if "hidden=1" not in parts:
@@ -206,7 +214,12 @@ smart_groups = {"AllServer", *regions}
 for name, value in groups.items():
     parts = [part.strip() for part in value.split(",")]
     mode = parts[0]
-    expected_mode = "smart" if name in smart_groups else "fallback" if name == "ApplePush" else "select"
+    expected_mode = (
+        "smart" if name in smart_groups
+        else "fallback" if name == "ApplePush"
+        else "url-test" if name == "PrivacyAuto"
+        else "select"
+    )
     if mode != expected_mode:
         fail(f"{name} must use {expected_mode}, got {mode}")
     if "policy-path=" in value and name != "NodePool":
@@ -233,7 +246,7 @@ for region in regions:
 proxy_only_groups = {
     "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX", "Disney+",
     "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut", "Spotify", "Streaming",
-    "Telegram", "X", "Google", "Microsoft", "Games", "Privacy",
+    "Telegram", "X", "Google", "Microsoft", "Games", "PrivacyAuto",
 }
 for name in proxy_only_groups:
     if "DIRECT" in group_members(name):
@@ -321,16 +334,16 @@ stun_pos = rule_position("PROTOCOL,STUN,UDP")
 public_ipv4_pos = rule_position("IP-CIDR,0.0.0.0/0,Proxy,no-resolve")
 public_ipv6_pos = rule_position("IP-CIDR6,::/0,Proxy,no-resolve")
 diagnostic_rules = {
-    "DOMAIN-SUFFIX,net.coffee,Privacy",
-    "DOMAIN-SUFFIX,ippure.com,Privacy",
-    "DOMAIN-SUFFIX,browserleaks.net,Privacy",
-    "DOMAIN-SUFFIX,surfsharkdns.com,Privacy",
-    "DOMAIN-SUFFIX,fastly-analytics.com,Privacy",
-    "DOMAIN-SUFFIX,icanhazip.com,Privacy",
-    "DOMAIN-SUFFIX,ipinfo.io,Privacy",
-    "DOMAIN-SUFFIX,ipapi.co,Privacy",
-    "DOMAIN-SUFFIX,ipip.net,Privacy",
-    "IP-CIDR,1.1.1.1/32,Privacy,no-resolve",
+    "DOMAIN-SUFFIX,net.coffee,PrivacyAuto",
+    "DOMAIN-SUFFIX,ippure.com,PrivacyAuto",
+    "DOMAIN-SUFFIX,browserleaks.net,PrivacyAuto",
+    "DOMAIN-SUFFIX,surfsharkdns.com,PrivacyAuto",
+    "DOMAIN-SUFFIX,fastly-analytics.com,PrivacyAuto",
+    "DOMAIN-SUFFIX,icanhazip.com,PrivacyAuto",
+    "DOMAIN-SUFFIX,ipinfo.io,PrivacyAuto",
+    "DOMAIN-SUFFIX,ipapi.co,PrivacyAuto",
+    "DOMAIN-SUFFIX,ipip.net,PrivacyAuto",
+    "IP-CIDR,1.1.1.1/32,PrivacyAuto,no-resolve",
 }
 if not diagnostic_rules <= set(rules):
     fail(f"privacy diagnostic guard is incomplete: {sorted(diagnostic_rules-set(rules))}")

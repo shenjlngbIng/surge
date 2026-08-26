@@ -15,6 +15,7 @@ from convert_to_remote_rules import (
     RELEASE_REF,
     REMOTE_BASE,
     REPOSITORY_RULES,
+    RULE_SNAPSHOT_TAG,
     repository_line,
 )
 
@@ -54,13 +55,15 @@ def active_lines(path: Path) -> list[str]:
 if not LOCK.is_file():
     fail(f"runtime lock not found: {LOCK}")
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 11 or lock.get("mode") != "repository-ruleset":
+if lock.get("schema") != 13 or lock.get("mode") != "repository-ruleset":
     fail("runtime lock schema/mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
 invariants = dict(lock.get("required_invariants", {}))
-if invariants.get("release_ref") != RELEASE_REF:
-    fail("runtime lock release reference mismatch")
+if invariants.get("rule_snapshot_tag") != RULE_SNAPSHOT_TAG:
+    fail("runtime lock rule snapshot tag mismatch")
+if invariants.get("rule_snapshot_commit") != RELEASE_REF:
+    fail("runtime lock rule snapshot commit mismatch")
 if invariants.get("runtime_static_resources") != "repository-only":
     fail("runtime resources are not locked to the repository")
 if invariants.get("runtime_resource_count") != len(REPOSITORY_RULES):
@@ -80,12 +83,19 @@ if invariants.get("udp_quic") != {
     fail("UDP/QUIC invariant mismatch")
 privacy = dict(dict(invariants.get("policy_architecture", {})).get("privacy", {}))
 if privacy != {
-    "mode": "select",
-    "default": "Fail-Closed",
+    "name": "PrivacyAuto",
+    "mode": "url-test",
+    "hidden": True,
     "source": "NodePool",
-    "manual_concrete_node": True,
+    "fail_closed": True,
+    "automatic_single_policy": True,
+    "interval": 600,
+    "tolerance": 100,
+    "evaluate_before_use": True,
 }:
-    fail("privacy concrete-node pinning invariant mismatch")
+    fail("privacy hidden automatic-selection invariant mismatch")
+if invariants.get("encrypted_dns_certificate_verification") is not True:
+    fail("encrypted DNS certificate verification invariant mismatch")
 if invariants.get("runtime_rulesets_no_resolve") is not True:
     fail("runtime RULE-SET local-DNS suppression invariant mismatch")
 if invariants.get("public_ip_literals") != {
