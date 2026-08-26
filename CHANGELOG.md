@@ -1,5 +1,15 @@
 # 更新日志
 
+## 2026-08-26 R12.17 DNS 与出口完整性补丁
+
+- 新增可见的 `Privacy` 单节点选择组，默认 `Fail-Closed`，并从唯一的 `NodePool` 展开真实代理。Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip、ipinfo、ipapi 与 IPIP 相关域名，以及 Net.Coffee 的 `1.1.1.1/32` 出口探针，在所有业务/国内规则前固定进入该组。
+- 27 个运行时 `RULE-SET` 统一加入 `no-resolve`，阻止尚未解析的代理域名因为规则集内的 IP 子规则触发本地 AliDNS 查询。
+- 将应用生成的 `dns.alidns.com` 与 `doh.pub` 连接从 DIRECT 改为 Proxy；Surge 自己的 AliDNS DoH/DoT 仍以 `encrypted-dns-follow-outbound-mode=false` 在规则外直连，避免域名型节点形成解析循环。
+- 删除公网 IP 字面量的 `GEOIP,CN,DIRECT,no-resolve` 兜底，改为 `0.0.0.0/0` 与 `::/0` 在本地/服务规则之后统一进入 Proxy。IPv6 保持 `ipv6-vif=auto`，不会用禁用 VIF 的方式制造原始 IPv6 绕过。
+- 运行配置锁升级为 schema 11，加入 Privacy、检测域名、运行规则无本地解析及 IPv4/IPv6 字面量失败关闭不变量。
+- 配置基线更新为 34 个策略组和 109 条活动规则；故障注入由 78 项扩展到 90 项，并同步审计器、迁移、README、报告、清单和校验和。
+- 明确节点侧边界：固定具体节点后仍出现与出口不一致的中国移动/阿里解析器，属于远端节点 DNS，只能换节点或由提供方修复，客户端配置不能替远端代理决定递归解析器。
+
 ## 2026-08-25 R12.17 运行资源自有化与全仓审计同步
 
 ### 策略界面精简补丁

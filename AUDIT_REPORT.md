@@ -1,12 +1,12 @@
 # Surge R12.17 全仓审计与修改利弊
 
-审计日期：2026-08-25
+审计日期：2026-08-26
 
 审计对象：`Surge.conf`、`Rules/`、四份锁文件、`tools/`、工作流、许可证与来源说明、README、迁移文档、发布清单、校验和及最终 ZIP。
 
 ## 结论
 
-R12.17 的静态配置、规则库存、来源锁、文件哈希、策略引用、关键规则顺序、故障注入与打包链路均通过检查。主配置需要的 30 份静态规则已经全部放入 `shenjlngbIng/surge` 仓库；设备不再直接读取 Blackmatrix7、Amnesty Tech 或其他第三方规则仓库。
+R12.17 的静态配置、规则库存、来源锁、文件哈希、策略引用、关键规则顺序、DNS 本地解析抑制、IPv4/IPv6 字面量失败关闭、故障注入与打包链路均通过检查。主配置需要的 30 份静态规则已经全部放入 `shenjlngbIng/surge` 仓库；设备不再直接读取 Blackmatrix7、Amnesty Tech 或其他第三方规则仓库。
 
 问题一按用户要求不处理，下面两行保持原样：
 
@@ -21,10 +21,10 @@ NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_UR
 
 | 项目 | 结果 |
 | --- | ---: |
-| 主配置行数 | 294 |
-| 主配置 SHA-256 | `0c12b042eb8b82c8834131a4d896679ce4e35d9f9080d0d68a215a5462648de8` |
-| 策略组 | 33 |
-| 活动规则 | 98 |
+| 主配置行数 | 313 |
+| 主配置 SHA-256 | `b845363d2f21d9cd3ec72f21c176d5810f0281ccc7320ad6beb07142492fa3fe` |
+| 策略组 | 34 |
+| 活动规则 | 109 |
 | 仓库静态运行资源 | 30 |
 | RULE-SET | 27 |
 | DOMAIN-SET | 3 |
@@ -33,14 +33,14 @@ NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_UR
 | China 精确域名 | 306 |
 | Global 精确域名 | 116 |
 | China/Global 冲突 | 0 |
-| 配置故障注入 | 78 项通过 |
+| 配置故障注入 | 90 项通过 |
 | ZIP 路径回归 | 24 项通过 |
 | 严格发布清单回归 | 10 项通过 |
 | 发布清单记录 | 63 个非生成文件 |
 | SHA-256 清单记录 | 64 个文件 |
 | 完整 ZIP | 66 个普通文件 |
 
-“第三方规则源为零”只表示 Surge 配置不再引用第三方规则仓库。传输仍使用 jsDelivr 读取你 GitHub 仓库的固定标签；`GEOIP`/`IP-ASN` 仍使用 Surge 数据，AliDNS 与测试 URL 仍是在线端点。这里没有把 30 个静态规则内容自有化扩大解释为整套网络基础设施自托管。
+“第三方规则源为零”只表示 Surge 配置不再引用第三方规则仓库。传输仍使用 jsDelivr 读取你 GitHub 仓库的固定标签；`IP-ASN` 仍使用 Surge 数据，AliDNS 与测试 URL 仍是在线端点。这里没有把 30 个静态规则内容自有化扩大解释为整套网络基础设施自托管。
 
 ## 远程规则与附属资源检查
 
@@ -51,6 +51,7 @@ NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_UR
 - 地址前缀统一为 `https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/`。
 - 每条地址都固定到不可变发布标签，不使用 `@main`。
 - 每条地址都带 `update-interval=-1`，避免固定发布内容被周期性重复拉取。
+- 27 条 `RULE-SET` 额外带 `no-resolve`，不为尚未解析的域名触发本地 DNS。
 - 配置中不存在 Blackmatrix7、Amnesty Tech 或其他第三方规则仓库的运行时地址。
 - 30 个 URL 与 `Rules/` 中 30 个本地文件一一对应，文件名、规则类型、策略和哈希均进入 `Rules/r10.lock.json`。
 
@@ -83,6 +84,21 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 
 固定提交根目录没有找到 `LICENSE`、`LICENSE.md`、`COPYING` 或 `COPYING.md`。包内保留了 `THIRD_PARTY_LICENSES/AmnestyTech-NOTICE.txt`，但该说明不能替代权利人许可。若公开再分发用途需要明确授权，应先向来源项目确认数据许可。
 
+## 参考配置的 DNS 处理对照
+
+以下结论来自 2026-08-26 重新读取的公开文件，不把“关闭 IPv6”“使用 DoH”或“DNS 检测只显示境外地址”单独等同于无泄漏。
+
+| 配置 | 主要做法 | 仍存边界 | 本配置的取舍 |
+| --- | --- | --- | --- |
+| [Rabbit Developer](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-Developer.conf) | 关闭 IPv6；AliDNS 与 114 明文 DNS；DoH 留作机场自填 | 无全端口 DNS 接管；RULE-SET/GEOIP 可触发本地解析 | 不采用关闭 VIF 或明文 DNS；保留其简洁的单一订阅入口思路 |
+| [Rabbit Surge-EN](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-EN.conf) | 关闭 IPv6；`system` 加国内明文 DNS；只接管 Google DNS 地址 | 系统/运营商解析器本来就会出现，硬编码其他 DNS 也可绕过 | 使用 `*:53`，禁止 system 上游 |
+| [Lucky](https://raw.githubusercontent.com/As-Lucky/Lucky/main/Lucky-Surge.conf) | 关闭 IPv6；system/国内/Cloudflare 普通 DNS并配 AliDNS、DNSPod DoH；部分使用 No Resolve 规则 | 未设置 `hijack-dns=*`; GEOIP 可解析；DIRECT 入口较多 | 保留 UDP REJECT，放弃 system 与混合普通 DNS |
+| [Coldvvater](https://gist.github.com/Coldvvater/8093bc6be4340b5324b4a343493becfe) | 关闭 IPv6；`*:53`；国内普通 DNS；加密 DNS被注释 | Final/Proxy 可选 DIRECT，普通 RULE-SET 与 GEOIP 会本地解析 | 吸收全端口接管，不吸收明文上游和最终直连 |
+| [Aegis](https://github.com/Thoseyearsbrian/Aegis) | 分开提供 IPv4/IPv6 配置；AliDNS+Cloudflare 加密 DNS；全网络接管、ICMP 关闭、UDP REJECT、恶意规则 `no-resolve`、FINAL REJECT | 普通服务 RULE-SET 与 `GEOIP,CN,DIRECT` 仍可解析；Smart 没有单节点检测边界 | 吸收加密 DNS、VIF、ICMP/UDP 和 no-resolve 思路，并扩展到所有运行时 RULE-SET；日常 Final 保持可用的 Proxy/REJECT |
+| [Blackmatrix7 规则库](https://github.com/blackmatrix7/ios_rule_script/tree/master/rule) | Surge IP 条目普遍附带 `no-resolve`，并提供聚合列表 | 它是规则数据，不负责 VIF、上游 DNS、IPv6 或最终策略 | 固定、筛选所需快照，并在 RULE-SET 调用层再次强制 `no-resolve` |
+
+其中最关键的反例是 `ipv6=false` 与 `ipv6-vif=disabled`。Surge 官方说明前者只停止普通域名的 AAAA 查询，IPv6 字面量仍可访问；后者不让原始 IPv6 进入 VIF。因此本配置保留 `ipv6=true` 与 `ipv6-vif=auto`，再用 `IP-CIDR6,::/0,Proxy,no-resolve` 处理公网 IPv6 字面量。
+
 ## 修改前后与利弊
 
 这里的“修改前”分两层。仓库公开 R12.16 是 31 个策略组、86 条活动规则；检查过程中形成的 `R12.16 Reviewed v3` 已有 33 个策略组和 98 条规则，但 Pegasus 仍从第三方地址加载。R12.17 合并了审阅稿中的配置修正，并完成资源自有化。
@@ -99,26 +115,29 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 | 安全规则 | 无独立安全组 | `Security` 默认 REJECT，含 REJECT-DROP 与 DIRECT | Pegasus 命中可阻断，也能在误报时人工关闭 | IOC 很旧且不能覆盖新威胁；DIRECT 开关被误选会关闭该层保护 |
 | STUN | 直接进入 Proxy | 进入 `UDP`，默认 Proxy，可选 DIRECT 或 REJECT | 对 WebRTC、游戏与 UDP 故障更容易分离排查 | DIRECT 会暴露真实公网 IP，必须只在明确需要时使用 |
 | 功能组显示 | ApplePush、AdBlock、Security、UDP 显示在策略页 | 四组保持原最优默认值并统一 `hidden=1` | 策略页面更简洁，减少误触 DIRECT 或关闭阻断的风险 | 临时排错前需要编辑私有配置取消隐藏 |
+| DNS/出口检测 | 测试域名跟随 Proxy/Smart，可能按站点使用不同节点 | 9 组探测域名和 `1.1.1.1/32` 出口探针进入可固定具体节点的 Privacy，默认 Fail-Closed | 同一轮检测只观察一个节点，能区分客户端路径与节点侧 DNS | 检测前多一步人工选节点；节点侧 DNS 不合格仍需换节点 |
+| RULE-SET 本地解析 | 混合列表的 IP 子规则可能为域名启动本地 DNS | 27 个运行时 RULE-SET 统一 `no-resolve` | 代理域名不在分流阶段暴露给本地 AliDNS | 只靠 IP 范围识别的域名可能落入后续 Proxy，而不是专用服务组 |
 | YouTube/Google | 依赖大列表首条命中 | `yt3.ggpht.com` 明确给 YouTube；通用 ggpht/gvt 给 Google | 共享基础设施归属更可预测 | 需要持续维护少量显式覆盖；未来域名归属变化要复核 |
 | Viu/HBO | HBO 的 `now.com` 父级后缀可能先命中 | HBO 前增加 `viu.now.com → Streaming` | HBO 与 Streaming 选择不同地区时，Viu 不会走错组 | 只覆盖当前确认的 Viu 后缀；新域名仍需观察 |
 | Game/Microsoft | Game 与 Microsoft 的共享登录、商店和云网段有抢占风险 | 登录/商店主机先给 Microsoft，`35.192.0.0/12` 先给 Proxy，Game 仍位于 Microsoft 前 | Xbox 等专属域名继续进入 Games，共享设施不被整个归入游戏 | IP 字面量命中该大网段时只能走通用 Proxy，不能自动识别具体服务 |
-| 中国 GEOIP | `GEOIP,CN,DIRECT` | `GEOIP,CN,DIRECT,no-resolve` | IP 规则不主动触发额外 DNS 解析，减少副作用 | 域名分流更依赖前面的域名规则是否完整 |
-| 文档与审计 | 规则、来源与测试基线较少 | 四份锁、15 个工具、78 项故障注入、24 项 ZIP 与 10 项发布清单测试 | 修改后可以复现和自动拦截回归 | 维护步骤更多，不能只手改一个列表后直接发布 |
+| 公网 IP 字面量 | 中国 GEOIP 可把 IPv4/IPv6 字面量直接放行 | 本地与服务规则后，`0.0.0.0/0`、`::/0` 统一进入 Proxy | 未知公网字面量不再因归属中国而暴露本机出口 | 未被专用 IP 规则覆盖的国内字面量失去直连优化 |
+| 文档与审计 | 规则、来源与测试基线较少 | 四份锁、15 个工具、90 项故障注入、24 项 ZIP 与 10 项发布清单测试 | 修改后可以复现和自动拦截回归 | 维护步骤更多，不能只手改一个列表后直接发布 |
 | GitHub Actions | 官方 Action 使用可移动的大版本标签；ZIP 只用包内校验和 | Action 固定提交；解压前验证包外整包 SHA-256；升级精确清理旧受管理文件 | 防止 ZIP 与内部校验和一起被替换，也避免旧发布文件残留 | 每次手动安装必须从独立渠道复制正确整包哈希；Action 升级仍需人工审阅 |
 
 ## 关键规则顺序检查
 
 以下顺序已写入审计器，不只依赖人工阅读：
 
-1. Pegasus 位于其他业务规则前，命中后进入 Security。
-2. APNs 位于通用 Apple 与最终规则前，进入 ApplePush。
-3. YouTube 位于 Google 前，显式共享域名覆盖又位于 YouTube 列表前。
-4. `viu.now.com` 位于 HBO.list 的 `now.com` 父级后缀前。
-5. BiliBiliIntl 位于 BiliBili 国内规则前。
-6. Game 位于 OneDrive 与 Microsoft 前；Microsoft 共享主机及 `35.192.0.0/12` 覆盖又位于 Game 前。
-7. China 与 Global 精确域名位于 STUN、GEOIP 和 Final 前。
-8. `PROTOCOL,STUN,UDP` 位于 `GEOIP,CN,DIRECT,no-resolve` 前。
-9. 最后一条保持 `FINAL,Final,dns-failed`。
+1. 9 组 DNS/出口检测域名与 `1.1.1.1/32` 出口探针位于全部运行资源和国内规则前，进入 Privacy。
+2. Pegasus 位于其他业务规则前，命中后进入 Security。
+3. APNs 位于通用 Apple 与最终规则前，进入 ApplePush。
+4. YouTube 位于 Google 前，显式共享域名覆盖又位于 YouTube 列表前。
+5. `viu.now.com` 位于 HBO.list 的 `now.com` 父级后缀前。
+6. BiliBiliIntl 位于 BiliBili 国内规则前。
+7. Game 位于 OneDrive 与 Microsoft 前；Microsoft 共享主机及 `35.192.0.0/12` 覆盖又位于 Game 前。
+8. China 与 Global 精确域名位于 STUN、公网字面量和 Final 前。
+9. `PROTOCOL,STUN,UDP` 位于 IPv4/IPv6 公网字面量失败关闭前。
+10. 最后一条保持 `FINAL,Final,dns-failed`。
 
 全部规则策略都能解析到存在的策略组或 Surge 内建策略。规则文件无重复活动行，DOMAIN-SET 只含域名，CIDR 可解析，Netflix 不含宽泛 `IP-CIDR`/`IP-CIDR6`，并保留 `IP-ASN,2906,no-resolve`。
 
@@ -143,6 +162,8 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 - Telegram 组没有 DIRECT；Final 没有 DIRECT；代理业务组没有 DIRECT。
 - `include-all-networks=true`、`include-apns=true` 保留，APNs 的唯一可用性例外仍是 ApplePush 的 Proxy 到 DIRECT 回落。
 - `ApplePush`、`AdBlock`、`Security`、`UDP` 均为 `hidden=1`；隐藏未改变其规则目标、成员顺序或默认路径。
+- `Privacy` 可见、默认 Fail-Closed、不含 DIRECT，并只从 NodePool 展开具体代理。
+- 27 个运行时 RULE-SET 均带 `no-resolve`；公网 IPv4/IPv6 字面量没有 DIRECT 兜底。
 - Wi-Fi 代理、热点代理和 Web 控制面板保持关闭。
 - `Fail-Closed` 和 NodePool 占位设计未改。
 
@@ -157,16 +178,16 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 | 服务来源锁 | 19 份通过 |
 | 服务从零重建 | 固定上游加显式锁输入，19 份 changed=0 |
 | 仓库维护列表披露锁 | 10 份数量、哈希、来源状态与许可说明通过 |
-| 配置审计 | R12.17、33 组、98 规则、30 资源，通过 |
+| 配置审计 | R12.17、34 组、109 规则、30 资源，通过 |
 | 规则审计 | 30 本地规则文件、全部数量和哈希通过 |
 | China/Global 精确域名 | 306/116，冲突 0 |
-| 故障注入 | 74/74 通过 |
+| 故障注入 | 90/90 通过 |
 | ZIP 白名单回归 | 24/24 通过 |
 | 严格发布清单回归 | 10/10 通过 |
 | JSON 锁文件解析 | 4/4 通过 |
 | 发布清单与双 SHA-256 清单 | 重新生成并逐项通过 |
 | 完整 ZIP 解压测试 | 66/66 文件通过 |
-| 解压后全量复审 | 配置、规则、来源锁与 108 项回归测试全部通过 |
+| 解压后全量复审 | 配置、规则、来源锁与 124 项回归测试全部通过 |
 | 确定性打包 | 从解压内容重打包后逐字节一致 |
 
 最终构建已经重新生成 `RELEASE_MANIFEST.txt` 与两份 SHA-256 清单，并对完整 ZIP 执行解压、校验和、解压后复审及确定性重打包比较。ZIP 自身的 SHA-256 位于包外交付说明中，避免归档把自身哈希写入自身造成递归变化。
@@ -174,9 +195,9 @@ AliDNS、Cloudflare 与华为连通性检测地址属于在线服务端点，不
 ## 发布前必须完成
 
 1. 把完整包按原目录结构上传到仓库，不能只上传 `Surge.conf` 或 `Rules/Pegasus.list`；手动工作流需要填写包外交付的整包 SHA-256。
-2. 提交完成后创建指向该提交的标签 `r12.17-20260825`。在此之前，配置中的 jsDelivr 地址预期返回 404。
-3. 等待 jsDelivr 同步后再刷新 Surge 外部资源。
+2. 确认原规则快照标签 `r12.17-20260825` 仍存在且未移动；DNS 补丁只改变主配置和审计元数据，不改写该不可变规则标签。
+3. 确认 jsDelivr 可读取该标签后再刷新 Surge 外部资源。
 4. 在私有副本中替换 NodePool 占位订阅，不得把真实地址提交到公开仓库。
-5. 在 Surge iOS 真机完成配置解析、节点导入、四个功能组隐藏、APNs、Telegram、流媒体地区、UDP/STUN、Wi-Fi 到蜂窝再回 Wi-Fi 的回归。
+5. 在 Surge iOS 真机完成配置解析、节点导入、四个功能组隐藏、Privacy 单节点 DNS/出口检测、APNs、Telegram、流媒体地区、UDP/STUN、Wi-Fi 到蜂窝再回 Wi-Fi 的回归。
 
 静态工具可以确认文本、来源、哈希、引用、顺序和包结构，不能模拟真实订阅内容、节点质量、运营商网络、地区版权响应或 Surge App 的运行时状态。因此真机项目属于发布门槛，不应被本报告的“通过”替代。

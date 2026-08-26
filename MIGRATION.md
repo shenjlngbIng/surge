@@ -2,7 +2,17 @@
 
 R12.17 把配置需要的最后一份第三方运行时静态资源收进自有仓库，并同步当前已经审阅的配置、锁文件、工具、工作流和文档。R12.16 的 Bilibili、Game/Microsoft、Netflix 和共享域名修正全部保留。
 
-`NodePool → Smart` 架构、Telegram、APNs、DNS 与失败关闭设计保持不变。公开配置中的订阅地址仍是不可路由占位符，真实订阅和凭据只能放在私有副本中。
+`NodePool → Smart` 架构、Telegram 与 APNs 保持不变。2026-08-26 的补丁收紧了 DNS、本地解析与公网 IP 字面量边界；公开配置中的订阅地址仍是不可路由占位符，真实订阅和凭据只能放在私有副本中。
+
+## 2026-08-26 DNS 与出口完整性补丁
+
+- 新增可见的 `Privacy = select, Fail-Closed, Proxy, ... include-other-group=NodePool`。Net.Coffee 与 IPPure 使用的 9 组站点/探测域名全部进入该组；检测前必须直接选择一个具体订阅节点，避免 Smart 的逐站点记忆在同一次测试中使用多个节点。
+- 27 个运行时 `RULE-SET` 统一增加 `no-resolve`。域名请求经过其中的 IP 子规则时不再触发本地 DNS；规则集中的域名项以及 IP 字面量匹配仍正常工作。
+- `dns.alidns.com` 与 `doh.pub` 的应用连接从 DIRECT 改为 Proxy。Surge 自己的 AliDNS DoH/DoT 仍由 `encrypted-dns-follow-outbound-mode=false` 在规则外直连，避免域名型代理节点产生 DNS—代理循环。
+- 删除 `GEOIP,CN,DIRECT,no-resolve`，改为 IPv4/IPv6 公网字面量统一进入 Proxy。明确的局域网、CGNAT 和已审阅服务 IP 规则仍在前面优先命中。
+- 基线由 33 个策略组、98 条活动规则和 78 项故障注入更新为 34 个策略组、109 条活动规则和 90 项故障注入。
+
+配置只能控制客户端接管、规则触发的本地解析和出口策略，不能替代理节点选择服务器端递归 DNS。固定具体节点后仍显示中国移动、阿里或与出口地区不一致的解析器时，应更换节点或要求节点提供方修正远端 DNS。
 
 ## R12.17 策略界面精简补丁
 
@@ -33,8 +43,9 @@ Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀�
 2. 用 R12.17 完整仓库文件替换公开基线，不要只替换主配置；使用安装工作流时填写包外公布的 `archive_sha256`。
 3. 从旧私有配置中只复制 `NodePool.policy-path` 的 URL。
 4. 不要复制旧版 `[Rule]`、服务策略组或规则文件，以免带回已修复的顺序和域名冲突。
-5. 提交后创建固定标签 `r12.17-20260825`，等待 jsDelivr 同步。
+5. 确认固定规则标签 `r12.17-20260825` 已存在；该标签属于原规则快照，不得移动到补丁提交。
 6. 在 Surge 中重新载入配置并刷新全部外部资源。
+7. 在 `Privacy` 中直接选一个具体节点，再执行 DNS/出口检测；不要用 Proxy 或地区 Smart 组做单节点验收。
 
 不要只上传 `Pegasus.list` 或只替换 `Surge.conf`。两者必须和 `Rules/r10.lock.json`、`Rules/resources.lock.json`、`Rules/maintained_sources.lock.json`、审计工具、清单及校验和保持同一版本。安装工作流只删除旧发布清单明确管理、而新版本已取消的文件，不会把用户自有文件当作发布残留清理。
 
@@ -43,8 +54,8 @@ Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀�
 新版使用两个规则文件，共用现有策略，不增加 Bilibili 策略组。
 
 ~~~ini
-RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBiliIntl.list,Streaming
-RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBili.list,DIRECT
+RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBiliIntl.list,Streaming,no-resolve,update-interval=-1
+RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@r12.17-20260825/Rules/BiliBili.list,DIRECT,no-resolve,update-interval=-1
 ~~~
 
 国际版规则排在国内版之前，先接住 `apiintl.biliapi.net`、`bilibili.tv`、`biliintl.com` 和国际版专用 CDN。国内版随后接管 `bilibili.com`、`biliapi.com`、`biliapi.net`、图片域名和视频 CDN。
@@ -102,12 +113,13 @@ Bahamut、Disney、HBO、Microsoft 和 Game 中的共享 CA、CDN、遥测与第
 
 - `NodePool` 仍为隐藏的 `select` 订阅容器，只有它持有 `policy-path`。
 - `AllServer` 与五个地区组仍为 `smart, Fail-Closed`。
+- `Privacy` 默认 Fail-Closed；DNS/出口检测前直接选择一个具体订阅节点。
 - Telegram 仍强制代理。
 - `ApplePush` 仍为 `Proxy → DIRECT` 回落。
 - `ApplePush`、`AdBlock`、`Security` 与 `UDP` 均为隐藏功能组。
 - `Security` 默认 REJECT，并在配置中保留 DIRECT 排错开关。
-- STUN 位于中国 GEOIP 前并进入隐藏的 `UDP`，该组默认选择 `Proxy`。
-- AliDNS DoH/DoT、53/853/8853 控制、CGNAT 与 `ls.apple.com` 直连均保持不变。
+- STUN 位于公网 IPv4/IPv6 字面量失败关闭前并进入隐藏的 `UDP`，该组默认选择 `Proxy`。
+- AliDNS 内部 DoH/DoT、53/853/8853 控制、CGNAT 与 `ls.apple.com` 直连均保留；应用生成的 AliDNS/DNSPod DoH 不再直连。
 
 ## 回滚
 

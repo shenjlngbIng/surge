@@ -11,20 +11,23 @@
 - 不把全部 Apple 流量改为代理；APNs 只进入 `ApplePush` Fallback。
 - 保留 `include-all-networks=true`、`include-apns=true` 和 `ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true`。
 - `ApplePush`、`AdBlock`、`Security` 与 `UDP` 必须保持 `hidden=1`；隐藏只控制界面可见性，不得借此改变其默认成员顺序或删除排错成员。
-- `NodePool` 必须保持隐藏的 `select` 订阅容器，只允许它持有 `policy-path`，不能由规则或可见策略组直接选择。
+- `NodePool` 必须保持隐藏的 `select` 订阅容器，只允许它持有 `policy-path`，不能作为规则目标或显式策略成员；`Privacy` 只可通过 `include-other-group=NodePool` 展开具体节点。
 - `AllServer` 和五个地区组必须保持 `smart, Fail-Closed`，且只能通过 `include-other-group=NodePool` 读取订阅节点。
+- `Privacy` 必须保持可见的 `select, Fail-Closed, Proxy`，不得加入 DIRECT；9 个受审计的 DNS/出口检测域名必须在远程和国内规则前进入 Privacy。
 - 除 `ApplePush` 外，不增加 `url-test`、`fallback` 或 `load-balance` 自动组，避免网络切换恢复全订阅集中测速。
 - 不删除 Smart 组中的显式 `Fail-Closed`。Smart 空组可能使用替代策略，显式哨兵是公开配置不静默直连的必要边界。
 - 不重新启用 `include-cellular-services`，除非同时给出运营商兼容性验证与回滚方案。
 - DNS 必须保持加密出站，禁止恢复 `system` 上游或明文直连绕过。
 - `encrypted-dns-follow-outbound-mode=false` 时，不增加不会参与内部解析链的 DOH、DOH3、DOQ 规则组。
+- `dns.alidns.com` 与 `doh.pub` 的应用连接不得恢复 DIRECT；Surge 内部加密 DNS 的规则外直连由 General 设置负责。
+- 所有运行时 `RULE-SET` 必须带 `no-resolve`，避免其中的 IP 子规则为代理域名触发本地解析。
 - `dns.alidns.com` 的 IPv4 与 IPv6 引导地址必须保留在同一个 Host 映射中。
 - 保留 `ls.apple.com` 和 `100.64.0.0/10` 的本地直连边界。
 - 不把 `Final` 改为默认直连。
 - 不删除规则快照、许可证或审计工具。
 - 精确域名集不得加入公共后缀、域名关键词或共享云/CDN；国内外条目不得重叠。
 - `BiliBiliIntl.list` 必须先于 `BiliBili.list`。国际版进入现有 `Streaming`，国内 API 与视频 CDN 进入 `DIRECT`，不得新增 Bilibili 专用策略组。
-- `PROTOCOL,STUN,UDP` 必须先于 `GEOIP,CN,DIRECT,no-resolve`；UDP 组默认选择 Proxy，DIRECT 仅用于用户明确排错。
+- `PROTOCOL,STUN,UDP` 必须先于公网 IPv4/IPv6 字面量失败关闭；`0.0.0.0/0` 与 `::/0` 均进入 Proxy 且带 `no-resolve`。UDP 组默认选择 Proxy，DIRECT 仅用于用户明确排错。
 - `DOMAIN-SUFFIX,viu.now.com,Streaming` 必须位于 HBO.list 前，避免 `now.com` 父级后缀抢先命中。
 - `Game.list` 必须先于 `OneDrive.list` 和 `Microsoft.list`，避免 Xbox、Minecraft、Bethesda 等条目失去作用。
 - Netflix 不得重新导入宽泛云厂商 CIDR；保留审核后的 `IP-ASN,2906,no-resolve`。
@@ -62,4 +65,4 @@ sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
 ```
 
-当前基线应报告 98 条活动规则、30 个仓库运行资源、33 个策略组、78 项故障注入测试、24 个 ZIP 安全回归和 10 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。
+当前基线应报告 109 条活动规则、30 个仓库运行资源、34 个策略组、90 项故障注入测试、24 个 ZIP 安全回归和 10 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。

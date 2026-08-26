@@ -4,6 +4,8 @@
 
 R12.17 在既有分流修正上完成运行资源自有化。Xbox、Minecraft、Bethesda 和 Forza 会先进入 `Games`，不会被 Microsoft 规则提前截获；Viu 也不会再被 HBO 的 `now.com` 父级后缀误分流。Netflix 删除了宽泛云网段，改用 `IP-ASN,2906,no-resolve`。Pegasus IOC 固定副本现已进入本仓库，Surge 运行时不再直接访问第三方规则仓库。
 
+2026-08-26 的 DNS/出口完整性补丁进一步禁止运行时 `RULE-SET` 为域名请求触发本地解析，移除公网 IP 字面量的中国 GEOIP 直连，并新增可固定单一真实节点的 `Privacy` 组。Net.Coffee 与 IPPure 使用的站点和探测端点会先进入该组，避免 Smart 按站点选择不同节点而把多个节点侧解析器混在同一次检测中。
+
 公开主配置地址
 
 https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
@@ -15,8 +17,8 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 配置版本 | R12.17 |
 | 推荐环境 | Surge iOS 5.14.6 或更高 |
 | 运行模式 | Rule |
-| 策略组 | 33 个 |
-| 主配置活动规则 | 98 条 |
+| 策略组 | 34 个 |
+| 主配置活动规则 | 109 条 |
 | 仓库运行资源 | 30 个 |
 | 普通 RULE-SET | 27 个 |
 | DOMAIN-SET | 3 个，含 1 个安全 IOC 和 2 个精确域名集 |
@@ -25,7 +27,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 精确域名交叉冲突 | 0 |
 | Pegasus IOC | 1,438 条 |
 | 第三方运行时 URL | 0 个 |
-| 配置故障注入测试 | 78 项 |
+| 配置故障注入测试 | 90 项 |
 | ZIP 路径回归测试 | 24 项 |
 | 发布清单与升级清理测试 | 10 项 |
 
@@ -40,6 +42,8 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 订阅接入 | 多个自动组或地区组分别填写 `policy-path` | 只有隐藏的 `NodePool` 持有订阅地址 | 订阅只下载和解析一次，来源关系更容易检查 |
 | 自动选路 | 用 `url-test`、`fallback` 按固定间隔测试整组节点 | `AllServer` 与五个地区组使用 Smart，并从 `NodePool` 取节点 | 自动选择会参考真实连接质量和站点记录，减少多个组重复测试同一订阅 |
 | 空订阅处理 | 自动组没有可用成员时可能被 Surge 临时替换为 DIRECT | 每个 Smart 组都显式保留 `Fail-Closed` 哨兵 | 订阅失效和地区零匹配会明确失败，避免无提示直连 |
+| DNS 检测 | 测试流量跟随自动组，多个探测域名可能使用不同节点 | `Privacy` 直接展开 `NodePool`，默认 Fail-Closed，检测前固定一个真实节点 | 同一次测试只观察一个节点；不合格节点可以明确淘汰 |
+| 本地解析 | 混合 RULE-SET 中的 IP 规则可能为域名触发 DNS | 所有运行时 RULE-SET 统一带 `no-resolve` | 代理域名不会为了检查 IP 子规则而交给本地 AliDNS |
 | 服务策略 | 不少模板给流媒体、AI 或最终策略同时提供代理和 DIRECT | 代理服务组不提供 DIRECT，`Final` 只提供 `Proxy` 与 `REJECT` | 临时选错策略时也不容易越过代理边界 |
 | 推送可达性 | Telegram 数据与 Apple 推送经常跟随同一个代理组 | Telegram 保持代理，APNs 单独进入 `ApplePush` | 代理故障时只有 APNs 可以按顺序回落直连，应用数据仍受原策略约束 |
 | 规则来源 | 直接引用第三方仓库当前分支，内容会随上游更新 | 19 个服务源和 1 个安全资源固定提交、Blob 与 SHA-256；Surge 只加载本仓库发布标签 | 每次发布所用规则可以复查，第三方异常变化不会直接进入设备 |
@@ -49,7 +53,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 
 ### 节点来源只有一个入口
 
-`NodePool` 是隐藏的订阅容器。它使用 `select`，只负责读取 `policy-path`，不会承担业务流量，也不会主动测试整份订阅。`AllServer` 和五个地区组通过 `include-other-group=NodePool` 取得真实节点，服务组再选择这些稳定的上层策略。
+`NodePool` 是隐藏的订阅容器。它使用 `select`，只负责读取 `policy-path`，不会承担业务流量，也不会主动测试整份订阅。`AllServer`、五个地区组和可见的 `Privacy` 通过 `include-other-group=NodePool` 取得真实节点；日常服务选择 Smart 上层策略，隐私检测则在 `Privacy` 中直接固定一个具体节点。
 
 这种分层把节点来源、自动选择和业务分流拆开了。订阅地址只出现一次，地区正则也只作用于同一个节点池。节点重复、策略组各自下载订阅、多个自动组同时测试等问题都更容易定位。
 
@@ -77,13 +81,15 @@ Surge 在策略组没有可用代理成员时可能临时使用 DIRECT。R12.17 
 
 Surge 使用首条命中结果，两个正确的规则文件放错先后仍会产生错误分流。R12.17 明确检查 YouTube 位于 Google 前，Game 位于 OneDrive 和 Microsoft 前，专用流媒体位于通用媒体和中国域名兜底前。
 
-`tools/audit_config.py` 会检查这些位置关系。78 项故障注入测试还会故意改坏策略类型、成员、可见性、资源归属、规则顺序和失败边界，确认审计器能够拦住错误。配置维护因此不只依赖人工浏览几百行文本。
+`tools/audit_config.py` 会检查这些位置关系。90 项故障注入测试还会故意改坏策略类型、成员、可见性、资源归属、规则顺序、DNS 本地解析抑制、IPv4/IPv6 字面量和失败边界，确认审计器能够拦住错误。配置维护因此不只依赖人工浏览几百行文本。
 
 ### DNS 和本地网络有明确边界
 
-配置同时提供 AliDNS 的普通 DNS、DoH 和 DoT，并为加密 DNS 写入固定引导地址。`encrypted-dns-follow-outbound-mode=false` 用来避免内部解析跟随业务代理形成循环。传统 53 端口会被 Surge 接管，进入规则系统的 53、853 和 8853 外部连接受到单独控制。
+配置同时提供 AliDNS 的普通 DNS、DoH 和 DoT，并为加密 DNS 写入固定引导地址。`encrypted-dns-follow-outbound-mode=false` 用来避免内部解析跟随域名型代理节点形成循环。传统 53 端口会被 Surge 接管，进入规则系统的 53、853 和 8853 外部连接受到单独控制。
 
-这个设置也意味着 Surge 自己的加密 DNS 连接固定使用 DIRECT，不会跟随 AI、流媒体或地区策略。DoH/DoT 会加密查询内容，但 AliDNS 仍是解析提供方；没有 MITM 时，端口规则也无法识别所有伪装为普通 HTTPS 的应用内置 DoH。因此这里的“DNS 防绕过”指常见端口和已知服务边界，不宣称绝对阻断任意应用自带解析器。
+这个设置也意味着 Surge 自己的加密 DNS 连接固定使用 DIRECT，不会跟随 AI、流媒体或地区策略。应用自己连接 `dns.alidns.com`、`doh.pub` 或其他已知公共 DNS 域名时则进入代理，不再复用内部引导的 DIRECT 例外。全部运行时 `RULE-SET` 带 `no-resolve`，所以其中的 IP 子规则不会为了尚未解析的代理域名启动本地查询。
+
+这仍不能替代理节点决定服务器端解析器。代理协议通常把原始域名交给远端节点解析；如果固定单一节点后仍出现 China Mobile、AliDNS 或与节点出口不一致的解析器，问题位于节点服务端，只能更换节点或由节点提供方调整 DNS。没有 MITM 时也无法按协议识别任意伪装成普通 HTTPS 的未知 DoH，但这类连接会受域名规则、Privacy/Proxy 与最终失败关闭约束，不会获得全局 DIRECT 兜底。
 
 局域网、CGNAT、回环和 IPv6 本地范围均有明确规则。Wi-Fi 代理入口、热点入口和 Web 控制面板默认关闭。节点不支持 UDP 时连接会拒绝，QUIC 采用 `per-policy`，STUN 进入隐藏的 `UDP` 组且默认仍为 `Proxy`。这些选择共同限定了哪些流量可以离开代理路径。
 
@@ -93,7 +99,7 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 ### 发布包可以复现和验证
 
-仓库把配置当作一套需要构建和验收的文件发布。四份锁文件分别记录运行配置不变量、服务规则上游、独立静态资源来源和仓库维护列表披露。发布前会执行配置审计、规则审计、精确域名交叉检查、固定来源校验、78 项故障注入、24 项 ZIP 路径测试和 10 项严格发布清单测试。
+仓库把配置当作一套需要构建和验收的文件发布。四份锁文件分别记录运行配置不变量、服务规则上游、独立静态资源来源和仓库维护列表披露。发布前会执行配置审计、规则审计、精确域名交叉检查、固定来源校验、90 项故障注入、24 项 ZIP 路径测试和 10 项严格发布清单测试。
 
 最终 ZIP 使用固定顺序、时间戳和权限，并附带文件清单与两份 SHA-256 清单。`tools/release_inventory.py` 是打包、发布清单和校验和共同使用的唯一允许清单；未知文件、`.env`、日志、符号链接和特殊文件会让构建失败。安装工作流还会先核对用户从包外取得的整包 SHA-256，再限制文件数量、单文件大小、解压总量和路径类型。升级时只清理旧发布清单中存在、但新清单已取消的受管理文件，不碰用户自有路径。
 
@@ -103,12 +109,13 @@ Surge 使用首条命中结果，两个正确的规则文件放错先后仍会�
 
 1. Surge 接管符合条件的网络和 DNS 请求。
 2. 本地网段、CGNAT、回环地址和必要的 Apple 系统查询先行直连。
-3. Pegasus IOC 先进入可关闭的 `Security` 阻断组。
-4. APNs、广告、AI、流媒体和国际服务按专用规则匹配。
-5. 中国与全球精确域名表负责补充常用服务边界。
-6. STUN 进入 `UDP` 组，默认仍走代理。
-7. 未命中的中国 IP 由 `GEOIP,CN,DIRECT,no-resolve` 处理。
-8. 其余连接落入 `FINAL,Final,dns-failed`。
+3. DNS/出口检测端点先进入可固定具体节点的 `Privacy`。
+4. Pegasus IOC 先进入可关闭的 `Security` 阻断组。
+5. APNs、广告、AI、流媒体和国际服务按专用规则匹配。
+6. 中国与全球精确域名表负责补充常用服务边界。
+7. STUN 进入 `UDP` 组，默认仍走代理。
+8. 未命中的公网 IPv4/IPv6 字面量强制进入 `Proxy`。
+9. 其余连接落入 `FINAL,Final,dns-failed`。
 
 Surge 从上到下检查规则，首条命中决定策略。专用规则必须排在宽泛规则前面。YouTube 位于 Google 前，Game 位于 OneDrive 和 Microsoft 前，专用流媒体位于通用媒体与中国域名兜底前。顺序本身就是配置行为的一部分。
 
@@ -250,9 +257,15 @@ hijack-dns = *:53
 
 ### 应用自带 DNS
 
-配置接管发往 53 端口的传统 DNS，并对目的端口 53、853 和 8853 设置 `REJECT`。已知公共 DNS 域名按直连或代理边界处理。
+配置接管发往 53 端口的传统 DNS，并对目的端口 53、853 和 8853 设置 `REJECT`。已知公共 DNS 域名统一进入代理；`dns.alidns.com` 的 DIRECT 仅属于 Surge 内部加密 DNS 的规则外引导，不再提供给应用连接。
 
 这些规则控制进入 Surge 的应用连接。它们不会替代 `encrypted-dns-server` 指定的内部解析链。
+
+### DNS 泄漏检测
+
+`Privacy` 默认选择 `Fail-Closed`，并直接展示 `NodePool` 中的具体代理。检测前在该组里手动选择一个真实节点，不要选择 `Proxy`、`AllServer` 或地区 Smart 组；随后先断开再重连 Surge，清理 Safari 对应网站数据或使用新的无痕标签页，再依次打开 Net.Coffee 与 IPPure。
+
+同一轮检测中，网页出口、IPv4/IPv6 出口和解析器应属于所选节点或其明确使用的远端 DNS。Net.Coffee 用于读取网页出口的 `1.1.1.1/32` 也固定进入 Privacy。若仍看到本机中国移动 IPv4/IPv6，先检查 `Privacy` 是否确实命中具体节点以及 `UDP` 是否仍为 Proxy；若只看到中国移动/阿里等解析器而网页出口仍在香港，则是节点服务端解析器，不是客户端配置能重写的链路，应更换节点。
 
 ### 本地网络
 
@@ -300,7 +313,7 @@ Final = select, Proxy, REJECT, no-alert=0, hidden=0, include-all-proxies=0
 FINAL,Final,dns-failed
 ~~~
 
-未匹配流量默认进入 `Proxy`。用户可以手动把 `Final` 改为 `REJECT`，配置不提供最终直连选项。规则集加载失败时，剩余流量仍会继续走后面的精确域名、GEOIP 和 Final，不会自动放行到 DIRECT。
+未匹配流量默认进入 `Proxy`。用户可以手动把 `Final` 改为 `REJECT`，配置不提供最终直连选项。规则集加载失败时，剩余流量仍会继续走后面的精确域名、公网 IP 字面量失败关闭和 Final，不会自动放行到 DIRECT。
 
 ## 规则顺序
 
@@ -309,7 +322,7 @@ FINAL,Final,dns-failed
 1. 局域网发现与组播地址。
 2. 私网、CGNAT、回环地址和本地主机。
 3. Apple 系统配置查询。
-4. DNS 域名与端口控制。
+4. 隐私检测端点、DNS 域名与端口控制。
 5. 本仓库 Pegasus 安全域名表。
 6. APNs。
 7. Apple 国内服务、微信和明确直连项。
@@ -319,7 +332,7 @@ FINAL,Final,dns-failed
 11. Telegram、GitHub、X 和 Google。
 12. Game、OneDrive 和 Microsoft，并提前处理共享登录域名和过宽云网段。
 13. 中国与全球精确域名表。
-14. STUN、中国 GEOIP 和 Final。
+14. STUN、公网 IPv4/IPv6 字面量失败关闭和 Final。
 
 Game 排在 Microsoft 前。这样，两个规则集中重叠的 Xbox、Minecraft、Bethesda 和 Forza 域名会进入 `Games`。Google 的下载、更新和消息域名不再留在 `Direct.list`，现在统一进入 `Google`。
 
@@ -329,7 +342,7 @@ Game 排在 Microsoft 前。这样，两个规则集中重叠的 Xbox、Minecraf
 
 Surge.conf 通过 jsDelivr 加载仓库中的 30 个规则文件。运行地址统一固定到发布标签 `r12.17-20260825`。其中 19 份服务快照保留固定上游、提交、Blob、SHA-256 和本地处理说明；Pegasus 另有独立来源锁；其余 10 个文件由仓库直接维护，并在 `maintained_sources.lock.json` 中逐一披露。设备运行时没有第三方静态规则 URL。
 
-这里的“运行资源自有化”专指 30 个外部 `RULE-SET`/`DOMAIN-SET` 的内容进入自己的仓库，不表示所有网络基础设施都由仓库托管。文件仍由 jsDelivr/GitHub 标签交付；`GEOIP,CN` 使用 Surge 默认 GeoIP Country 数据库，9 条 `IP-ASN` 使用应用内置 ASN 数据；AliDNS、Cloudflare、华为连通性测试和私有 `NodePool` 也是外部服务。GeoIP 会按 `disable-geoip-db-auto-update=false` 更新，ASN 数据随 Surge 应用更新。这些属于公开披露的系统依赖，不计入 30 个静态规则文件。
+这里的“运行资源自有化”专指 30 个外部 `RULE-SET`/`DOMAIN-SET` 的内容进入自己的仓库，不表示所有网络基础设施都由仓库托管。文件仍由 jsDelivr/GitHub 标签交付；9 条 `IP-ASN` 使用 Surge 应用内置 ASN 数据；AliDNS、Cloudflare、华为连通性测试和私有 `NodePool` 也是外部服务。ASN 数据随 Surge 应用更新。这些属于公开披露的系统依赖，不计入 30 个静态规则文件。
 
 | 规则文件 | 策略 | 活动条目 |
 | --- | --- | ---: |
@@ -402,7 +415,7 @@ R12.17 保留并验证下面几类误分流处理。
 | tools/audit_config.py | 配置结构、策略组和规则顺序审计 |
 | tools/audit_rules.py | 规则库存、哈希和语义边界审计 |
 | tools/audit_precise_domains.py | 中国与全球精确域名审计 |
-| tools/test_audit_config.py | 78 项配置故障注入测试 |
+| tools/test_audit_config.py | 90 项配置故障注入测试 |
 | tools/test_stage_surge_zip.py | ZIP 路径白名单回归测试 |
 | tools/release_inventory.py | 打包、清单与校验和共用的严格发布允许清单 |
 | tools/test_release_inventory.py | 未知文件、符号链接与升级清理回归测试 |
@@ -474,10 +487,10 @@ python3 tools/package_release.py --output ../Surge-R12.17-self-maintained-202608
 PASS: repository-only runtime resources=30 third_party_runtime_urls=0 embedded_rule_contents=0
 PASS: verified pinned resources=1 entries=1438
 PASS: verified upstream lock services=19
-PASS R12.17 groups=33 rules=98 runtime_resources=30
-PASS R12.17 runtime_sources=30 local_rule_files=30 rules=98 pegasus=1438
+PASS R12.17 groups=34 rules=109 runtime_resources=30
+PASS R12.17 runtime_sources=30 local_rule_files=30 rules=109 pegasus=1438
 PASS precise domains DIRECT=306 Proxy=116 conflicts=0
-PASS R12.17 mutations=78
+PASS R12.17 mutations=90
 PASS: strict release inventory regression cases=10
 PASS: ZIP allowlist regression cases=24
 ~~~
@@ -548,6 +561,12 @@ python3 tools/update_external_resources.py --download --check
 
 恢复 `system` DNS 可能暂时掩盖问题，也会改变公开配置的解析边界。先定位订阅服务器、代理节点域名或网络本身的解析故障。
 
+### DNS 检测仍显示中国移动或真实 IPv6
+
+先确认 `Privacy` 不是默认的 `Fail-Closed`，也没有选 `Proxy`，而是直接选中了一个订阅里的具体节点。Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip、ipinfo、ipapi 与 IPIP 的相关端点都应命中 `Privacy`。
+
+如果网页出口和 DNS 解析器随所选节点一起变化，原结果来自 Smart 的逐站点选路；保持固定节点即可。如果网页出口是香港而解析器仍是中国移动或阿里，说明该节点在服务端使用这些解析器，应换节点。如果页面仍直接显示本机 `111.*` 或 `2409:*`，查看最近请求并确认没有私有模块覆盖 `include-all-networks`、`ipv6-vif`、`UDP` 或这些 Privacy 规则。
+
 ### 局域网设备无法访问代理
 
 公开配置关闭了 Wi-Fi 和热点代理入口。需要把 iPhone 用作局域网代理或网关时，应在私有副本中单独评估访问控制和同网段风险。
@@ -574,6 +593,7 @@ python3 tools/update_external_resources.py --download --check
 
 - [ ] `Surge.conf` 仍使用 `example.invalid` 占位符
 - [ ] `NodePool` 为 `select` 和 `hidden=1`
+- [ ] `Privacy` 可见、默认 Fail-Closed、只从 `NodePool` 展开具体节点且不含 DIRECT
 - [ ] `ApplePush`、`AdBlock`、`Security`、`UDP` 均为 `hidden=1`，默认成员顺序未改变
 - [ ] 只有 `NodePool` 持有 `policy-path`
 - [ ] `AllServer` 与五个地区组均为 `smart, Fail-Closed`
@@ -581,7 +601,9 @@ python3 tools/update_external_resources.py --download --check
 - [ ] ApplePush 顺序为 Proxy、DIRECT
 - [ ] BiliBiliIntl 位于 BiliBili 国内规则前，策略分别为 Streaming 与 DIRECT
 - [ ] `Pegasus.list` 从本仓库固定标签加载，`Security` 保留 DIRECT 排错开关
-- [ ] STUN 位于 `GEOIP,CN,DIRECT,no-resolve` 前并进入 UDP 组
+- [ ] STUN 位于公网 IPv4/IPv6 失败关闭规则前并进入 UDP 组
+- [ ] `IP-CIDR,0.0.0.0/0` 与 `IP-CIDR6,::/0` 均进入 Proxy 且带 `no-resolve`
+- [ ] 9 个隐私检测域名与 `1.1.1.1/32` 出口探针均进入 Privacy，AliDNS/DNSPod 应用 DoH 域名不再 DIRECT
 - [ ] `viu.now.com` 位于 HBO.list 前并进入 Streaming
 - [ ] Google/YouTube 与 Microsoft/Game 的共享基础设施覆盖仍在专用规则前
 - [ ] Game 位于 OneDrive 和 Microsoft 前
@@ -589,10 +611,11 @@ python3 tools/update_external_resources.py --download --check
 - [ ] AliDNS 的三个引导地址仍在同一 Host 行
 - [ ] 53、853 和 8853 端口控制仍在
 - [ ] 30 个运行时规则地址均属于本仓库并固定到 `r12.17-20260825`
+- [ ] 27 个运行时 RULE-SET 均带 `no-resolve`
 - [ ] `Surge.conf` 中不存在第三方 RULE-SET 或 DOMAIN-SET URL
 - [ ] 上传提交后已创建同名发布标签
-- [ ] 30 个运行资源、33 个策略组与 98 条活动规则审计通过
-- [ ] 78 项配置测试、24 项 ZIP 测试与 10 项发布清单测试通过
+- [ ] 30 个运行资源、34 个策略组与 109 条活动规则审计通过
+- [ ] 90 项配置测试、24 项 ZIP 测试与 10 项发布清单测试通过
 - [ ] 手动安装使用包外 SHA-256，旧受管理文件清理测试通过
 - [ ] 发布清单与两份 SHA-256 清单已刷新
 - [ ] 完整 ZIP 已重新生成并通过内容检查
