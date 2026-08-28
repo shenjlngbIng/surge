@@ -1,11 +1,11 @@
 {
-  "schema": 17,
+  "schema": 18,
   "mode": "repository-plus-reviewed-dynamic-no-embedded-content",
-  "profile": "Surge iOS Privacy + Push R13.3 Domestic Performance",
+  "profile": "Surge iOS Privacy + Push R13.4 Strict DNS",
   "generated": "2026-08-28",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "03439367da4078b16e6a7b9bb94482ef6896ff69f113f66b3da8cefc7d753fe6",
-  "profile_lines": 353,
+  "profile_sha256": "ddca552fcce4b4d04f2b8f254fefd152423d042200d8b0bec93215effb64069b",
+  "profile_lines": 358,
   "active_rules": 130,
   "runtime_resources": 33,
   "immutable_repository_resources": 30,
@@ -21,13 +21,16 @@
     "local_rule_file_count": 30,
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
-      "ApplePush"
-    ],
-    "visible_control_groups": [
+      "ApplePush",
       "AdBlock",
       "Security",
       "UDP",
       "Domestic"
+    ],
+    "visible_control_groups": [
+      "Final",
+      "Proxy",
+      "NodePool"
     ],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
@@ -64,7 +67,8 @@
       "domestic": {
         "mode": "select",
         "default": "DIRECT",
-        "fallback": "Proxy"
+        "fallback": "Proxy",
+        "hidden": true
       }
     },
     "security_resources": [
@@ -97,8 +101,9 @@
       "dynamic_supplement": "domestic.conf",
       "pinned_precise_set": "China.list",
       "policy": "Domestic",
-      "geoip": "GEOIP,CN,Domestic",
-      "geoip_resolves_unmatched_domains": true
+      "geoip": "GEOIP,CN,Domestic,no-resolve",
+      "geoip_resolves_unmatched_domains": false,
+      "unmatched_domain_fallback": "Final/Proxy"
     },
     "dns": {
       "dns_server": "223.5.5.5, 223.6.6.6",
@@ -140,6 +145,8 @@
       ],
       "domestic_resolver_policy": "Domestic",
       "foreign_resolver_policy": "Proxy",
+      "unmatched_domains_force_local_resolution": false,
+      "proxy_hostname_uses_remote_resolution": true,
       "bootstrap": {
         "dns.alidns.com": [
           "223.5.5.5",
@@ -175,7 +182,7 @@
     "diagnostic_policy": "Proxy",
     "runtime_rulesets_no_resolve": true,
     "public_ip_literals": {
-      "china": "GEOIP,CN,Domestic",
+      "china": "GEOIP,CN,Domestic,no-resolve",
       "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
       "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve"
     },
@@ -535,11 +542,11 @@
       "kind": "DOMAIN-SET",
       "url": "https://ruleset.skk.moe/List/domainset/reject_phishing.conf",
       "policy": "Security",
-      "active_entries": 147468,
-      "size_bytes": 3146611,
-      "last_updated": "2026-08-28T01:29:14.909Z",
-      "content_hash_v1": "jnANidk61SqlvRh5kgBP11oYKdKDXv4FW74MJQMkRKo",
-      "sha256": "c7dd0c7429e1f11168b1e1923a54defbca6403f13ba7e10246b3b87b5c367f4e",
+      "active_entries": 147474,
+      "size_bytes": 3146841,
+      "last_updated": "2026-08-28T05:59:58.088Z",
+      "content_hash_v1": "ZZWjEn5pEka4NbiG9zg0OkMmib0aU6vxkPj1mS7BkE4",
+      "sha256": "7c7b64d378542824170c87cf63511bc67974db39c6894493153f9d003a89756e",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
       "release_audited": "2026-08-28"
@@ -549,11 +556,11 @@
       "kind": "DOMAIN-SET",
       "url": "https://ruleset.skk.moe/List/domainset/reject.conf",
       "policy": "AdBlock",
-      "active_entries": 135304,
-      "size_bytes": 3014590,
-      "last_updated": "2026-08-28T01:29:14.909Z",
-      "content_hash_v1": "jDl48RvMOlT9NZkctTPw0olNsUOXsx7ReIsivzFh0k0",
-      "sha256": "5ceb8c9903e4fc967722eab763a91e7d5ef91fcbe9bad71d1c378cf5ad800e4d",
+      "active_entries": 135224,
+      "size_bytes": 3013194,
+      "last_updated": "2026-08-28T05:59:58.088Z",
+      "content_hash_v1": "sYj8bnVsQRgGiRCGGukfGJm3KSLJL0-r7zFAuhD692g",
+      "sha256": "4b87642adc8c58c0336b58a570abf33342b81043f358691fed16e207be028b49",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
       "release_audited": "2026-08-28"
