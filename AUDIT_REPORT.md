@@ -1,16 +1,16 @@
-# Surge R13.3 Domestic Performance 全量审计报告
+# Surge R13.4 Strict DNS 全量审计报告
 
 审计日期：2026-08-28
 
 ## 结论
 
-R13.3 的静态结构、策略引用、循环依赖、规则顺序、R13.2 保留性、本地规则库存、来源锁、故障注入、发布白名单、ZIP 路径安全、清单和双份 SHA-256 检查通过。
+R13.4 的静态结构、策略引用、循环依赖、规则顺序、R13.3 保留性、本地规则库存、来源锁、动态端点格式、故障注入、发布白名单、ZIP 路径安全、清单和双份 SHA-256 检查通过。
 
-可以作为完整候选包发布，但国内软件体感、运营商路径、节点服务端 DNS、APNs、UDP 和 iOS 后台行为仍需 Surge iOS 真机验证。静态审计不能代替设备运行结果。
+本版解决的是代理域名在末端 CN GeoIP 处被强制交给本地 DoH 的问题。它没有通过给检测网站增加特例来伪装结果，也没有删除策略组、规则、规则文件或订阅入口。节点服务端 DNS、运营商路径、APNs、UDP 和 iOS 后台行为仍需 Surge iOS 真机验证。
 
-## R13.2 保留性
+## R13.3 保留性
 
-| 检查项 | R13.2 | R13.3 | 结果 |
+| 检查项 | R13.3 | R13.4 | 结果 |
 | --- | ---: | ---: | --- |
 | 策略组 | 34 | 34 | 34/34 保留 |
 | 规则匹配条件 | 130 | 130 | 130/130 保留 |
@@ -22,10 +22,12 @@ R13.3 的静态结构、策略引用、循环依赖、规则顺序、R13.2 保�
 | `Fail-Closed` | `127.0.0.1:1` | 相同 | 保留 |
 | APNs、AI、流媒体、游戏等服务组 | 存在 | 存在 | 保留 |
 
-本版没有删除规则，只改变 17 条现有规则的策略行为或选项，并调整其中 16 条的位置。
+主配置只有五项功能行为变化。
 
-- 16 个大陆应用 DNS 主机从 `Proxy` 改为 `Domestic`，移动到通用 DNS 端口拒绝之前。
-- `GEOIP,CN,Domestic,no-resolve` 改为 `GEOIP,CN,Domestic`。
+- `GEOIP,CN,Domestic` 改为 `GEOIP,CN,Domestic,no-resolve`。
+- `AdBlock`、`Security`、`UDP` 和 `Domestic` 的 `hidden=0` 改为 `hidden=1`。
+
+四个隐藏组的类型、成员顺序、默认选择和规则引用保持不变。隐藏只影响策略控制面板显示，不改变规则执行。
 
 ## 配置结构
 
@@ -46,44 +48,35 @@ R13.3 的静态结构、策略引用、循环依赖、规则顺序、R13.2 保�
 | 订阅占位符 | 恰好 1 处 |
 | 主配置内嵌规则快照 | 0 |
 
-`Surge.conf` 为 UTF-8、LF、无 BOM、无 NUL，并以换行结束。主配置 SHA-256 为 `03439367da4078b16e6a7b9bb94482ef6896ff69f113f66b3da8cefc7d753fe6`。
+`Surge.conf` 为 UTF-8、LF、无 BOM、无 NUL，并以换行结束。主配置 SHA-256 为 `ddca552fcce4b4d04f2b8f254fefd152423d042200d8b0bec93215effb64069b`。
 
-## 国内性能修正
+## 严格 DNS 修正
 
-R13.2 中 16 个大陆 DNS 主机规则位于通用端口拒绝之后并固定进入 `Proxy`。应用自带 DoH 时，这会让国内应用的解析连接绕海外节点，增加握手时延，并可能影响国内 CDN 选路。
+R13.3 的末端 CN GeoIP 会为未命中且尚未解析的域名触发本地解析。配置中的 AliDNS 与 DNSPod DoH 由 Surge 内部直连，因此代理网页可能出现境外出口和大陆解析器并存。
 
-R13.3 的顺序为：
+R13.4 的末端顺序为：
 
-1. 局域网与本地主机。
-2. Apple Wi-Fi 门户和 STUN。
-3. 16 个大陆应用 DNS 主机进入 `Domestic`。
-4. 其余公网 53、853、8853 端口拒绝。
-5. Apple 引导、出口诊断和 13 个境外应用 DNS 主机。
-6. 安全、广告和服务分流。
-7. Domestic/China/Global 精确规则。
-8. 可解析的 `GEOIP,CN,Domestic`。
-9. 公网 IPv4、IPv6 `Proxy` 兜底与唯一 `FINAL`。
+1. 动态国内补充与固定 China 精确域名进入 `Domestic`。
+2. 固定 Global 精确域名进入 `Proxy`。
+3. `GEOIP,CN,Domestic,no-resolve` 只判断已有 IP 的连接。
+4. 公网 IPv4 与 IPv6 字面量进入 `Proxy`。
+5. 未命中域名落入 `FINAL,Final,dns-failed`，`Final` 默认选择 `Proxy`，由代理侧解析主机名。
 
-审计器要求 16 条大陆 DNS 规则完整、连续、全部指向 `Domestic`，并位于 STUN 与端口拒绝之间。任何一条恢复为 `Proxy`/`DIRECT`、缺失或移动到拒绝之后都会失败。13 条境外 DNS 规则同样要求完整顺序和 `Proxy` 策略。
+`encrypted-dns-follow-outbound-mode=false` 保留。直接改成 `true` 不能作为严格隔离保证，因为域名型代理服务器在启动时可能需要先解析自身主机名，形成依赖并触发直连回退。当前方案在代理域名边界和代理节点启动可用性之间取了更稳妥的平衡。
 
-`Domestic` 默认仍是 `DIRECT`，用户在境外或受限网络中可以整体切到 `Proxy`。未经审阅的公网 DoT 仍被 853 端口规则拒绝。
+R13.3 的国内性能修正仍保留。16 个已审阅大陆应用 DNS 主机完整、连续地位于 STUN 之后和通用端口拒绝之前，并进入默认 `DIRECT` 的 `Domestic`。13 个境外应用 DNS 主机保持固定顺序并进入 `Proxy`。其余公网 53、853、8853 仍拒绝。
 
-## GeoIP 行为
+## 界面隐藏审计
 
-末端 CN GeoIP 去掉 `no-resolve` 后，尚未命中域名规则的请求可以先解析，再按中国 IP 进入 `Domestic`。这是国内兜底实际覆盖未收录服务的必要条件。
+| 策略组 | 默认成员 | R13.4 可见性 | 规则与功能 |
+| --- | --- | --- | --- |
+| `ApplePush` | `Proxy`，后备 `DIRECT` | 隐藏 | 保留 |
+| `AdBlock` | `REJECT` | 隐藏 | 固定 Ads 与动态 reject 保留 |
+| `Security` | `REJECT` | 隐藏 | 动态钓鱼与固定 Pegasus 保留 |
+| `UDP` | `Proxy` | 隐藏 | STUN 与 UDP 策略保留 |
+| `Domestic` | `DIRECT` | 隐藏 | 国内规则、共享云、China 与已解析 CN IP 保留 |
 
-代价是这类未命中域名可能新增一次 DNS 查询，并依赖当前 DoH 响应与 Surge GeoIP 数据库。非中国 IP 继续落入紧随其后的 `0.0.0.0/0` 或 `::/0` `Proxy` 规则，不会获得新的直连兜底。
-
-所有 `IP-CIDR` 和 `IP-CIDR6` 规则仍通过地址族与语法检查，并保留 `no-resolve`。
-
-## 策略与 DNS 边界
-
-- `Proxy` 默认选择 `AllServer`，`NodePool` 仍是唯一订阅入口和可见手动节点池。
-- `AllServer` 与五个地区组仍为 Smart，只从 `NodePool` 导入代理，并保留 `Fail-Closed`。
-- `AdBlock`、`Security`、`UDP` 和 `Domestic` 可见；`ApplePush` 隐藏并按 Proxy、DIRECT 后备。
-- Surge 自身仍使用 AliDNS 与 DNSPod 两个 DoH，`encrypted-dns-follow-outbound-mode=false`，证书校验开启。
-- 两个 DoH 可能同时看到查询，这不是匿名 DNS 设计。
-- `hijack-dns=*:53`、Host 引导、IPv6 VIF、局域网限制和公网端口控制保持不变。
+审计器要求这五个组精确为 `hidden=1`。`Final`、`Proxy`、`NodePool`、Smart 地区组和服务组保持可见。需要人工覆盖辅助组时，只在私人副本中临时改为 `hidden=0`。
 
 ## 规则来源
 
@@ -93,46 +86,47 @@ R13.3 的顺序为：
 https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/
 ```
 
-包内 30 份 `.list` 与 R13.2 字节一致。Pegasus、19 份服务规则和 10 份仓库维护规则的来源锁继续通过。
+包内 30 份 `.list` 与 R13.3 字节一致。Pegasus、19 份服务规则和 10 份仓库维护规则的来源锁继续通过。
 
-三个动态运行资源的发布基线保持不变：
+三个动态运行资源已于 2026-08-28 重新下载并通过 HTTP、UTF-8、格式、重复行和 8 MiB 上限检查。
 
-| 资源 | 类型 | 策略 | 条目 | SHA-256 |
-| --- | --- | --- | ---: | --- |
-| `reject_phishing.conf` | DOMAIN-SET | Security | 147,468 | `c7dd0c7429e1f11168b1e1923a54defbca6403f13ba7e10246b3b87b5c367f4e` |
-| `reject.conf` | DOMAIN-SET | AdBlock | 135,304 | `5ceb8c9903e4fc967722eab763a91e7d5ef91fcbe9bad71d1c378cf5ad800e4d` |
-| `domestic.conf` | RULE-SET | Domestic | 869 | `56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa` |
+| 资源 | 类型 | 策略 | 条目 | 字节 | SHA-256 |
+| --- | --- | --- | ---: | ---: | --- |
+| `reject_phishing.conf` | DOMAIN-SET | Security | 147,474 | 3,146,841 | `7c7b64d378542824170c87cf63511bc67974db39c6894493153f9d003a89756e` |
+| `reject.conf` | DOMAIN-SET | AdBlock | 135,224 | 3,013,194 | `4b87642adc8c58c0336b58a570abf33342b81043f358691fed16e207be028b49` |
+| `domestic.conf` | RULE-SET | Domestic | 869 | 22,632 | `56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa` |
 
-动态内容不随 ZIP 分发。在线审计检查 HTTP、UTF-8、类型格式、重复行和 8 MiB 大小边界，不要求上游未来一直保持发布哈希。
+动态内容不随 ZIP 分发。相较 R13.3 发布观察值，钓鱼列表增加 6 条，广告列表减少 80 条，国内列表不变；这是上游正常更新，不改变 URL、格式或策略。新的观察值已写入 schema 18 运行锁。
 
 ## 自动化测试
 
 | 测试 | 结果 |
 | --- | ---: |
-| 配置故障注入 | 115/115 被拒绝 |
-| ZIP 安全回归 | 27/27 通过 |
+| 配置故障注入 | 116/116 被拒绝 |
+| ZIP 安全回归 | 28/28 通过 |
 | 发布清单回归 | 15/15 通过 |
 | Python 编译 | 15/15 工具通过 |
 | 运行锁再生成 | 与受审配置一致 |
 | Pegasus 固定来源锁 | 通过 |
 | 19 份服务规则来源锁 | 通过 |
+| 动态规则在线格式 | 3/3 通过 |
 | China/Global 精确集合 | Domestic 306、Proxy 116、冲突 0 |
 | 严格发布目录 | 66/66 文件 |
 | 双份 SHA-256 | 一致并全部校验通过 |
 | 确定性打包 | 相同输入两次 ZIP 字节一致 |
 
-故障注入新增大陆 DNS 策略回退、规则块错位、境外 DNS 绕过和 CN GeoIP 恢复 `no-resolve` 等场景。运行锁升级为 schema 17，并记录两组应用 DNS 清单与 GeoIP 解析不变量。
+运行锁升级为 schema 18，记录严格 CN GeoIP、未命中域名 `Final/Proxy` 兜底、代理侧解析意图和隐藏辅助组。故障注入会拒绝 CN GeoIP 去掉 `no-resolve`、四个辅助组重新显示、DNS 规则块错位、策略回退、远程源变化和失败关闭退化。
 
 ## 剩余风险与真机项目
 
 | 风险 | 实际影响 | 当前处理 |
 | --- | --- | --- |
-| 无 Surge iOS 原生解析器 | 私有语义差异只能在应用中发现 | 导入后执行配置检查与真机验收 |
-| 大陆 DNS 端点网络差异 | 境外或受限网络可能不可达 | `Domestic` 可切到 `Proxy` |
-| CN GeoIP 触发解析 | 未命中域名多一次查询，可能受错误 DNS/GeoIP 影响 | 双 DoH、可见 Domestic、最近请求排查 |
-| 动态列表变化 | 可能误报、撤回或上游故障 | 精确 URL、可见策略、在线检查和定期监控 |
-| 固定规则陈旧 | 稳定但不会自动获得新提交 | 固定快照并人工审阅新版本 |
+| 未知国内域名 | 不再按解析后的 CN IP 自动直连，可能走代理并增加延迟 | 现有精确国内规则优先；按最近请求补充经审阅域名 |
+| Surge 或模块语义差异 | 模块可在主配置之前触发解析 | 无额外模块基线复测，审阅模块的 `no-resolve` 与 General 覆盖 |
+| 本地 DNS 仍有合法用途 | 明确 Domestic、本地网络和 Surge 自身功能可使用本地解析 | 不把严格边界误称为全局零 DNS 可见性 |
 | 节点服务端 DNS | 客户端无法替节点决定递归解析器 | 更换节点或由服务方修复 |
+| 动态列表变化 | 可能误报、撤回或上游故障 | 精确 URL、隐藏组可临时恢复显示、在线检查和定期监控 |
+| 固定规则陈旧 | 稳定但不会自动获得新提交 | 固定快照并人工审阅新版本 |
 | Smart 结果非固定 | 不同站点可能选择不同节点 | 可把 Proxy 切到 NodePool 手动固定 |
 
-真机至少测试常用国内软件首屏、登录、图片和视频 CDN；查看大陆 DNS 主机是否命中 `Domestic`；在 Wi-Fi 与蜂窝分别检查 APNs、DNS、IPv4、IPv6、UDP、AI 和流媒体；确认日志没有持续规则下载、解析循环或代理循环错误。
+真机至少应在重新载入配置和清缓存后，用两个检测站点、两个代理节点分别检查网页出口与 DNS；测试常用国内软件首屏、登录、图片和视频 CDN；在 Wi-Fi 与蜂窝分别检查 APNs、IPv4、IPv6、UDP、AI 和流媒体；确认日志没有持续解析环、规则下载或代理循环错误。

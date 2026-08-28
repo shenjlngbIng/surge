@@ -1,6 +1,6 @@
 # 贡献与维护
 
-R13.3 把主配置、规则快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何规则或配置变化都要同步更新相关元数据，并让完整测试通过。
+R13.4 把主配置、规则快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何规则或配置变化都要同步更新相关元数据，并让完整测试通过。
 
 ## 必须保持的边界
 
@@ -12,12 +12,12 @@ R13.3 把主配置、规则快照、来源锁、运行锁、审计器、故障�
 - 动态国内 `RULE-SET`、固定 China `DOMAIN-SET` 和 `GEOIP,CN` 必须指向 `Domestic`，并保持审计定义的首条命中顺序。
 - `NodePool` 保持可见的手动 `select`，首个成员为 `Fail-Closed`。`Proxy` 默认使用 `AllServer`；`UDP` 默认使用 `Proxy`。
 - `AllServer` 和五个地区组保持 `smart`，只导入 `NodePool`，不能退回 `url-test` 或直接导入订阅。
-- `ApplePush` 保持隐藏；`AdBlock`、`Security`、`UDP` 和 `Domestic` 保持可见；`wifi-assist` 保持关闭。
+- `ApplePush`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 保持隐藏；后四组的定义、成员与规则引用不得删除；`wifi-assist` 保持关闭。
 - Surge 自身 DNS 使用两个 AliDNS 地址、两个 DoH 端点和固定引导地址，证书校验保持开启。
 - STUN 必须位于公网 DNS 端口和公网域名、IP 规则之前。
 - 16 个大陆应用 DNS 主机必须完整、连续地位于 STUN 后和通用端口拒绝前，策略为 `Domestic`；13 个境外应用 DNS 主机位于端口拒绝后，策略为 `Proxy`。
 - 53、853 和 8853 端口必须在局域网规则之后拒绝。
-- `GEOIP,CN,Domestic` 位于 Global 后且不得添加 `no-resolve`；IPv4 与 IPv6 公网字面量代理规则紧贴唯一末尾 `FINAL`。
+- `GEOIP,CN,Domestic,no-resolve` 位于 Global 后且不得移除 `no-resolve`；IPv4 与 IPv6 公网字面量代理规则紧贴唯一末尾 `FINAL`。
 - 发布目录只允许 `release_inventory.py` 中的 66 个文件。
 
 ## 修改规则文件
@@ -65,7 +65,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.3-Complete-No-Embedded-20260828.zip
+python3 tools/package_release.py --output ../Surge-R13.4-Complete-No-Embedded-20260828.zip
 ```
 
 生成清单和哈希后再次运行全部审计。压缩包应包含 66 个文件，并在相同输入下产生相同 SHA-256。
