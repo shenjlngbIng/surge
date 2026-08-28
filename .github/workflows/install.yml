@@ -1,4 +1,4 @@
-name: Install and audit Surge R12.17
+name: Install and audit Surge R13.2
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       archive_sha256:
-        description: "Out-of-band SHA-256 of Surge-R12.17-Privacy-Auto-20260826.zip"
+        description: "Out-of-band SHA-256 of Surge-R13.2-Complete-No-Embedded-20260828.zip"
         required: true
         type: string
 
@@ -36,7 +36,7 @@ jobs:
           EXPECTED_ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
         run: |
           set -euo pipefail
-          archive="Surge-R12.17-Privacy-Auto-20260826.zip"
+          archive="Surge-R13.2-Complete-No-Embedded-20260828.zip"
           if [[ ! "${EXPECTED_ARCHIVE_SHA256}" =~ ^[0-9A-Fa-f]{64}$ ]]; then
             echo "::error::archive_sha256 must be exactly 64 hexadecimal characters"
             exit 1
@@ -52,10 +52,10 @@ jobs:
           import stat
           import zipfile
 
-          archive = Path("Surge-R12.17-Privacy-Auto-20260826.zip")
+          archive = Path("Surge-R13.2-Complete-No-Embedded-20260828.zip")
           stage = Path(".surge-install")
           if not archive.is_file():
-              raise SystemExit("Surge-R12.17-Privacy-Auto-20260826.zip was not found in the repository root")
+              raise SystemExit("Surge-R13.2-Complete-No-Embedded-20260828.zip was not found in the repository root")
           if stage.exists():
               shutil.rmtree(stage)
           stage.mkdir()
@@ -139,10 +139,14 @@ jobs:
             cd .surge-install
             export PYTHONDONTWRITEBYTECODE=1
             python3 tools/convert_to_remote_rules.py
+            runtime_lock_sha256="$(sha256sum Rules/r10.lock.json | awk '{print $1}')"
+            python3 tools/generate_runtime_lock.py
+            test "$(sha256sum Rules/r10.lock.json | awk '{print $1}')" = "${runtime_lock_sha256}"
             python3 tools/update_external_resources.py --verify-lock
             python3 tools/update_service_rules.py --verify-lock
             python3 tools/audit_config.py
             python3 tools/audit_rules.py
+            python3 tools/audit_rules.py --check-dynamic
             python3 tools/audit_precise_domains.py
             python3 tools/test_audit_config.py
             python3 tools/test_release_inventory.py
@@ -182,11 +186,11 @@ jobs:
       - name: Commit installed files
         shell: bash
         run: |
-          rm -f Surge-R12.17-Privacy-Auto-20260826.zip
+          rm -f Surge-R13.2-Complete-No-Embedded-20260828.zip
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R12.17"
+          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.2 Enhanced"
           git push origin HEAD:main
 
   audit:
@@ -228,9 +232,19 @@ jobs:
         if: steps.release.outputs.ready == 'true'
         run: python tools/audit_config.py
 
+      - name: Verify generated runtime lock
+        if: steps.release.outputs.ready == 'true'
+        run: |
+          python tools/generate_runtime_lock.py
+          git diff --exit-code -- Rules/r10.lock.json
+
       - name: Audit rule sources
         if: steps.release.outputs.ready == 'true'
         run: python tools/audit_rules.py
+
+      - name: Audit dynamic runtime sources
+        if: steps.release.outputs.ready == 'true' && matrix.python-version == '3.12'
+        run: python tools/audit_rules.py --check-dynamic
 
       - name: Verify pinned third-party maintenance resources
         if: steps.release.outputs.ready == 'true'
