@@ -1,11 +1,11 @@
 {
-  "schema": 16,
+  "schema": 17,
   "mode": "repository-plus-reviewed-dynamic-no-embedded-content",
-  "profile": "Surge iOS Privacy + Push R13.2 Enhanced",
+  "profile": "Surge iOS Privacy + Push R13.3 Domestic Performance",
   "generated": "2026-08-28",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "0178cafe59526c40f1765dc0601a4efedfb865d9b4b97663525c89957cf7b17e",
-  "profile_lines": 349,
+  "profile_sha256": "03439367da4078b16e6a7b9bb94482ef6896ff69f113f66b3da8cefc7d753fe6",
+  "profile_lines": 353,
   "active_rules": 130,
   "runtime_resources": 33,
   "immutable_repository_resources": 30,
@@ -97,13 +97,49 @@
       "dynamic_supplement": "domestic.conf",
       "pinned_precise_set": "China.list",
       "policy": "Domestic",
-      "geoip": "GEOIP,CN,Domestic,no-resolve"
+      "geoip": "GEOIP,CN,Domestic",
+      "geoip_resolves_unmatched_domains": true
     },
     "dns": {
       "dns_server": "223.5.5.5, 223.6.6.6",
       "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
       "follow_outbound_mode": false,
       "certificate_verification": true,
+      "domestic_application_resolvers": [
+        "DOMAIN,dns.alidns.com,Domestic",
+        "DOMAIN,dns.pub,Domestic",
+        "DOMAIN,doh.pub,Domestic",
+        "DOMAIN,dot.pub,Domestic",
+        "DOMAIN,dns.360.cn,Domestic",
+        "DOMAIN,doh.360.cn,Domestic",
+        "DOMAIN-SUFFIX,alibabadns.com,Domestic",
+        "DOMAIN-SUFFIX,alidns.com,Domestic",
+        "DOMAIN-SUFFIX,bdydns.com,Domestic",
+        "DOMAIN-SUFFIX,bytednsdoc.com,Domestic",
+        "DOMAIN-SUFFIX,dns.la,Domestic",
+        "DOMAIN-SUFFIX,dnspod.cn,Domestic",
+        "DOMAIN-SUFFIX,dnspod.com,Domestic",
+        "DOMAIN-SUFFIX,dnsv1.com,Domestic",
+        "DOMAIN-SUFFIX,jomodns.com,Domestic",
+        "DOMAIN-SUFFIX,smtcdns.net,Domestic"
+      ],
+      "foreign_application_resolvers": [
+        "DOMAIN,dns.google,Proxy",
+        "DOMAIN,one.one.one.one,Proxy",
+        "DOMAIN,dns.nextdns.io,Proxy",
+        "DOMAIN,dns.adguard.com,Proxy",
+        "DOMAIN,doh.opendns.com,Proxy",
+        "DOMAIN,doh.cleanbrowsing.org,Proxy",
+        "DOMAIN,doh.dns.sb,Proxy",
+        "DOMAIN,doh.tiar.app,Proxy",
+        "DOMAIN,dot.tiar.app,Proxy",
+        "DOMAIN,dns.twnic.tw,Proxy",
+        "DOMAIN-SUFFIX,cloudflare-dns.com,Proxy",
+        "DOMAIN-SUFFIX,quad9.net,Proxy",
+        "DOMAIN-SUFFIX,nextdns.io,Proxy"
+      ],
+      "domestic_resolver_policy": "Domestic",
+      "foreign_resolver_policy": "Proxy",
       "bootstrap": {
         "dns.alidns.com": [
           "223.5.5.5",
@@ -139,7 +175,7 @@
     "diagnostic_policy": "Proxy",
     "runtime_rulesets_no_resolve": true,
     "public_ip_literals": {
-      "china": "GEOIP,CN,Domestic,no-resolve",
+      "china": "GEOIP,CN,Domestic",
       "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
       "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve"
     },
