@@ -29,7 +29,7 @@
       {
         "kind": "DOMAIN-SET",
         "path": "Rules/China.list",
-        "policy": "DIRECT",
+        "policy": "Domestic",
         "active_entries": 306,
         "sha256": "41bcedfa2bd322cfc2da82359a5eb6ca27d7868bd74a11fa1e88d29658e1f6ec"
       },
