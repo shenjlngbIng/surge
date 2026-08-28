@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.3 local rule, runtime lock and provenance inventory.
+"""Validate the R13.4 local rule, runtime lock and provenance inventory.
 
 Use ``--check-dynamic`` to download and format-check the three reviewed dynamic
 runtime supplements without requiring their content to remain byte-identical.
@@ -66,7 +66,7 @@ def digest(path: Path) -> str:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 17 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
+if lock.get("schema") != 18 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -82,8 +82,8 @@ expected_invariants = {
     "dynamic_runtime_resource_count": 3,
     "local_rule_file_count": 30,
     "embedded_rule_contents": 0,
-    "hidden_function_groups": ["ApplePush"],
-    "visible_control_groups": ["AdBlock", "Security", "UDP", "Domestic"],
+    "hidden_function_groups": ["ApplePush", "AdBlock", "Security", "UDP", "Domestic"],
+    "visible_control_groups": ["Final", "Proxy", "NodePool"],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
@@ -107,14 +107,15 @@ if dict(architecture.get("all_server", {})).get("mode") != "smart":
     fail("AllServer must remain Smart")
 if dict(architecture.get("regions", {})).get("mode") != "smart":
     fail("regional groups must remain Smart")
-if architecture.get("domestic") != {"mode": "select", "default": "DIRECT", "fallback": "Proxy"}:
+if architecture.get("domestic") != {"mode": "select", "default": "DIRECT", "fallback": "Proxy", "hidden": True}:
     fail("Domestic architecture invariant mismatch")
 if invariants.get("domestic_resources") != {
     "dynamic_supplement": "domestic.conf",
     "pinned_precise_set": "China.list",
     "policy": "Domestic",
     "geoip": DOMESTIC_GEOIP_RULE,
-    "geoip_resolves_unmatched_domains": True,
+    "geoip_resolves_unmatched_domains": False,
+    "unmatched_domain_fallback": "Final/Proxy",
 }:
     fail("Domestic resource invariant mismatch")
 if invariants.get("dns") != {
@@ -126,6 +127,8 @@ if invariants.get("dns") != {
     "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
     "domestic_resolver_policy": "Domestic",
     "foreign_resolver_policy": "Proxy",
+    "unmatched_domains_force_local_resolution": False,
+    "proxy_hostname_uses_remote_resolution": True,
     "bootstrap": {
         "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1"],
         "doh.pub": ["1.12.12.12", "120.53.53.53"],
@@ -358,7 +361,7 @@ if "IP-ASN,2906,no-resolve" not in netflix_rules or any(rule.startswith(("IP-CID
 
 
 def fetch_dynamic(source: dict[str, object]) -> tuple[int, int, str]:
-    request = urllib.request.Request(str(source["url"]), headers={"User-Agent": "Surge-R13.3-Audit/1.0"})
+    request = urllib.request.Request(str(source["url"]), headers={"User-Agent": "Surge-R13.4-Audit/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:
         if response.status != 200:
             fail(f"dynamic source HTTP {response.status}: {source['url']}")
@@ -384,6 +387,6 @@ if CHECK_DYNAMIC:
         print(f"PASS dynamic {source['name']} entries={entries} bytes={size} sha256={sha256}")
 
 print(
-    f"PASS R13.3 runtime_sources=33 immutable_sources=30 dynamic_sources=3 "
+    f"PASS R13.4 runtime_sources=33 immutable_sources=30 dynamic_sources=3 "
     f"local_rule_files={len(actual_local)} rules={lock.get('active_rules')} embedded_rule_contents=0"
 )

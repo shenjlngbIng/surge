@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutation regression tests for the R13.3 configuration auditor."""
+"""Mutation regression tests for the R13.4 configuration auditor."""
 
 from __future__ import annotations
 
@@ -63,8 +63,8 @@ def swap_once(name: str, left: str, right: str) -> None:
 # Header, section, global privacy, DNS, and access invariants.
 replace_once("author", "# > Surge Config Make by .ᐣ", "# > Surge Config Make by unknown")
 replace_once("date", "# > Update Date: 2026.08.28", "# > Update Date: 2026.08.27")
-replace_once("version", "Surge iOS Privacy + Push R13.3 Domestic Performance", "Surge iOS Privacy + Push R13.2 Enhanced")
-replace_once("preservation_header", "# > Feature-preserving performance correction based on R13.2; no original service group or remote rule resource was removed.\n", "")
+replace_once("version", "Surge iOS Privacy + Push R13.4 Strict DNS", "Surge iOS Privacy + Push R13.3 Domestic Performance")
+replace_once("preservation_header", "# > Privacy-hardening correction based on R13.3; no policy group, rule, remote resource, or subscription entry was removed.\n", "")
 replace_once("snapshot_header", "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).\n", "")
 replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
 replace_once("duplicate_section", "[Host]\n", "[Host]\n[Host]\n")
@@ -105,12 +105,13 @@ replace_once("applepush_mode", "ApplePush = fallback, Proxy, DIRECT", "ApplePush
 replace_once("applepush_eval", "interval=60, evaluate-before-use=true, no-alert=0, hidden=1", "interval=60, no-alert=0, hidden=1")
 replace_once("adblock_off", "AdBlock = select, REJECT, REJECT-DROP, DIRECT,", "AdBlock = select, REJECT, REJECT-DROP,")
 replace_once("security_off", "Security = select, REJECT, REJECT-DROP, DIRECT,", "Security = select, REJECT, REJECT-DROP,")
-replace_once("adblock_hidden", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1")
-replace_once("security_hidden", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1")
+replace_once("adblock_visible", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0")
+replace_once("security_visible", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0")
 replace_once("udp_order", "UDP = select, Proxy, NodePool, REJECT, DIRECT,", "UDP = select, NodePool, Proxy, REJECT, DIRECT,")
-replace_once("udp_visible", "UDP = select, Proxy, NodePool, REJECT, DIRECT, no-alert=0, hidden=0", "UDP = select, Proxy, NodePool, REJECT, DIRECT, no-alert=0, hidden=1")
+replace_once("udp_visible", "UDP = select, Proxy, NodePool, REJECT, DIRECT, no-alert=0, hidden=1", "UDP = select, Proxy, NodePool, REJECT, DIRECT, no-alert=0, hidden=0")
 replace_once("domestic_default", "Domestic = select, DIRECT, Proxy,", "Domestic = select, Proxy, DIRECT,")
-replace_once("domestic_missing", "Domestic = select, DIRECT, Proxy, no-alert=0, hidden=0, include-all-proxies=0\n", "")
+replace_once("domestic_visible", "Domestic = select, DIRECT, Proxy, no-alert=0, hidden=1", "Domestic = select, DIRECT, Proxy, no-alert=0, hidden=0")
+replace_once("domestic_missing", "Domestic = select, DIRECT, Proxy, no-alert=0, hidden=1, include-all-proxies=0\n", "")
 replace_once("service_direct", "ChatGPT = select, Proxy, America", "ChatGPT = select, DIRECT, America")
 replace_once("apple_default", "Apple = select, DIRECT, Proxy", "Apple = select, Proxy, DIRECT")
 replace_once("nodepool_mode", "NodePool = select, Fail-Closed,", "NodePool = url-test, Fail-Closed,")
@@ -169,8 +170,8 @@ replace_once("viu_policy", "DOMAIN-SUFFIX,viu.now.com,Streaming", "DOMAIN-SUFFIX
 replace_once("youtube_override", "DOMAIN,yt3.ggpht.com,YouTube", "DOMAIN,yt3.ggpht.com,Google")
 replace_once("microsoft_override", "DOMAIN,login.live.com,Microsoft", "DOMAIN,login.live.com,Games")
 replace_once("game_cloud", "IP-CIDR,35.192.0.0/12,Proxy,no-resolve", "IP-CIDR,35.192.0.0/12,Games,no-resolve")
-replace_once("geoip_no_resolve", "GEOIP,CN,Domestic", "GEOIP,CN,Domestic,no-resolve")
-replace_once("geoip_proxy", "GEOIP,CN,Domestic", "GEOIP,CN,Proxy")
+replace_once("geoip_resolve", "GEOIP,CN,Domestic,no-resolve", "GEOIP,CN,Domestic")
+replace_once("geoip_proxy", "GEOIP,CN,Domestic,no-resolve", "GEOIP,CN,Proxy,no-resolve")
 replace_once("ipv4_catchall", "IP-CIDR,0.0.0.0/0,Proxy,no-resolve", "IP-CIDR,0.0.0.0/0,DIRECT,no-resolve")
 replace_once("ipv6_catchall", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 replace_once("cidr_resolve", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve", "IP-CIDR,1.1.1.1/32,Proxy")
@@ -189,4 +190,4 @@ for name, changed in cases:
     if result.returncode == 0:
         raise AssertionError(f"mutation unexpectedly passed: {name}")
 
-print(f"PASS R13.3 mutations={len(cases)}")
+print(f"PASS R13.4 mutations={len(cases)}")

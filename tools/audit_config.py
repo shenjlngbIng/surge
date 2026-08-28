@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.3 Domestic Performance profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.4 Strict DNS profile."""
 
 from __future__ import annotations
 
@@ -104,8 +104,8 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.08.28",
-    "# > Surge iOS Privacy + Push R13.3 Domestic Performance | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Feature-preserving performance correction based on R13.2; no original service group or remote rule resource was removed.",
+    "# > Surge iOS Privacy + Push R13.4 Strict DNS | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Privacy-hardening correction based on R13.3; no policy group, rule, remote resource, or subscription entry was removed.",
     "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
@@ -195,12 +195,13 @@ for name, expected in expected_members.items():
     if group_members(groups, name) != expected:
         fail(f"{name} member order changed: {group_members(groups, name)}")
 
+hidden_groups = {"ApplePush", "AdBlock", "Security", "UDP", "Domestic"}
 for name in GROUP_ORDER:
     parts = group_parts(groups, name)
     expected_mode = "fallback" if name == "ApplePush" else "smart" if name in {"AllServer", *REGIONS} else "select"
     if parts[0] != expected_mode:
         fail(f"{name} must use {expected_mode}, got {parts[0]}")
-    expected_hidden = "hidden=1" if name == "ApplePush" else "hidden=0"
+    expected_hidden = "hidden=1" if name in hidden_groups else "hidden=0"
     if expected_hidden not in parts:
         fail(f"{name} visibility must remain {expected_hidden}")
     if any(part.startswith("policy-path=") for part in parts) != (name == "NodePool"):
@@ -302,7 +303,7 @@ external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,
 if external != expected_remote_order():
     fail("runtime resource inventory or relative order changed")
 if len(external) != 33:
-    fail("R13.3 must contain 30 pinned and 3 dynamic runtime resources")
+    fail("R13.4 must contain 30 pinned and 3 dynamic runtime resources")
 if sum(REMOTE_BASE in line for line in external) != 30:
     fail("all 30 original immutable repository resources must remain present")
 if sum(str(item["url"]) in line for item in DYNAMIC_RULES for line in external) != 3:
@@ -423,7 +424,7 @@ if rules[-4:] != [
 
 if PROFILE == (ROOT / "Surge.conf").resolve():
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    if lock.get("schema") != 17 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
+    if lock.get("schema") != 18 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
         fail("runtime lock schema or mode mismatch")
     if lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile name mismatch")
@@ -433,7 +434,7 @@ if PROFILE == (ROOT / "Surge.conf").resolve():
         fail("runtime lock profile counts are stale")
 
 print(
-    f"PASS R13.3 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.4 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     "immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0 "
     f"sha256={hashlib.sha256(payload).hexdigest()}"
 )

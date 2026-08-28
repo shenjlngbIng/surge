@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.3 no-embedded-content runtime lock.
+"""Regenerate the R13.4 no-embedded-content runtime lock.
 
 The lock records 30 immutable repository snapshots, three reviewed dynamic
 runtime supplements and the configuration invariants enforced by the auditors.
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.3 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.4 inventory")
 
 embedded = [
     row for row in profile_rules
@@ -88,7 +88,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 17,
+    "schema": 18,
     "mode": "repository-plus-reviewed-dynamic-no-embedded-content",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -109,8 +109,8 @@ lock = {
         "dynamic_runtime_resource_count": 3,
         "local_rule_file_count": 30,
         "embedded_rule_contents": 0,
-        "hidden_function_groups": ["ApplePush"],
-        "visible_control_groups": ["AdBlock", "Security", "UDP", "Domestic"],
+        "hidden_function_groups": ["ApplePush", "AdBlock", "Security", "UDP", "Domestic"],
+        "visible_control_groups": ["Final", "Proxy", "NodePool"],
         "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
         "loglevel": "notify",
         "policy_architecture": {
@@ -134,7 +134,7 @@ lock = {
                 "fail_closed": True,
                 "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
             },
-            "domestic": {"mode": "select", "default": "DIRECT", "fallback": "Proxy"},
+            "domestic": {"mode": "select", "default": "DIRECT", "fallback": "Proxy", "hidden": True},
         },
         "security_resources": [
             {"name": "reject_phishing.conf", "mode": "dynamic", "policy": "Security"},
@@ -149,7 +149,8 @@ lock = {
             "pinned_precise_set": "China.list",
             "policy": "Domestic",
             "geoip": DOMESTIC_GEOIP_RULE,
-            "geoip_resolves_unmatched_domains": True,
+            "geoip_resolves_unmatched_domains": False,
+            "unmatched_domain_fallback": "Final/Proxy",
         },
         "dns": {
             "dns_server": "223.5.5.5, 223.6.6.6",
@@ -160,6 +161,8 @@ lock = {
             "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
             "domestic_resolver_policy": "Domestic",
             "foreign_resolver_policy": "Proxy",
+            "unmatched_domains_force_local_resolution": False,
+            "proxy_hostname_uses_remote_resolution": True,
             "bootstrap": {
                 "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1"],
                 "doh.pub": ["1.12.12.12", "120.53.53.53"],

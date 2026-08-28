@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.3 external runtime-rule inventory.
+"""Validate the R13.4 external runtime-rule inventory.
 
 The profile keeps the 30 reviewed repository snapshots pinned to one immutable
 commit and adds exactly three reviewed, auto-updating Sukka runtime supplements.
@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.3 Domestic Performance"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.4 Strict DNS"
 RELEASE_DATE = "2026-08-28"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "d1d714d575d5494ef1a7613238f4f301e1b293df"
@@ -56,7 +56,7 @@ FOREIGN_DNS_RULES: tuple[str, ...] = (
     "DOMAIN-SUFFIX,nextdns.io,Proxy",
 )
 
-DOMESTIC_GEOIP_RULE = "GEOIP,CN,Domestic"
+DOMESTIC_GEOIP_RULE = "GEOIP,CN,Domestic,no-resolve"
 
 # The original 30 reviewed runtime snapshots. Policies changed to Domestic are
 # routing changes only; filenames, immutable URLs and local bytes are preserved.
@@ -101,22 +101,22 @@ DYNAMIC_RULES: tuple[dict[str, object], ...] = (
         "kind": "DOMAIN-SET",
         "url": "https://ruleset.skk.moe/List/domainset/reject_phishing.conf",
         "policy": "Security",
-        "active_entries": 147468,
-        "size_bytes": 3146611,
-        "last_updated": "2026-08-28T01:29:14.909Z",
-        "content_hash_v1": "jnANidk61SqlvRh5kgBP11oYKdKDXv4FW74MJQMkRKo",
-        "sha256": "c7dd0c7429e1f11168b1e1923a54defbca6403f13ba7e10246b3b87b5c367f4e",
+        "active_entries": 147474,
+        "size_bytes": 3146841,
+        "last_updated": "2026-08-28T05:59:58.088Z",
+        "content_hash_v1": "ZZWjEn5pEka4NbiG9zg0OkMmib0aU6vxkPj1mS7BkE4",
+        "sha256": "7c7b64d378542824170c87cf63511bc67974db39c6894493153f9d003a89756e",
     },
     {
         "name": "reject.conf",
         "kind": "DOMAIN-SET",
         "url": "https://ruleset.skk.moe/List/domainset/reject.conf",
         "policy": "AdBlock",
-        "active_entries": 135304,
-        "size_bytes": 3014590,
-        "last_updated": "2026-08-28T01:29:14.909Z",
-        "content_hash_v1": "jDl48RvMOlT9NZkctTPw0olNsUOXsx7ReIsivzFh0k0",
-        "sha256": "5ceb8c9903e4fc967722eab763a91e7d5ef91fcbe9bad71d1c378cf5ad800e4d",
+        "active_entries": 135224,
+        "size_bytes": 3013194,
+        "last_updated": "2026-08-28T05:59:58.088Z",
+        "content_hash_v1": "sYj8bnVsQRgGiRCGGukfGJm3KSLJL0-r7zFAuhD692g",
+        "sha256": "4b87642adc8c58c0336b58a570abf33342b81043f358691fed16e207be028b49",
     },
     {
         "name": "domestic.conf",
@@ -173,7 +173,7 @@ def main() -> int:
     rules = active_rule_lines(text)
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or relative order differs from the reviewed R13.3 inventory")
+        raise SystemExit("runtime rule inventory or relative order differs from the reviewed R13.4 inventory")
 
     repository_urls = {f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES}
     dynamic_urls = {str(item["url"]) for item in DYNAMIC_RULES}
