@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.2 external runtime-rule inventory.
+"""Validate the R13.3 external runtime-rule inventory.
 
 The profile keeps the 30 reviewed repository snapshots pinned to one immutable
 commit and adds exactly three reviewed, auto-updating Sukka runtime supplements.
@@ -13,13 +13,50 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.2 Enhanced"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.3 Domestic Performance"
 RELEASE_DATE = "2026-08-28"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "d1d714d575d5494ef1a7613238f4f301e1b293df"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
+
+DOMESTIC_DNS_RULES: tuple[str, ...] = (
+    "DOMAIN,dns.alidns.com,Domestic",
+    "DOMAIN,dns.pub,Domestic",
+    "DOMAIN,doh.pub,Domestic",
+    "DOMAIN,dot.pub,Domestic",
+    "DOMAIN,dns.360.cn,Domestic",
+    "DOMAIN,doh.360.cn,Domestic",
+    "DOMAIN-SUFFIX,alibabadns.com,Domestic",
+    "DOMAIN-SUFFIX,alidns.com,Domestic",
+    "DOMAIN-SUFFIX,bdydns.com,Domestic",
+    "DOMAIN-SUFFIX,bytednsdoc.com,Domestic",
+    "DOMAIN-SUFFIX,dns.la,Domestic",
+    "DOMAIN-SUFFIX,dnspod.cn,Domestic",
+    "DOMAIN-SUFFIX,dnspod.com,Domestic",
+    "DOMAIN-SUFFIX,dnsv1.com,Domestic",
+    "DOMAIN-SUFFIX,jomodns.com,Domestic",
+    "DOMAIN-SUFFIX,smtcdns.net,Domestic",
+)
+
+FOREIGN_DNS_RULES: tuple[str, ...] = (
+    "DOMAIN,dns.google,Proxy",
+    "DOMAIN,one.one.one.one,Proxy",
+    "DOMAIN,dns.nextdns.io,Proxy",
+    "DOMAIN,dns.adguard.com,Proxy",
+    "DOMAIN,doh.opendns.com,Proxy",
+    "DOMAIN,doh.cleanbrowsing.org,Proxy",
+    "DOMAIN,doh.dns.sb,Proxy",
+    "DOMAIN,doh.tiar.app,Proxy",
+    "DOMAIN,dot.tiar.app,Proxy",
+    "DOMAIN,dns.twnic.tw,Proxy",
+    "DOMAIN-SUFFIX,cloudflare-dns.com,Proxy",
+    "DOMAIN-SUFFIX,quad9.net,Proxy",
+    "DOMAIN-SUFFIX,nextdns.io,Proxy",
+)
+
+DOMESTIC_GEOIP_RULE = "GEOIP,CN,Domestic"
 
 # The original 30 reviewed runtime snapshots. Policies changed to Domestic are
 # routing changes only; filenames, immutable URLs and local bytes are preserved.
@@ -136,7 +173,7 @@ def main() -> int:
     rules = active_rule_lines(text)
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or relative order differs from the reviewed R13.2 inventory")
+        raise SystemExit("runtime rule inventory or relative order differs from the reviewed R13.3 inventory")
 
     repository_urls = {f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES}
     dynamic_urls = {str(item["url"]) for item in DYNAMIC_RULES}

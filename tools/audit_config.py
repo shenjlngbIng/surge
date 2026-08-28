@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.2 Enhanced profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.3 Domestic Performance profile."""
 
 from __future__ import annotations
 
@@ -11,7 +11,10 @@ import sys
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    DOMESTIC_DNS_RULES,
+    DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
+    FOREIGN_DNS_RULES,
     PROFILE_NAME,
     RELEASE_REF,
     REMOTE_BASE,
@@ -101,8 +104,8 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.08.28",
-    "# > Surge iOS Privacy + Push R13.2 Enhanced | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Feature-preserving enhancement based on R13.1; no original service group or remote rule resource was removed.",
+    "# > Surge iOS Privacy + Push R13.3 Domestic Performance | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Feature-preserving performance correction based on R13.2; no original service group or remote rule resource was removed.",
     "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
@@ -299,7 +302,7 @@ external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,
 if external != expected_remote_order():
     fail("runtime resource inventory or relative order changed")
 if len(external) != 33:
-    fail("R13.2 must contain 30 pinned and 3 dynamic runtime resources")
+    fail("R13.3 must contain 30 pinned and 3 dynamic runtime resources")
 if sum(REMOTE_BASE in line for line in external) != 30:
     fail("all 30 original immutable repository resources must remain present")
 if sum(str(item["url"]) in line for item in DYNAMIC_RULES for line in external) != 3:
@@ -356,15 +359,26 @@ def position(rule: str) -> int:
 captive = position("DOMAIN,captive.apple.com,DIRECT")
 stun = position("PROTOCOL,STUN,UDP")
 dns_ports = [position(f"DEST-PORT,{port},REJECT") for port in (53, 853, 8853)]
+domestic_dns = [position(rule) for rule in DOMESTIC_DNS_RULES]
 bootstrap = position("DOMAIN,configuration.ls.apple.com,DIRECT")
 diagnostics = [position(f"DOMAIN-SUFFIX,{domain},Proxy") for domain in (
     "net.coffee", "ippure.com", "browserleaks.net", "surfsharkdns.com",
     "fastly-analytics.com", "icanhazip.com", "ipinfo.io", "ipapi.co", "ipip.net",
 )]
-dns_egress = [position(rule) for rule in (
-    "DOMAIN,dns.alidns.com,Proxy", "DOMAIN,doh.pub,Proxy", "DOMAIN-SUFFIX,quad9.net,Proxy",
-)]
-if not (captive < stun < min(dns_ports) < bootstrap < min(diagnostics) <= max(diagnostics) < min(dns_egress) < position(phishing) < position(pegasus)):
+diagnostic_ip = position("IP-CIDR,1.1.1.1/32,Proxy,no-resolve")
+foreign_dns = [position(rule) for rule in FOREIGN_DNS_RULES]
+if rules[stun + 1:min(dns_ports)] != list(DOMESTIC_DNS_RULES):
+    fail("the reviewed mainland resolver block must be contiguous between STUN and DNS-port rejects")
+if rules[min(foreign_dns):max(foreign_dns) + 1] != list(FOREIGN_DNS_RULES):
+    fail("the reviewed foreign application DNS block changed or was reordered")
+old_domestic_proxy_rules = {rule.rsplit(",", 1)[0] + ",Proxy" for rule in DOMESTIC_DNS_RULES}
+if old_domestic_proxy_rules & set(rules):
+    fail("a reviewed mainland resolver regressed to the Proxy policy")
+if not (
+    captive < stun < min(domestic_dns) <= max(domestic_dns) < min(dns_ports)
+    < bootstrap < min(diagnostics) <= max(diagnostics) < diagnostic_ip
+    < min(foreign_dns) <= max(foreign_dns) < position(phishing) < position(pegasus)
+):
     fail("captive, STUN, DNS, diagnostics, phishing, or Pegasus precedence changed")
 
 ordered_pairs = (
@@ -385,7 +399,7 @@ ordered_pairs = (
     ("DOMAIN-SUFFIX,volcengine.com,Domestic", dynamic_domestic),
     (dynamic_domestic, repository_line("DOMAIN-SET", "China.list", "Domestic")),
     (repository_line("DOMAIN-SET", "China.list", "Domestic"), repository_line("DOMAIN-SET", "Global.list", "Proxy")),
-    (repository_line("DOMAIN-SET", "Global.list", "Proxy"), "GEOIP,CN,Domestic,no-resolve"),
+    (repository_line("DOMAIN-SET", "Global.list", "Proxy"), DOMESTIC_GEOIP_RULE),
 )
 for before, after in ordered_pairs:
     if position(before) >= position(after):
@@ -400,7 +414,7 @@ for domain in (
 ):
     position(f"DOMAIN-SUFFIX,{domain},Domestic")
 if rules[-4:] != [
-    "GEOIP,CN,Domestic,no-resolve",
+    DOMESTIC_GEOIP_RULE,
     "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
     "IP-CIDR6,::/0,Proxy,no-resolve",
     "FINAL,Final,dns-failed",
@@ -409,7 +423,7 @@ if rules[-4:] != [
 
 if PROFILE == (ROOT / "Surge.conf").resolve():
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    if lock.get("schema") != 16 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
+    if lock.get("schema") != 17 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
         fail("runtime lock schema or mode mismatch")
     if lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile name mismatch")
@@ -419,7 +433,7 @@ if PROFILE == (ROOT / "Surge.conf").resolve():
         fail("runtime lock profile counts are stale")
 
 print(
-    f"PASS R13.2 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.3 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     "immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0 "
     f"sha256={hashlib.sha256(payload).hexdigest()}"
 )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.2 local rule, runtime lock and provenance inventory.
+"""Validate the R13.3 local rule, runtime lock and provenance inventory.
 
 Use ``--check-dynamic`` to download and format-check the three reviewed dynamic
 runtime supplements without requiring their content to remain byte-identical.
@@ -16,7 +16,10 @@ import urllib.request
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    DOMESTIC_DNS_RULES,
+    DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
+    FOREIGN_DNS_RULES,
     PROFILE_NAME,
     RELEASE_REF,
     REMOTE_BASE,
@@ -63,7 +66,7 @@ def digest(path: Path) -> str:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 16 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
+if lock.get("schema") != 17 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -106,6 +109,29 @@ if dict(architecture.get("regions", {})).get("mode") != "smart":
     fail("regional groups must remain Smart")
 if architecture.get("domestic") != {"mode": "select", "default": "DIRECT", "fallback": "Proxy"}:
     fail("Domestic architecture invariant mismatch")
+if invariants.get("domestic_resources") != {
+    "dynamic_supplement": "domestic.conf",
+    "pinned_precise_set": "China.list",
+    "policy": "Domestic",
+    "geoip": DOMESTIC_GEOIP_RULE,
+    "geoip_resolves_unmatched_domains": True,
+}:
+    fail("Domestic resource invariant mismatch")
+if invariants.get("dns") != {
+    "dns_server": "223.5.5.5, 223.6.6.6",
+    "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
+    "follow_outbound_mode": False,
+    "certificate_verification": True,
+    "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
+    "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
+    "domestic_resolver_policy": "Domestic",
+    "foreign_resolver_policy": "Proxy",
+    "bootstrap": {
+        "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1"],
+        "doh.pub": ["1.12.12.12", "120.53.53.53"],
+    },
+}:
+    fail("DNS routing invariant mismatch")
 if invariants.get("udp_quic") != {
     "proxy_test_udp": "apple.com@9.9.9.9",
     "unsupported_behaviour": "REJECT",
@@ -116,7 +142,7 @@ if invariants.get("udp_quic") != {
 }:
     fail("UDP/QUIC invariant mismatch")
 if invariants.get("public_ip_literals") != {
-    "china": "GEOIP,CN,Domestic,no-resolve",
+    "china": DOMESTIC_GEOIP_RULE,
     "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
     "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
 }:
@@ -332,7 +358,7 @@ if "IP-ASN,2906,no-resolve" not in netflix_rules or any(rule.startswith(("IP-CID
 
 
 def fetch_dynamic(source: dict[str, object]) -> tuple[int, int, str]:
-    request = urllib.request.Request(str(source["url"]), headers={"User-Agent": "Surge-R13.2-Audit/1.0"})
+    request = urllib.request.Request(str(source["url"]), headers={"User-Agent": "Surge-R13.3-Audit/1.0"})
     with urllib.request.urlopen(request, timeout=30) as response:
         if response.status != 200:
             fail(f"dynamic source HTTP {response.status}: {source['url']}")
@@ -358,6 +384,6 @@ if CHECK_DYNAMIC:
         print(f"PASS dynamic {source['name']} entries={entries} bytes={size} sha256={sha256}")
 
 print(
-    f"PASS R13.2 runtime_sources=33 immutable_sources=30 dynamic_sources=3 "
+    f"PASS R13.3 runtime_sources=33 immutable_sources=30 dynamic_sources=3 "
     f"local_rule_files={len(actual_local)} rules={lock.get('active_rules')} embedded_rule_contents=0"
 )

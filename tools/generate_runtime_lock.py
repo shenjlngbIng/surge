@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.2 no-embedded-content runtime lock.
+"""Regenerate the R13.3 no-embedded-content runtime lock.
 
 The lock records 30 immutable repository snapshots, three reviewed dynamic
 runtime supplements and the configuration invariants enforced by the auditors.
@@ -12,7 +12,10 @@ import json
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    DOMESTIC_DNS_RULES,
+    DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
+    FOREIGN_DNS_RULES,
     PROFILE_NAME,
     RELEASE_DATE,
     RELEASE_REF,
@@ -50,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.2 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.3 inventory")
 
 embedded = [
     row for row in profile_rules
@@ -85,7 +88,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 16,
+    "schema": 17,
     "mode": "repository-plus-reviewed-dynamic-no-embedded-content",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -145,13 +148,18 @@ lock = {
             "dynamic_supplement": "domestic.conf",
             "pinned_precise_set": "China.list",
             "policy": "Domestic",
-            "geoip": "GEOIP,CN,Domestic,no-resolve",
+            "geoip": DOMESTIC_GEOIP_RULE,
+            "geoip_resolves_unmatched_domains": True,
         },
         "dns": {
             "dns_server": "223.5.5.5, 223.6.6.6",
             "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
             "follow_outbound_mode": False,
             "certificate_verification": True,
+            "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
+            "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
+            "domestic_resolver_policy": "Domestic",
+            "foreign_resolver_policy": "Proxy",
             "bootstrap": {
                 "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1"],
                 "doh.pub": ["1.12.12.12", "120.53.53.53"],
@@ -176,7 +184,7 @@ lock = {
         "diagnostic_policy": "Proxy",
         "runtime_rulesets_no_resolve": True,
         "public_ip_literals": {
-            "china": "GEOIP,CN,Domestic,no-resolve",
+            "china": DOMESTIC_GEOIP_RULE,
             "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
             "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
         },

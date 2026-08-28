@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutation regression tests for the R13.2 configuration auditor."""
+"""Mutation regression tests for the R13.3 configuration auditor."""
 
 from __future__ import annotations
 
@@ -63,8 +63,8 @@ def swap_once(name: str, left: str, right: str) -> None:
 # Header, section, global privacy, DNS, and access invariants.
 replace_once("author", "# > Surge Config Make by .ᐣ", "# > Surge Config Make by unknown")
 replace_once("date", "# > Update Date: 2026.08.28", "# > Update Date: 2026.08.27")
-replace_once("version", "Surge iOS Privacy + Push R13.2 Enhanced", "Surge iOS Privacy + Push R13.1")
-replace_once("preservation_header", "# > Feature-preserving enhancement based on R13.1; no original service group or remote rule resource was removed.\n", "")
+replace_once("version", "Surge iOS Privacy + Push R13.3 Domestic Performance", "Surge iOS Privacy + Push R13.2 Enhanced")
+replace_once("preservation_header", "# > Feature-preserving performance correction based on R13.2; no original service group or remote rule resource was removed.\n", "")
 replace_once("snapshot_header", "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).\n", "")
 replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
 replace_once("duplicate_section", "[Host]\n", "[Host]\n[Host]\n")
@@ -158,14 +158,19 @@ swap_once("remote_order", rr("RULE-SET", "ChatGPT.list", "ChatGPT"), rr("RULE-SE
 replace_once("stun_policy", "PROTOCOL,STUN,UDP", "PROTOCOL,STUN,Proxy")
 replace_once("dns53_open", "DEST-PORT,53,REJECT", "DEST-PORT,53,DIRECT")
 replace_once("dns853_open", "DEST-PORT,853,REJECT", "DEST-PORT,853,Proxy")
+replace_once("domestic_dns_proxy", "DOMAIN,dns.alidns.com,Domestic", "DOMAIN,dns.alidns.com,Proxy")
+replace_once("domestic_dns_direct", "DOMAIN,doh.pub,Domestic", "DOMAIN,doh.pub,DIRECT")
+replace_once("foreign_dns_direct", "DOMAIN,dns.google,Proxy", "DOMAIN,dns.google,DIRECT")
+swap_once("domestic_dns_after_reject", "DOMAIN-SUFFIX,smtcdns.net,Domestic", "DEST-PORT,53,REJECT")
 replace_once("apple_bootstrap_broad", "DOMAIN,configuration.ls.apple.com,DIRECT", "DOMAIN-SUFFIX,ls.apple.com,DIRECT")
 replace_once("diagnostic_direct", "DOMAIN-SUFFIX,browserleaks.net,Proxy", "DOMAIN-SUFFIX,browserleaks.net,DIRECT")
-replace_once("doh_direct", "DOMAIN,doh.pub,Proxy", "DOMAIN,doh.pub,DIRECT")
 replace_once("cloud_direct", "DOMAIN-SUFFIX,aliyuncs.com,Domestic", "DOMAIN-SUFFIX,aliyuncs.com,DIRECT")
 replace_once("viu_policy", "DOMAIN-SUFFIX,viu.now.com,Streaming", "DOMAIN-SUFFIX,viu.now.com,HBO")
 replace_once("youtube_override", "DOMAIN,yt3.ggpht.com,YouTube", "DOMAIN,yt3.ggpht.com,Google")
 replace_once("microsoft_override", "DOMAIN,login.live.com,Microsoft", "DOMAIN,login.live.com,Games")
 replace_once("game_cloud", "IP-CIDR,35.192.0.0/12,Proxy,no-resolve", "IP-CIDR,35.192.0.0/12,Games,no-resolve")
+replace_once("geoip_no_resolve", "GEOIP,CN,Domestic", "GEOIP,CN,Domestic,no-resolve")
+replace_once("geoip_proxy", "GEOIP,CN,Domestic", "GEOIP,CN,Proxy")
 replace_once("ipv4_catchall", "IP-CIDR,0.0.0.0/0,Proxy,no-resolve", "IP-CIDR,0.0.0.0/0,DIRECT,no-resolve")
 replace_once("ipv6_catchall", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 replace_once("cidr_resolve", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve", "IP-CIDR,1.1.1.1/32,Proxy")
@@ -184,4 +189,4 @@ for name, changed in cases:
     if result.returncode == 0:
         raise AssertionError(f"mutation unexpectedly passed: {name}")
 
-print(f"PASS R13.2 mutations={len(cases)}")
+print(f"PASS R13.3 mutations={len(cases)}")
