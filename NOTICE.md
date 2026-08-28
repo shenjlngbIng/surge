@@ -1,51 +1,49 @@
-# 来源与本地修改
+# 第三方来源与许可说明
 
-更新日期：2026-08-26
+本仓库发布 Surge iOS Privacy + Push R13.2 Enhanced 配置、固定规则副本和维护工具。规则与第三方数据的权利归各自作者或项目所有。根目录 MIT License 只覆盖本仓库有权以该许可发布的代码和内容，不会改变第三方材料原有的许可或权利状态。
 
-本仓库发布 Surge iOS Privacy + Push R12.17 配置及维护工具。规则与第三方数据版权归各自作者或项目所有，相关许可证和来源说明位于 `THIRD_PARTY_LICENSES/`。
+## Blackmatrix7 规则来源
 
-本配置的设计过程参考了以下公开项目。
+19 份服务规则以 `blackmatrix7/ios_rule_script` 的固定提交为维护输入。具体仓库、提交、文件路径、Git Blob、上游 SHA-256、本地增删边界和本地 SHA-256 记录在 `Rules/upstreams.lock.json`。
 
-- [Rabbit-Spec Surge Developer](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-Developer.conf)
-- [Rabbit-Spec Surge EN](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-EN.conf)
-- [As-Lucky Lucky](https://raw.githubusercontent.com/As-Lucky/Lucky/main/Lucky-Surge.conf)
-- [Coldvvater Surge 配置](https://gist.githubusercontent.com/Coldvvater/8093bc6be4340b5324b4a343493becfe/raw/Surge,conf)
-- [Thoseyearsbrian Aegis](https://github.com/Thoseyearsbrian/Aegis) 及其 [Aegis_TC.conf](https://raw.githubusercontent.com/Thoseyearsbrian/Aegis/main/config/Aegis_TC.conf)
-- [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script)
-- [AmnestyTech/investigations](https://github.com/AmnestyTech/investigations)
-- [Surge 官方 Quick Start](https://manual.nssurge.com/getting-started/quick-start.html)
-- [GetSomeCats Surge](https://github.com/getsomecat/GetSomeCats/blob/Surge/Surge.conf)
-- [iFaNGMiNGi Surge-Config](https://github.com/iFaNGMiNGi/Surge-Config)
-- [chenyk1219 Surge iPhone](https://github.com/chenyk1219/surge/blob/main/iPhone.conf)
+相关上游内容采用 GPL-2.0。完整许可副本见 `THIRD_PARTY_LICENSES/blackmatrix7-GPL-2.0.txt`。运行时不会直接访问 Blackmatrix7 地址，设备只读取本仓库固定提交里的审阅副本。
 
-上述项目用于比较 Surge 章节组织、DNS 处理、规则集引用、策略组设计和安全边界。它们是截至 2026-08-26 的代表性样本，不表示穷举互联网全部 Surge 配置。当前仓库重新维护自己的配置、策略组、规则顺序、审计工具和发布流程，公开包不包含这些项目的节点、订阅、Token、脚本或证书材料。19 个服务规则的维护来源以 `Rules/upstreams.lock.json` 为准，独立 Pegasus 资源的维护来源以 `Rules/resources.lock.json` 为准，其余 10 个仓库维护列表的来源状态、哈希和许可说明以 `Rules/maintained_sources.lock.json` 为准。
+## SukkaW 来源
 
-R12.17 的设备运行时只加载 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df` 中的 30 个本地规则快照，不直接访问上述第三方规则仓库。第三方 URL 只用于维护时下载固定提交，并接受完整提交、Git Blob 和 SHA-256 校验。该范围不包含 jsDelivr/GitHub 交付、Surge 内建 ASN 数据、AliDNS、连通性测试端点和私有订阅地址；这些系统或在线依赖在 README 中单独披露。
+`Rules/Ads.list` 含有历史 SukkaW 来源和仓库维护内容。准确的历史输入提交尚未确认，因此 `Rules/maintained_sources.lock.json` 明确披露该限制，并禁止未经固定来源和差异审阅的自动刷新。R13.2 继续从本仓库固定提交加载这份含 152 条活动规则的文件。
 
-2026-08-26 的 DNS/出口完整性补丁通过运行时 RULE-SET 的 `no-resolve`、隐藏自动单节点 PrivacyAuto 检测组和公网 IPv4/IPv6 字面量代理兜底收紧客户端路径。它不复制参考配置，也不声称能控制私有代理节点服务器上的 DNS、NAT 或目的地分流。
+R13.2 还直接引用 SukkaW/Surge 提供的三个动态运行资源：
 
-用户曾提供 `dandanvip.sgmodule` 的公开链接用于排查。该模块不属于本仓库来源或发布内容；真机日志显示它的 RULE-SET 会在主配置隐私检测规则前要求 DNS lookup，卸载后检测恢复正常，因此本包明确不附带或启用该模块。
+- `https://ruleset.skk.moe/List/domainset/reject_phishing.conf`
+- `https://ruleset.skk.moe/List/domainset/reject.conf`
+- `https://ruleset.skk.moe/List/non_ip/domestic.conf`
 
-R12.15 的被动 `NodePool` 与 Smart 决策分层是本仓库针对网络切换集中测速问题做出的组合设计。参考配置只用于验证 Surge 支持的策略组组织方式，没有复制其中的订阅、节点或私有资源。
+三份动态内容不复制进发布包，也不承诺发布后保持同一哈希。发布观察值、用途、格式和更新间隔记录在 `Rules/r10.lock.json`，在线审计只验证当前可用性和格式边界。SukkaW/Surge 采用 AGPL-3.0；许可副本见 `THIRD_PARTY_LICENSES/SukkaW-AGPL-3.0.txt`。
 
-R12.16 对固定上游快照执行本地、可复现的语义筛选。Bilibili 国内版与国际版使用两个规则文件和现有策略，国内版直连，国际版进入 `Streaming`。共享云、遥测和国内服务误代理项已经删除，Netflix 的宽泛云网段改为官方 Open Connect ASN。终审已把 278 条历史本地行全部显式写入 `Rules/upstreams.lock.json`；更新器只从固定上游和锁输入生成，不再用旧输出隐式续存规则。历史来源不明确的行保留未决许可披露，不将其错误归属于第三方项目。
+## Amnesty Tech Pegasus 数据
 
-R12.17 将 Amnesty Tech 固定提交 `3d8f248a0d015f183724ae7d096a5c46a8bb5fc7` 的 `2021-07-18_nso/domains.txt` 保存为 `Rules/Pegasus.list`。本地副本保留 1,438 个非空域名，不扩大为后缀。固定提交根目录在复核时未发现通用许可证文件，详情见 `THIRD_PARTY_LICENSES/AmnestyTech-NOTICE.txt`；本仓库根目录 MIT License 不覆盖该数据。
+`Rules/Pegasus.list` 保存 Amnesty Tech 固定提交 `3d8f248a0d015f183724ae7d096a5c46a8bb5fc7` 中 `2021-07-18_nso/domains.txt` 的 1,438 个非空域名。上游 URL、Git Blob、上游 SHA-256、本地 SHA-256 和处理方式记录在 `Rules/resources.lock.json`。
 
-本仓库的原创维护内容包括：
+固定提交根目录在复核时没有发现通用许可证文件。详情见 `THIRD_PARTY_LICENSES/AmnestyTech-NOTICE.txt`。本地副本保留纯域名，主配置通过本仓库固定 `DOMAIN-SET` 引用该文件。
 
-- Surge 配置结构与策略组设计
-- 失败关闭策略和规则顺序
-- DNS 防绕过规则
-- 仓库自有远程 `RULE-SET`/`DOMAIN-SET` 引用与规则集审计锁
-- 第三方维护输入与设备运行时本仓库副本的隔离
-- 国内外精确域名集的筛选、零冲突边界与维护工具
-- Telegram 与 APNs 路由方案
-- 配置和规则审计脚本
-- ZIP 安全暂存工具
-- GitHub Actions 工作流
-- 使用、安全和贡献文档
+## 仓库维护规则
 
-原创脚本、配置结构与文档采用仓库根目录 `LICENSE` 中的 MIT License。第三方规则、数据和材料继续遵循各自许可证；MIT License 不替代或覆盖第三方许可证。
+`APNs.list`、`Ads.list`、`AppleCN.list`、`BiliBili.list`、`China.list`、`Direct.list`、`Global.list`、`ProxyMedia.list`、`Telegram.list` 和 `WeChat.list` 的维护方式、来源说明、许可状态、活动条目数与 SHA-256 记录在 `Rules/maintained_sources.lock.json`。
 
-公开仓库不得包含真实订阅地址、代理节点、Token、密码、Cookie、私钥或证书。`Rules/*.list`、四份锁文件、`THIRD_PARTY_LICENSES/` 和维护工具属于审计链路，不应删除。
+来源不明的历史内容不会被猜测归属。后续修改需要保留差异记录，并按锁文件要求更新哈希。
+
+## 运行时交付范围
+
+R13.2 共有 33 个远程运行资源。其中原有 30 个资源仍固定到本仓库提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`，设备不会为这些固定副本直接访问原第三方维护仓库；新增三个 SukkaW 资源使用上面列出的精确动态 URL，设备会直接访问 `ruleset.skk.moe` 获取它们。
+
+下面这些在线系统属于配置依赖或交付基础设施，不属于本地规则数据许可范围。
+
+- jsDelivr 与 GitHub 的固定提交交付。
+- SukkaW 动态规则交付。
+- AliDNS 与 DNSPod 的 DNS、DoH 和引导地址。
+- 华为与 Cloudflare 的连通性测试端点。
+- Quad9 的 UDP 连通性探针地址。
+- Surge 内建数据库和客户端实现。
+- 用户私下配置的订阅服务与 Sub-Store 部署。
+
+使用者应自行确认其所在地区、分发方式和用途是否符合相关服务条款与法律要求。

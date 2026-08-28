@@ -1,70 +1,79 @@
-# 贡献指南
+# 贡献与维护
 
-## 基本要求
+R13.2 把主配置、规则快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何规则或配置变化都要同步更新相关元数据，并让完整测试通过。
 
-- 不提交真实订阅、节点、Token、密码或证书。
-- 不引入未经固定版本或本仓库审计的远程脚本、`RULE-SET` 或 `DOMAIN-SET`。
-- 运行时规则地址必须固定到完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`，不得恢复为标签、`@main` 或短 SHA。
-- `Surge.conf` 中的全部静态运行资源必须来自本仓库固定提交；第三方 URL 只能作为维护输入写入锁文件。
-- Pegasus 必须由 `Rules/Pegasus.list` 提供，并同时通过 `Rules/resources.lock.json` 的提交、Blob、上游哈希、本地哈希和条目数量校验。
-- 不为 Telegram 增加 `DIRECT` 路径。
-- 不把全部 Apple 流量改为代理；APNs 只进入 `ApplePush` Fallback。
-- 保留 `include-all-networks=true`、`include-apns=true` 和 `ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true`。
-- `ApplePush`、`AdBlock`、`Security` 与 `UDP` 必须保持 `hidden=1`；隐藏只控制界面可见性，不得借此改变其默认成员顺序或删除排错成员。
-- `NodePool` 必须保持隐藏的 `select` 订阅容器，只允许它持有 `policy-path`，不能作为规则目标或显式策略成员；`PrivacyAuto` 只可通过 `include-other-group=NodePool` 复制具体节点。
-- `AllServer` 和五个地区组必须保持 `smart, Fail-Closed`，且只能通过 `include-other-group=NodePool` 读取订阅节点。
-- `PrivacyAuto` 必须保持隐藏的 `url-test, Fail-Closed`，固定 `interval=600`、`tolerance=100`、`evaluate-before-use=true`、`no-alert=1`，不得加入 DIRECT 或嵌套策略组；9 个受审计的 DNS/出口检测域名必须在远程和国内规则前进入 `PrivacyAuto`。
-- 除 `ApplePush` 与受严格参数约束的 `PrivacyAuto` 外，不增加 `url-test`、`fallback` 或 `load-balance` 自动组，避免网络切换恢复不必要的全订阅集中测速。
-- 不删除 Smart 组中的显式 `Fail-Closed`。Smart 空组可能使用替代策略，显式哨兵是公开配置不静默直连的必要边界。
-- 不重新启用 `include-cellular-services`，除非同时给出运营商兼容性验证与回滚方案。
-- DNS 必须保持加密出站，禁止恢复 `system` 上游或明文直连绕过；`encrypted-dns-skip-cert-verification` 必须显式保持 `false`。
-- `encrypted-dns-follow-outbound-mode=false` 时，不增加不会参与内部解析链的 DOH、DOH3、DOQ 规则组。
-- `dns.alidns.com` 与 `doh.pub` 的应用连接不得恢复 DIRECT；Surge 内部加密 DNS 的规则外直连由 General 设置负责。
-- 所有运行时 `RULE-SET` 必须带 `no-resolve`，避免其中的 IP 子规则为代理域名触发本地解析。
-- `dns.alidns.com` 的 IPv4 与 IPv6 引导地址必须保留在同一个 Host 映射中。
-- 保留 `ls.apple.com` 和 `100.64.0.0/10` 的本地直连边界。
-- 不把 `Final` 改为默认直连。
-- 不删除规则快照、许可证或审计工具。
-- 精确域名集不得加入公共后缀、域名关键词或共享云/CDN；国内外条目不得重叠。
-- `BiliBiliIntl.list` 必须先于 `BiliBili.list`。国际版进入现有 `Streaming`，国内 API 与视频 CDN 进入 `DIRECT`，不得新增 Bilibili 专用策略组。
-- `PROTOCOL,STUN,UDP` 必须先于公网 IPv4/IPv6 字面量失败关闭；`0.0.0.0/0` 与 `::/0` 均进入 Proxy 且带 `no-resolve`。UDP 组默认选择 Proxy，DIRECT 仅用于用户明确排错。
-- `DOMAIN-SUFFIX,viu.now.com,Streaming` 必须位于 HBO.list 前，避免 `now.com` 父级后缀抢先命中。
-- `Game.list` 必须先于 `OneDrive.list` 和 `Microsoft.list`，避免 Xbox、Minecraft、Bethesda 等条目失去作用。
-- Netflix 不得重新导入宽泛云厂商 CIDR；保留审核后的 `IP-ASN,2906,no-resolve`。
-- 服务规则的共享云、遥测和国内例外必须通过 `Rules/upstreams.lock.json` 的排除项维护，不得只手改生成文件。
-- 服务规则的每条本地补充必须进入对应 `add` 数组并披露来源状态；更新器不得读取旧输出作为生成输入。
-- 10 个仓库维护列表的内容、条目数、哈希与许可状态必须同步记录在 `Rules/maintained_sources.lock.json`。
-- 发布清单必须使用 `tools/release_inventory.py`；不得通过扩大排除后缀来静默跳过 `.env`、日志、未知目录或符号链接。
-- 发布树中的文本必须为无 BOM 的 UTF-8、LF 换行、无 NUL 且以换行结束；不能只在本机临时转码后绕过发布清单测试。
-- 公布的基线测试必须关闭所有未逐行审阅的 Surge 模块。模块可覆盖 General 并把规则插入主配置规则列表顶部，任何模块变更都要单独审查和真机复测。
+## 必须保持的边界
 
-## 修改流程
+- 公开 `Surge.conf` 只能保留 `https://example.invalid/REPLACE_WITH_SUB_STORE_URL`，不能提交真实订阅或令牌。
+- 原 30 个远程资源继续固定到完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`；新增资源只允许三条已审阅的 `ruleset.skk.moe` 精确 URL。
+- 运行时资源固定为 33 个，本地 `.list` 文件固定为 30 个，主配置不得内嵌规则内容。
+- Pegasus 必须通过固定 `DOMAIN-SET` 指向 `Security`；动态钓鱼必须位于 Pegasus 之前。
+- 固定 Ads 与动态基础广告分别通过 `RULE-SET` 和 `DOMAIN-SET` 指向 `AdBlock`，固定 Ads 必须在动态基础广告之前。
+- 动态国内 `RULE-SET`、固定 China `DOMAIN-SET` 和 `GEOIP,CN` 必须指向 `Domestic`，并保持审计定义的首条命中顺序。
+- `NodePool` 保持可见的手动 `select`，首个成员为 `Fail-Closed`。`Proxy` 默认使用 `AllServer`；`UDP` 默认使用 `Proxy`。
+- `AllServer` 和五个地区组保持 `smart`，只导入 `NodePool`，不能退回 `url-test` 或直接导入订阅。
+- `ApplePush` 保持隐藏；`AdBlock`、`Security`、`UDP` 和 `Domestic` 保持可见；`wifi-assist` 保持关闭。
+- Surge 自身 DNS 使用两个 AliDNS 地址、两个 DoH 端点和固定引导地址，证书校验保持开启；应用常见 DoH 域名走 `Proxy`。
+- STUN 必须位于公网 DNS 端口和公网域名、IP 规则之前。
+- 53、853 和 8853 端口必须在局域网规则之后拒绝。
+- `GEOIP,CN,Domestic,no-resolve` 位于 Global 后；IPv4 与 IPv6 公网字面量代理规则紧贴唯一末尾 `FINAL`。
+- 发布目录只允许 `release_inventory.py` 中的 66 个文件。
 
-1. 修改配置或规则源。
-2. 运行 `python3 tools/convert_to_remote_rules.py`，确认主配置只引用外部规则集。
-3. 运行 `python3 tools/embed_runtime_rules.py` 刷新元数据；该历史文件名不会嵌入规则内容。
-4. 运行 `python3 tools/update_external_resources.py --verify-lock` 检查独立固定资源。
-5. 运行 `python3 tools/audit_precise_domains.py` 检查格式、冗余和国内外交叉冲突。
-6. 执行全部审计、打包和测试。
-7. 重新生成 `RELEASE_MANIFEST.txt`、`SHA256SUMS.txt` 和 `SHA256SUMS_fixed.txt`。
-8. 检查差异和敏感信息。
-9. 执行 Wi-Fi → 蜂窝数据 → Wi-Fi 切换回归，确认没有全订阅请求风暴。
-10. 在提交说明中描述行为变化及验证结果。
+## 修改规则文件
 
-## 必须通过的命令
+19 份固定服务规则由 `Rules/upstreams.lock.json` 记录来源提交、Git Blob、本地增删边界、活动条目数和 SHA-256。Pegasus 由 `Rules/resources.lock.json` 管理。其余 10 份仓库维护列表由 `Rules/maintained_sources.lock.json` 披露来源和许可状态。
+
+更改内容前先确认来源固定到完整提交，并复核许可证。不要用自动更新覆盖审阅过的本地边界。每次变化都要记录活动条目数、内容哈希和差异决定。
+
+更新固定第三方资源时可使用下面的维护命令。`--download --check` 只比较，不写文件。
 
 ```bash
+python3 tools/update_external_resources.py --download --check
+python3 tools/update_service_rules.py --download --check
+```
+
+三份动态运行资源不复制到仓库。更改 URL、类型、策略或顺序前必须重新审阅许可、规模和误判风险，并同步修改配置、`convert_to_remote_rules.py`、运行锁生成器、审计器和文档。使用下面的命令检查当前在线内容，不要因为正常哈希变化自动提交快照。
+
+```bash
+python3 tools/audit_rules.py --check-dynamic
+```
+
+## 修改主配置
+
+先在配置中完成改动，再同步修改 `convert_to_remote_rules.py`、`generate_runtime_lock.py`、`audit_config.py` 和 `test_audit_config.py`。新增策略组要检查引用和循环。新增规则要说明首条命中位置，并为容易退化的条件加入故障注入。
+
+不要为了让审计通过而放宽断言。需要改变边界时，应同时更新迁移说明、审计报告和变更记录，让使用者知道新的行为与代价。
+
+## 完整验证
+
+```bash
+export PYTHONDONTWRITEBYTECODE=1
+python3 -m compileall -q tools
+python3 tools/convert_to_remote_rules.py
+python3 tools/generate_runtime_lock.py
+python3 tools/update_external_resources.py --verify-lock
+python3 tools/update_service_rules.py --verify-lock
 python3 tools/audit_config.py
 python3 tools/audit_rules.py
+python3 tools/audit_rules.py --check-dynamic
 python3 tools/audit_precise_domains.py
 python3 tools/test_audit_config.py
 python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
-python3 tools/update_external_resources.py --verify-lock
-python3 tools/update_service_rules.py --verify-lock
-python3 tools/package_release.py --output ../Surge-R12.17-Privacy-Auto-20260826.zip
+python3 tools/generate_release_manifest.py
+python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
+python3 tools/package_release.py --output ../Surge-R13.2-Complete-No-Embedded-20260828.zip
 ```
 
-当前基线应报告 109 条活动规则、30 个仓库运行资源、34 个策略组、97 项故障注入测试、24 个 ZIP 安全回归和 15 个严格发布清单回归。数量发生变化时，必须在变更说明中解释原因并同步更新审计器，不能只修改预期数字让测试通过。
+生成清单和哈希后再次运行全部审计。压缩包应包含 66 个文件，并在相同输入下产生相同 SHA-256。
+
+## 提交前检查
+
+- `git diff --check` 没有空白错误。
+- 所有文本为 UTF-8、LF、无 BOM，并保留结尾换行。
+- 没有 `.env`、日志、缓存、临时文件、额外压缩包或符号链接。
+- 文档里的版本、日期、数量、命令和包名与脚本一致。
+- 私有订阅、令牌、设备日志和个人域名没有进入差异。
+- 真机行为变化已经完成 Wi-Fi、蜂窝、APNs、DNS、双栈、UDP、Smart 和 Domestic 验收。

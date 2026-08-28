@@ -1,126 +1,98 @@
-# R12.17 迁移说明
+# R13.1 到 R13.2 Enhanced 迁移说明
 
-R12.17 把配置需要的最后一份第三方运行时静态资源收进自有仓库，并同步当前已经审阅的配置、锁文件、工具、工作流和文档。R12.16 的 Bilibili、Game/Microsoft、Netflix 和共享域名修正全部保留。
+R13.2 是 R13.1 的保留式增强，不是推倒重写。原有 33 个策略组名称、125 个规则匹配条件、30 个固定远程 URL、30 份本地规则快照、订阅占位符和 `Fail-Closed` 全部保留。
 
-`NodePool → Smart` 架构、Telegram 与 APNs 保持不变。2026-08-26 的补丁收紧了 DNS、本地解析与公网 IP 字面量边界；公开配置中的订阅地址仍是不可路由占位符，真实订阅和凭据只能放在私有副本中。
+主配置、运行锁、审计器、故障注入、README、工作流、清单和哈希必须一起更新。只替换 `Surge.conf` 会留下 R13.1 的数量、策略架构和供应链断言，后续审计会得到错误结果。
 
-## 2026-08-26 DNS 与出口完整性补丁
+## 主要变化
 
-- 新增隐藏的 `PrivacyAuto = url-test, Fail-Closed, ... include-other-group=NodePool`。Net.Coffee 与 IPPure 使用的 9 组站点/探测域名全部进入该组；新名称会在配置重载时清除旧 `Privacy` 组可能遗留的临时手动覆盖，再由它在首次使用前自动选择一个统一订阅节点，避免 Smart 的逐站点记忆在同一次测试中使用多个节点。
-- 27 个运行时 `RULE-SET` 统一增加 `no-resolve`。域名请求经过其中的 IP 子规则时不再触发本地 DNS；规则集中的域名项以及 IP 字面量匹配仍正常工作。
-- `dns.alidns.com` 与 `doh.pub` 的应用连接从 DIRECT 改为 Proxy。Surge 自己的 AliDNS DoH/DoT 仍由 `encrypted-dns-follow-outbound-mode=false` 在规则外直连，避免域名型代理节点产生 DNS—代理循环。
-- 删除 `GEOIP,CN,DIRECT,no-resolve`，改为 IPv4/IPv6 公网字面量统一进入 Proxy。明确的局域网、CGNAT 和已审阅服务 IP 规则仍在前面优先命中。
-- 基线由 33 个策略组、98 条活动规则和 78 项故障注入更新为 34 个策略组、109 条活动规则和 97 项故障注入。
-
-配置只能控制客户端接管、规则触发的本地解析和出口策略，不能替代理节点选择服务器端递归 DNS。PrivacyAuto 自动选中的具体节点仍显示中国移动、阿里或与出口地区不一致的解析器时，应停用该节点或要求节点提供方修正远端 DNS。
-
-## R12.17 策略界面精简补丁
-
-`ApplePush`、`AdBlock`、`Security` 与 `UDP` 已改为 `hidden=1`。隐藏前确认的默认状态分别为 Proxy、REJECT、REJECT 与 Proxy，成员顺序和规则目标均未改变。更新配置后，这四组不再显示于 Surge iOS 的策略选择页面，但仍正常处理 APNs、广告、Pegasus IOC 与 STUN。
-
-如需临时排错，只在私有副本中把对应组改为 `hidden=0`，完成切换和验证后再恢复 `hidden=1`。不要为了隐藏界面删除 DIRECT、REJECT-DROP 或 REJECT 成员，它们仍是明确的故障排查与回滚路径。
-
-## R12.17 资源迁移
-
-下面第一张表对比的是本次检查过程中产生的 `R12.16 Reviewed v3` 审阅稿。该审阅稿已经启用 Security、UDP、Pegasus 与 98 条规则，但 Pegasus 仍由设备直接读取第三方固定提交；R12.17 将它改为仓库本地副本。
-
-| 项目 | R12.16 Reviewed v3 | R12.17 |
+| 项目 | R13.1 | R13.2 Enhanced |
 | --- | --- | --- |
-| Pegasus IOC | 设备直接读取 Amnesty Tech 固定提交 | 设备读取本仓库 `Rules/Pegasus.list` |
-| 第三方运行时静态 URL | 1 个 | 0 个 |
-| 仓库运行资源 | 29 个 | 30 个 |
-| 策略组 | 33 个 | 33 个 |
-| 活动规则 | 98 条 | 98 条 |
-| 资源来源锁 | 服务上游锁 | 服务上游锁、`resources.lock.json` 与 `maintained_sources.lock.json` |
+| 策略组 | 33 | 34 |
+| 活动规则 | 125 | 130 |
+| 固定提交远程资源 | 30 | 30，原 URL 全部保留 |
+| 动态远程资源 | 0 | 3 |
+| 本地规则文件 | 30 | 30 |
+| `Proxy` 默认 | `NodePool` | `AllServer` |
+| 自动选择 | 6 个 `url-test` | 6 个 `smart` |
+| `AdBlock` | 隐藏 | 可见 |
+| `Security` | 隐藏 | 可见 |
+| `UDP` | 隐藏，默认 `NodePool` | 可见，默认 `Proxy` |
+| 国内总开关 | 无 | `Domestic = DIRECT, Proxy` |
+| 国内固定规则 | 多处硬编码 `DIRECT` 或 `Proxy` | 统一进入 `Domestic` |
+| Wi-Fi 门户 | 无精确补充 | `captive.apple.com` 直连 |
+| 广告防护 | 固定 `Ads.list` | 固定 Ads 加动态基础 DOMAIN-SET |
+| 安全防护 | 固定 Pegasus 历史 IOC | 动态钓鱼 DOMAIN-SET 加固定 Pegasus |
+| 国内补充 | 固定 China 精确集合 | 动态国内 RULE-SET 加固定 China 与 CN GeoIP |
+| 日志级别 | `warning` | `notify` |
+| 配置故障注入 | 99 项 | 110 项 |
+| ZIP 安全回归 | 25 项 | 26 项 |
+| 完整包 | `Surge-R13.1-Complete-No-Embedded-20260827.zip` | `Surge-R13.2-Complete-No-Embedded-20260828.zip` |
 
-Pegasus 本地副本保留原固定源的 1,438 个域名，不扩大为后缀。设备的 30 个规则 URL 只访问 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df`；维护工具才会访问锁定的第三方提交。
+## 没有删除的内容
 
-如果从仓库当前公开的 R12.16 发布版直接升级，还会同时得到审阅稿中已经完成的配置修正：策略组从 31 个增至 33 个，活动规则从 86 条增至 98 条，新增 Security 与 UDP 开关、Pegasus IOC、UDP 探测、Viu/HBO 覆盖、Google/YouTube 与 Game/Microsoft 共享基础设施覆盖，并把 `GEOIP,CN,DIRECT` 收紧为 `GEOIP,CN,DIRECT,no-resolve`。完整利弊见 `AUDIT_REPORT.md`。
+- APNs、Apple、广告、安全、AI、流媒体、Telegram、X、Google、Microsoft、游戏和 STUN/UDP 分类仍在。
+- 五个地区组、`AllServer`、`NodePool`、`Proxy`、`Final` 和 `Fail-Closed` 名称仍在。
+- 原 30 个远程 URL 仍固定到提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
+- 原 125 个规则的“类型 + 匹配对象”全部仍存在。
+- DNS、IPv6、全网络接管、ICMP 防泄漏、局域网访问限制和 APNs 接管参数仍在。
+- 公开订阅仍是 `https://example.invalid/REPLACE_WITH_SUB_STORE_URL`，没有写入私人链接。
 
-## 最短升级步骤
+16 个原规则只改变策略去向：`WeChat.list`、`Direct.list`、`BiliBili.list`、`China.list` 和 12 个国内共享云后缀统一进入 `Domestic`。默认行为仍是直连，但用户可在受限网络中一键改为代理。
 
-1. 备份当前可用的私有 `Surge.conf`。
-2. 用 R12.17 完整仓库文件替换公开基线，不要只替换主配置；使用安装工作流时填写包外公布的 `archive_sha256`。
-3. 从旧私有配置中只复制 `NodePool.policy-path` 的 URL。
-4. 不要复制旧版 `[Rule]`、服务策略组或规则文件，以免带回已修复的顺序和域名冲突。
-5. 确认规则快照标签 `r12.17-20260825` 仍指向 `d1d714d575d5494ef1a7613238f4f301e1b293df`；运行 URL 本身使用该完整提交，不依赖标签。
-6. 在 Surge 中重新载入配置并刷新全部外部资源。
-7. 直接执行 DNS/出口检测；隐藏的 `PrivacyAuto` 会先评估并自动选择一个具体节点，无需在策略页手动操作。
+## 推荐迁移步骤
 
-不要只上传 `Pegasus.list` 或只替换 `Surge.conf`。两者必须和 `Rules/r10.lock.json`、`Rules/resources.lock.json`、`Rules/maintained_sources.lock.json`、审计工具、清单及校验和保持同一版本。安装工作流只删除旧发布清单明确管理、而新版本已取消的文件，不会把用户自有文件当作发布残留清理。
+1. 备份 R13.1 私人副本中的真实 `policy-path` 和你手动选择的策略。不要把含令牌的备份放进公开目录。
+2. 解压 R13.2 完整包，用全部 66 个文件替换旧发布文件，保留目录层级。
+3. 在新的 `Surge.conf` 中只替换 `NodePool.policy-path`。不要整行覆盖，否则会丢失 `Fail-Closed` 和更新参数。
+4. 导入配置并刷新外部资源，确认 30 个固定资源与 3 个动态资源都能加载。
+5. 确认 `NodePool` 已出现订阅节点。若使用 Sub-Store 合成域名，同时确认对应模块已启用。
+6. 检查 `Proxy` 当前选择。Surge 可能保留 R13.1 的 `NodePool` 选择；要使用新默认自动策略，请手动切到 `AllServer` 一次。
+7. 测试 `Domestic=DIRECT`。在境外、校园网或受限网络中如国内服务异常，再切到 `Domestic=Proxy` 对比。
+8. 完成 Wi-Fi、蜂窝、APNs、DNS、IPv4、IPv6、UDP、AI、流媒体、广告误报和钓鱼误报测试。
 
-## Bilibili 国内版与国际版分流
+## Smart 迁移注意
 
-新版使用两个规则文件，共用现有策略，不增加 Bilibili 策略组。
+`AllServer` 与五个地区组保留原名称，因此自定义服务组的引用不需要改名。它们从 `url-test` 变为 `smart`，继续通过 `include-other-group=NodePool` 读取实际代理，并显式保留 `Fail-Closed`。
 
-~~~ini
-RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBiliIntl.list,Streaming,no-resolve,update-interval=-1
-RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list,DIRECT,no-resolve,update-interval=-1
-~~~
+Smart 根据真实连接质量、丢包和测试结果选择候选，并在连接失败时尝试其他代理。`interval` 对 Smart 无效，因此 R13.2 删除了旧的 1,800 秒间隔与 100 毫秒容差。若你需要永久固定节点，把 `Proxy` 切到 `NodePool` 并手动选择即可。
 
-国际版规则排在国内版之前，先接住 `apiintl.biliapi.net`、`bilibili.tv`、`biliintl.com` 和国际版专用 CDN。国内版随后接管 `bilibili.com`、`biliapi.com`、`biliapi.net`、图片域名和视频 CDN。
+## 动态规则迁移注意
 
-评论请求常用的 `api.bilibili.com` 会命中国内版 DIRECT。`bilivideo.com`、`hdslb.com` 和 `biliimg.com` 也保持直连。国际版仍可在 `Streaming` 中选择 `Proxy` 或地区节点。
+新增三份运行时 URL：
 
-`apm-misaka.biliapi.net` 已从泛媒体规则移除并由国内版直连规则接管。`cache.video.iqiyi.com` 也已移除并回到国内直连。
+```text
+https://ruleset.skk.moe/List/domainset/reject_phishing.conf
+https://ruleset.skk.moe/List/domainset/reject.conf
+https://ruleset.skk.moe/List/non_ip/domestic.conf
+```
 
-## R12.16 继承的其他变化
+它们使用 86,400 秒更新间隔，内容不放进完整包。动态列表可能随上游变化并产生误报，所以 `Security`、`AdBlock` 和 `Domestic` 保持可见。遇到异常时先切换对应策略确认，不要删除原固定资源或改成未经审阅的镜像。
 
-| 项目 | R12.15 | R12.16 |
-| --- | --- | --- |
-| Bilibili | 仅国际版专用规则 | 国内版 DIRECT，国际版 Streaming |
-| 策略组 | 31 | 31，不新增 Bilibili 组 |
-| 活动规则 | 85 | 86 |
-| 远程源 | 28 | 29 |
-| STUN | 位于中国 GEOIP 后 | 位于中国 GEOIP 前并强制进入 Proxy |
-| 规则地址 | 跟随 `@main` | 固定到完整规则快照提交 |
-| Xbox/Minecraft 等 | 先被 Microsoft 命中 | 先命中 Games |
-| HBO 默认 | America | Proxy |
-| Google 直连例外 | 14 条 | 删除，统一进入 Google |
-| Netflix IP | 大量 AWS/云 CIDR | `IP-ASN,2906,no-resolve` |
-| TikTok | 含共享 `snssdk.com` | 删除，国内字节域名回到国内兜底 |
+## 本地校验
 
-Bahamut、Disney、HBO、Microsoft 和 Game 中的共享 CA、CDN、遥测与第三方 SaaS 后缀也已剔除，服务自己的专属域名仍保留。
+```bash
+export PYTHONDONTWRITEBYTECODE=1
+python3 -m compileall -q tools
+python3 tools/convert_to_remote_rules.py
+python3 tools/generate_runtime_lock.py
+python3 tools/update_external_resources.py --verify-lock
+python3 tools/update_service_rules.py --verify-lock
+python3 tools/audit_config.py
+python3 tools/audit_rules.py
+python3 tools/audit_rules.py --check-dynamic
+python3 tools/audit_precise_domains.py
+python3 tools/test_audit_config.py
+python3 tools/test_release_inventory.py
+python3 tools/test_stage_surge_zip.py
+sha256sum -c SHA256SUMS.txt
+cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
+```
 
-## 升级后验证
+离线审计应报告 34 个策略组、130 条规则、33 个运行时资源、30 个本地规则文件和零条内嵌规则内容。动态在线检查应分别报告三份资源当前的条目数、字节数和 SHA-256。
 
-### 运行资源
+## 回退
 
-1. 确认 `Surge.conf` 中 30 个 `RULE-SET`/`DOMAIN-SET` 全部包含 `shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/`。
-2. 确认不存在 `raw.githubusercontent.com`、Blackmatrix7 或 Amnesty Tech 的第三方运行时规则 URL。
-3. 确认 `Rules/Pegasus.list` 有 1,438 个活动域名，并通过 `python3 tools/update_external_resources.py --verify-lock`。
-4. 确认 `viu.now.com` 命中 `Streaming`，不会被 HBO 的 `now.com` 父级后缀抢先接管。
+需要回退时，重新使用完整的 R13.1 发布包并恢复当时的私人订阅地址。不要把 R13.2 的 `Rules/r10.lock.json`、README、清单或审计工具留在 R13.1 目录中。
 
-### Bilibili
-
-1. 打开国内版客户端，播放视频并立即展开评论。
-2. 确认 `api.bilibili.com`、`*.biliapi.com` 或 `*.biliapi.net` 命中 `DIRECT`。
-3. 确认 `*.bilibili.tv` 也命中 `Streaming`。
-4. 确认实际视频 CDN，如 `*.bilivideo.com`、`*.hdslb.com`，命中 `DIRECT`。
-
-国内版评论仍慢时，应检查请求是否错误命中 `Streaming`，并确认设备加载的是当前完整提交规则快照。国际版异常时再检查已有 `Streaming` 的节点选择。
-
-### 其他服务
-
-- `cache.video.iqiyi.com` 应命中 `DIRECT`。
-- `api.snssdk.com` 等国内字节域名应由国内规则直连。
-- `xbox.com`、`minecraft.net`、Bethesda/Forza 域名应命中 `Games`。
-- Google 更新、推送及下载域名应命中 `Google`，不再被 `Direct.list` 提前直连。
-- Netflix 规则中应有 `IP-ASN,2906,no-resolve`，且不应出现 `IP-CIDR` 或 `IP-CIDR6`。
-- HBO Asia/Now 默认跟随 `Proxy`；如需美国区 Max，再在 HBO 组手动选美国。
-
-### 原有安全边界
-
-- `NodePool` 仍为隐藏的 `select` 订阅容器，只有它持有 `policy-path`。
-- `AllServer` 与五个地区组仍为 `smart, Fail-Closed`。
-- `PrivacyAuto` 隐藏并自动选择统一节点；无可用订阅节点时使用 Fail-Closed 明确失败。
-- Telegram 仍强制代理。
-- `ApplePush` 仍为 `Proxy → DIRECT` 回落。
-- `ApplePush`、`AdBlock`、`Security` 与 `UDP` 均为隐藏功能组。
-- `Security` 默认 REJECT，并在配置中保留 DIRECT 排错开关。
-- STUN 位于公网 IPv4/IPv6 字面量失败关闭前并进入隐藏的 `UDP`，该组默认选择 `Proxy`。
-- AliDNS 内部 DoH/DoT、53/853/8853 控制、CGNAT 与 `ls.apple.com` 直连均保留；应用生成的 AliDNS/DNSPod DoH 不再直连。
-
-## 回滚
-
-如新版在你的网络中出现问题，重新导入升级前备份即可。不要把 `Final` 改为 `DIRECT` 掩盖规则或节点故障。
+回退会同时失去 Smart 默认选择、可见的安全/广告/UDP 开关、`Domestic`、公共 Wi-Fi 门户补充、三份动态源和 CN GeoIP 路由。回退后要重新检查 APNs、DNS、双栈、UDP、国内服务与常用网站。

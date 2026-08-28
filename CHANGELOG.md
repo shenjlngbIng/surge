@@ -1,5 +1,40 @@
 # 更新日志
 
+## 2026-08-28 R13.2 Enhanced 保留式增强与完整包同步
+
+- 以 R13.1 为基线升级，原 33 个策略组、125 个规则匹配条件、30 个固定远程 URL 和 30 份本地规则快照全部保留，没有删除原服务分类。
+- 新增可见的 `Domestic = select, DIRECT, Proxy`，把 WeChat、Direct、BiliBili、China 和 12 个国内共享云后缀统一交给一个可切换策略。16 条原规则只改变策略去向，匹配对象与原 URL 不变。
+- `Proxy` 首选改为 `AllServer`。`AllServer` 与香港、台湾、日本、新加坡、美国五个地区组从 `url-test` 改为 `smart`，保留 `Fail-Closed`、`evaluate-before-use=true` 和 `include-other-group=NodePool`，删除对 Smart 无效的 `interval` 与 `tolerance`。
+- `UDP` 改为可见并默认 `Proxy`，随后保留 `NodePool`、`REJECT` 与 `DIRECT`。`AdBlock` 和 `Security` 也改为可见，便于误报定位；`ApplePush` 继续隐藏。
+- 新增 `DOMAIN,captive.apple.com,DIRECT`，改善酒店、机场、商场等公共 Wi-Fi 门户登录。
+- 新增 SukkaW 动态钓鱼 DOMAIN-SET、基础广告 DOMAIN-SET 和国内 RULE-SET，全部使用 86,400 秒更新间隔。动态内容不写入 `Surge.conf`，也不复制进发布包。
+- 保留固定 `Pegasus.list` 和 `Ads.list`，动态钓鱼位于 Pegasus 之前，动态基础广告位于固定 Ads 之后。
+- 新增 `GEOIP,CN,Domestic,no-resolve`，放在 Global 后和公网 IP 兜底前，不为尚未解析的域名强制触发本地 DNS。
+- `loglevel` 从 `warning` 调整为 `notify`，用于保留日常排障所需信息。
+- 运行锁升级为 schema 16，分别记录 30 个不可变仓库资源、3 个动态运行资源、30 个本地规则文件、34 个策略组、130 条规则和零内嵌规则内容。
+- 配置故障注入扩展为 110 项，ZIP 安全回归扩展为 26 项；完整发布目录继续保持 66 个文件。
+- README 按完整手册规格更新，覆盖保留边界、订阅、Smart、Domestic、DNS 真实限制、UDP、APNs、动态供应链、规则顺序、维护命令、常见故障、真机验收与发布检查。
+- 完整包更新为 `Surge-R13.2-Complete-No-Embedded-20260828.zip`，工作流、迁移、审计、清单、双份哈希和确定性打包器同步更新。
+
+## 2026-08-27 R13.1 稳定节点与远程规则修正
+
+- 按完整使用手册重写 README，补齐订阅与 Sub-Store 接入、节点选择、策略组、DNS、UDP、APNs、规则顺序、30 份规则库存、来源维护、上传发布、故障排查、真机验收和发布前检查，并逐项改写为 R13.1 当前行为。
+- 把 `NodePool` 设为可见的手动稳定节点入口，并加入 `Fail-Closed`。`Proxy` 与 `UDP` 都默认使用 `NodePool`，订阅为空时不会静默直连。
+- 保持 `ApplePush`、`AdBlock`、`Security` 和 `UDP` 隐藏，减少日常误触，同时保留各组的排错与紧急关闭成员。
+- 用显式 `url-test` 替换 Smart 地区组与隐藏 `PrivacyAuto`。`AllServer` 和五个地区组只导入 `NodePool`，间隔 1,800 秒、容差 100 毫秒，并在首次使用前评估。
+- 加密 DNS 改为 AliDNS DoH 与 DNSPod DoH，新增 `doh.pub` 引导地址，继续开启证书校验并保持 `encrypted-dns-follow-outbound-mode=false`。
+- UDP 探针改为 `apple.com@9.9.9.9`。STUN 提前到公网 DNS 端口、公共域名和公网 IP 规则之前。
+- 在局域网规则后拦截公网 53、853 和 8853 端口。应用常见 DoH 域名继续走 `Proxy`。
+- 把宽泛 `DOMAIN-SUFFIX,ls.apple.com,DIRECT` 收紧为 `DOMAIN,configuration.ls.apple.com,DIRECT`，让其余 Apple 国内服务继续受 Apple 策略控制。
+- 出口检测域名统一跟随 `Proxy`，使检测结果对应当前默认节点。
+- 保留 `Rules/Pegasus.list` 的固定远程 `DOMAIN-SET`，1,438 个域名不写入主配置。
+- 保留 `Rules/Ads.list` 的固定远程 `RULE-SET`，152 条活动规则不写入主配置。
+- 将 12 个共享云和用户托管后缀在 China 集合前明确交给 `Proxy`，降低宽泛直连带来的租户内容旁路。
+- 继续用 `0.0.0.0/0` 与 `::/0` 代理公网 IP 字面量，并让两条规则紧贴唯一的末尾 `FINAL`。
+- 运行锁升级为 schema 15，记录 30 个固定远程资源、30 个本地规则文件、零内嵌规则内容、DNS、UDP、节点架构与双栈兜底。
+- 配置审计更新为 33 个策略组和 125 条活动规则，故障注入保持 99 项。ZIP 导入安全回归扩展为 25 项。
+- 完整发布包更新为 `Surge-R13.1-Complete-No-Embedded-20260827.zip`。打包器、安装工作流、候选 ZIP 路径、清单、双份哈希和全部说明文档同步更新。
+
 ## 2026-08-26 R12.17 DNS 与出口完整性补丁
 
 - 新增隐藏的 `PrivacyAuto` 自动单节点组，通过 `url-test` 从唯一的 `NodePool` 选择一个统一代理。它使用 `interval=600`、`tolerance=100`、`evaluate-before-use=true` 和 `no-alert=1`，首次请求先完成评估，后台更新且不在策略页显示；显式 `Fail-Closed` 保证无可用节点时不会回落直连。
