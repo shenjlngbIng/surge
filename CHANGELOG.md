@@ -1,5 +1,16 @@
 # 更新日志
 
+## 2026-08-28 R13.3 Domestic Performance 国内应用性能修正
+
+- 以 R13.2 为基线保留全部 34 个策略组、130 个规则匹配条件、33 个远程运行资源、30 份本地规则文件和唯一订阅入口，没有删除原功能。
+- 将 16 个已审阅的大陆应用 DNS 主机从 `Proxy` 调整为可见 `Domestic`，并整体移动到 53、853、8853 通用端口拒绝之前。国内应用自带的大陆 DoH/DoT 默认直连，受限网络仍可一键切到 `Proxy`。
+- Google DNS、Cloudflare、Quad9、NextDNS、AdGuard 和 OpenDNS 等 13 个境外应用 DNS 主机继续进入 `Proxy`，且仍位于通用端口拒绝之后；未经审阅的公网 DoT 不会绕过 853 拒绝。
+- 将末端 `GEOIP,CN,Domestic,no-resolve` 改为 `GEOIP,CN,Domestic`，让未被精确域名表收录的域名能够按解析后的中国 IP 进入 `Domestic`。非中国 IP 继续由 IPv4/IPv6 公网兜底送入 `Proxy`。
+- 保留双 DoH、固定 Host 引导、证书校验、`encrypted-dns-follow-outbound-mode=false`、`hijack-dns=*:53`、Smart、UDP、APNs、动态规则和固定快照。
+- 运行锁升级为 schema 17，记录大陆/境外应用 DNS 清单、策略和可解析 CN GeoIP 不变量。
+- 配置审计新增大陆 DNS 完整性、连续顺序、策略回退、境外 DNS 顺序和 CN GeoIP 解析行为断言；故障注入增至 115 项，ZIP 安全回归增至 27 项。
+- 完整包更新为 `Surge-R13.3-Complete-No-Embedded-20260828.zip`，README、迁移、安全、贡献、审计、工作流、清单、双份哈希和确定性打包器同步更新。
+
 ## 2026-08-28 R13.2 Enhanced 保留式增强与完整包同步
 
 - 以 R13.1 为基线升级，原 33 个策略组、125 个规则匹配条件、30 个固定远程 URL 和 30 份本地规则快照全部保留，没有删除原服务分类。

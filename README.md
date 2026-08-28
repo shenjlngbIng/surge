@@ -1,8 +1,8 @@
-# Surge iOS Privacy + Push R13.2 Enhanced
+# Surge iOS Privacy + Push R13.3 Domestic Performance
 
 这是一套面向 Surge iOS 的规则模式配置。它把私有订阅、Smart 自动节点、手动节点池、国内流量总开关、DNS 出口、UDP、APNs、广告与钓鱼防护、历史 Pegasus IOC、服务分流和发布校验放在同一套可复核结构中。公开版本不包含真实订阅、节点、令牌、证书、MITM、脚本或重写内容。
 
-R13.2 是 R13.1 的保留式增强。原有 33 个策略组、125 个规则匹配条件和 30 个固定远程 URL 全部保留；新版本增加 `Domestic`、5 个主配置匹配项和 3 个经过审阅的动态补充源。16 个原规则只调整策略去向，匹配条件和原 URL 没有删除。
+R13.3 是 R13.2 基础上的保留式性能修正。原有 34 个策略组、130 个规则匹配条件、30 个固定远程 URL、3 个动态补充源和 30 份本地规则快照全部保留。16 个已存在的大陆公共 DNS 主机规则从 `Proxy` 调整为 `Domestic` 并提前到通用 DNS 端口拒绝之前；末端 `GEOIP,CN` 去掉 `no-resolve`，让未被域名表收录的国内服务能够按解析后的中国 IP 进入 `Domestic`。没有删除策略组、规则匹配条件、规则文件或订阅入口。
 
 `Proxy` 默认使用 `AllServer` Smart 组，`NodePool` 仍是唯一订阅入口和手动节点池。`AllServer` 与五个地区组根据真实连接质量和测试结果自适应选择代理。`UDP` 默认跟随 `Proxy`。订阅为空、格式错误或地区无节点时，`Fail-Closed` 使连接明确失败，不会无提示直连。
 
@@ -16,14 +16,14 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 
 | 项目 | 当前值 |
 | --- | --- |
-| 配置版本 | R13.2 Enhanced |
+| 配置版本 | R13.3 Domestic Performance |
 | 更新日期 | 2026.08.28 |
 | 推荐环境 | Surge iOS 5.14.6 及以上，建议 5.21.0 及以上 |
 | 运行模式 | Rule |
 | 策略组 | 34 个 |
 | 主配置活动规则 | 130 条 |
 | 运行时远程资源 | 33 个 |
-| 固定提交资源 | 30 个，全部为 R13.1 原 URL |
+| 固定提交资源 | 30 个，全部沿用 R13.2 URL |
 | 动态补充资源 | 3 个，固定到审核过的域名与路径 |
 | 普通 `RULE-SET` | 28 个 |
 | `DOMAIN-SET` | 5 个 |
@@ -37,18 +37,18 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 动态国内补充 | 869 条发布时规则 |
 | 第三方运行时规则 URL | 3 个，均为 `ruleset.skk.moe` 精确 URL |
 | 主配置内嵌规则快照 | 0 条 |
-| 配置故障注入测试 | 110 项 |
-| ZIP 安全回归测试 | 26 项 |
+| 配置故障注入测试 | 115 项 |
+| ZIP 安全回归测试 | 27 项 |
 | 发布清单回归测试 | 15 项 |
 | 完整发布文件 | 66 个 |
 | 固定规则快照 | `d1d714d575d5494ef1a7613238f4f301e1b293df` |
-| 完整包名 | `Surge-R13.2-Complete-No-Embedded-20260828.zip` |
+| 完整包名 | `Surge-R13.3-Complete-No-Embedded-20260828.zip` |
 
 公开包中的 `NodePool.policy-path` 使用不可路由占位符。下载后必须在私人副本中替换，仓库版和公开压缩包应一直保留占位地址。
 
-## R13.2 的主要取舍
+## R13.3 的主要取舍
 
-| 关注点 | 常见写法 | R13.2 的处理 | 实际影响 |
+| 关注点 | 常见写法 | R13.3 的处理 | 实际影响 |
 | --- | --- | --- | --- |
 | 订阅接入 | 多个自动组各自读取订阅 | 只有 `NodePool` 持有 `policy-path` | 订阅只维护一个入口，来源和故障更容易定位 |
 | 日常节点 | 固定选择订阅中的一个节点 | `Proxy` 默认使用 `AllServer` Smart | 自动适应真实连接质量；仍可切到 `NodePool` 手选 |
@@ -56,7 +56,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 空订阅 | 空组可能失去代理成员 | 节点组显式保留 `Fail-Closed` | 订阅失效时连接失败，不会无提示直连 |
 | UDP | 直接跟订阅首节点或直连 | 可见 `UDP` 默认使用 `Proxy` | STUN/UDP 跟随主代理，保留手选、拒绝和直连排错路径 |
 | APNs | 全程代理或全程直连 | `ApplePush` 先用 `Proxy`，失败后回落 `DIRECT` | 推送保留第二条可用路径，普通国际服务仍受代理策略约束 |
-| DNS | 系统 DNS、代理 DNS 和应用 DoH 混用 | 双明文 DNS、双 DoH、固定引导和应用 DoH 代理规则 | Surge 内部解析与应用自建解析的边界更清楚 |
+| DNS | 系统 DNS、代理 DNS 和应用 DoH 混用 | 双明文 DNS、双 DoH、固定引导；大陆应用 DNS 走 `Domestic`，境外应用 DNS 走 `Proxy` | 国内应用不再为大陆解析端点绕海外节点，仍保留明确的境外出口边界 |
 | 国内流量 | 多条规则分别写死直连或代理 | 统一进入可见 `Domestic` | 默认直连，出境或受限网络可一键改为代理 |
 | 规则来源 | 全部固定后逐渐陈旧，或全部浮动难以复核 | 原 30 份保持固定，3 份高价值补充源动态更新 | 稳定基线不丢失，同时补足时效；动态变化需持续监测 |
 | 规则内容 | 把大量 IOC 或广告行写进主配置 | 所有规则保持外部引用 | 主配置没有逐条规则快照，完整包也不复制三份大型动态内容 |
@@ -72,17 +72,18 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 1. Surge 接管符合配置范围的网络与 DNS 请求。
 2. 局域网发现、多播地址、私网、CGNAT、回环和链路本地范围先处理。
 3. Apple 公共 Wi-Fi 门户探测先直连，STUN 随后进入可见的 `UDP` 组。
-4. 公网 53、853 和 8853 端口随后拒绝，局域网解析器不受这三条公网限制影响。
-5. Apple 引导查询、出口检测站点和应用 DoH 域名按各自策略匹配。
-6. 动态钓鱼域名与固定 Pegasus 历史 IOC 依次进入 `Security`。
-7. APNs、Apple 国内服务、微信和固定直连集合继续处理。
-8. 固定 Ads 与动态基础广告源依次进入 `AdBlock`，随后处理 AI、流媒体、国际服务和游戏。
-9. 国内共享云后缀进入 `Domestic`，动态国内补充和固定 China 集合继续补齐国内边界。
-10. Global 精确集合先走 `Proxy`，随后 `GEOIP,CN` 把中国 IP 字面量交给 `Domestic`。
-11. 其余公网 IPv4 和 IPv6 字面量强制进入 `Proxy`。
-12. 剩余连接落入 `FINAL,Final,dns-failed`。
+4. 16 个经审阅的大陆应用 DNS 主机先进入 `Domestic`，默认直连，也可整体切到 `Proxy`。
+5. 其余公网 53、853 和 8853 端口随后拒绝，局域网解析器不受这三条公网限制影响。
+6. Apple 引导查询、出口检测站点和境外应用 DoH 域名按各自策略匹配。
+7. 动态钓鱼域名与固定 Pegasus 历史 IOC 依次进入 `Security`。
+8. APNs、Apple 国内服务、微信和固定直连集合继续处理。
+9. 固定 Ads 与动态基础广告源依次进入 `AdBlock`，随后处理 AI、流媒体、国际服务和游戏。
+10. 国内共享云后缀进入 `Domestic`，动态国内补充和固定 China 集合继续补齐国内边界。
+11. Global 精确集合先走 `Proxy`；仍未命中的域名在末端解析后由 `GEOIP,CN` 判断，命中中国 IP 时进入 `Domestic`。
+12. 其余公网 IPv4 和 IPv6 字面量强制进入 `Proxy`。
+13. 剩余连接落入 `FINAL,Final,dns-failed`。
 
-Surge 采用首条命中。两个内容正确的规则文件只要位置颠倒，结果也会改变。R13.2 因此把重要先后关系同时写进配置审计和故障注入测试。
+Surge 采用首条命中。两个内容正确的规则文件只要位置颠倒，结果也会改变。R13.3 因此把大陆 DNS 例外、通用端口拒绝、境外 DNS、精确域名集和 CN GeoIP 的先后关系同时写进配置审计和故障注入测试。
 
 ## 快速开始
 
@@ -106,7 +107,7 @@ NodePool = select, Fail-Closed, policy-path=https://example.invalid/REPLACE_WITH
 NodePool = select, Fail-Closed, policy-path=https://你的私有地址, update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0
 ```
 
-保留 `Fail-Closed`、更新间隔、可见性和其余参数。整行换回旧版会丢失 R13.2 的失败关闭和手动节点入口。
+保留 `Fail-Closed`、更新间隔、可见性和其余参数。整行换回旧版会丢失当前版本的失败关闭和手动节点入口。
 
 真实订阅地址、Sub-Store 令牌和含节点信息的二维码只能留在私人设备或私人备份中。不要把填写后的配置提交到公开仓库，也不要把它放进需要公开分享的压缩包。
 
@@ -278,13 +279,15 @@ hijack-dns = *:53
 
 `encrypted-dns-follow-outbound-mode=false` 让 Surge 自身的加密 DNS 不跟随普通代理规则，降低域名型代理节点在启动阶段形成解析依赖环的风险。证书校验保持开启。
 
-这不是匿名 DNS 设计。Surge 会并发查询配置中的多个加密 DNS，AliDNS 和 DNSPod 都可能看到查询，且当前选项使这些连接直连。本版按“基于 R13.1 增强、不删除原功能”的边界保留两个端点，没有通过再加第三个服务假装提高隐私。若要改变信任对象，应另行选择单一可信解析器并做可用性测试。
+这不是匿名 DNS 设计。Surge 会并发查询配置中的多个加密 DNS，AliDNS 和 DNSPod 都可能看到查询，且当前选项使这些连接直连。R13.3 沿用 R13.2 的两个端点，没有删除或替换。若要改变信任对象，应另行选择单一可信解析器并做可用性测试。
 
 ### 应用自带 DNS
 
-配置接管发往 53 端口的传统 DNS，并在局域网规则之后拒绝公网目的端口 53、853 和 8853。局域网内的明确私有地址已经提前直连，因此本地路由器或内网解析器仍可以按现有网络工作。
+配置通过 `hijack-dns=*:53` 接管传统 DNS。局域网与 16 个经审阅的大陆解析器主机先匹配，之后才拒绝其余公网目的端口 53、853 和 8853。局域网内的明确私有地址已经提前直连，因此本地路由器或内网解析器仍可以按现有网络工作。
 
-常见公共 DoH 和 DoT 域名明确进入 `Proxy`，包括 AliDNS、DNSPod、Google DNS、Cloudflare、Quad9、NextDNS、AdGuard、OpenDNS 与若干公共服务。Surge 自身的加密 DNS 由内部解析链处理，应用自己发起的 HTTPS DNS 请求则继续受规则系统约束。
+大陆解析器包括 AliDNS、DNSPod、360 DNS、百度/字节相关解析域名及清单中的其他固定入口，它们进入可见 `Domestic`，默认 `DIRECT`。这正是本版针对国内软件卡顿的修正，避免应用自带的大陆 DoH/DoT 被无条件绕到海外代理；如果所在网络对这些入口有限制，可以把 `Domestic` 整体切到 `Proxy`。
+
+Google DNS、Cloudflare、Quad9、NextDNS、AdGuard、OpenDNS 等境外 HTTPS DNS 主机继续进入 `Proxy`。未经审阅的公网 53、853 和 8853 流量仍被拒绝，因此境外 DoT 不会因为后面的域名规则而绕过端口边界。Surge 自身的两个 DoH 由内部解析链处理，不受应用 DNS 规则控制。
 
 这组规则覆盖常见入口，无法穷举新的加密解析协议、未知域名和硬编码地址。应用更新后出现新端点时，需要结合最近请求记录继续审阅。
 
@@ -300,7 +303,7 @@ Net.Coffee、IPPure、BrowserLeaks、Surfshark DNS、Fastly resolver、icanhazip
 
 ### 模块优先级
 
-Surge 模块可以覆盖 General 项，并把 Rule、Host、Script 和 Rewrite 内容插入主配置之前。一个缺少 `no-resolve` 的模块规则集、提前直连的检测域名或改写 DNS 的模块，都可能在 R13.2 规则生效前改变结果。
+Surge 模块可以覆盖 General 项，并把 Rule、Host、Script 和 Rewrite 内容插入主配置之前。一个缺少 `no-resolve` 的模块规则集、提前直连的检测域名或改写 DNS 的模块，都可能在 R13.3 规则生效前改变结果。
 
 排查 DNS 或出口异常时，先在无额外模块的基线下测试。最近请求若出现规则评估要求本地 DNS，检查对应模块中的 `RULE-SET` 是否缺少 `no-resolve`。关闭模块、重新载入配置并清理检测网站数据后再测，才能判断问题来自主配置还是补丁。
 
@@ -342,22 +345,25 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 2. 无效地址和其余多播范围拒绝。
 3. 私网、CGNAT、回环、链路本地和本地主机直连，Apple Wi-Fi 门户探测精确直连。
 4. STUN 进入 `UDP`。
-5. 公网 DNS 与 DoT 端口控制。
-6. Apple 配置引导查询。
-7. 出口检测端点和应用 DoH 域名。
-8. 动态钓鱼域名与 Pegasus 历史 IOC。
-9. APNs、Apple 国内服务、微信和固定直连集合。
-10. 固定 Ads 与动态基础广告域名。
-11. ChatGPT、Claude 和 Gemini。
-12. YouTube、Netflix、Disney+、HBO、PrimeVideo、Emby、TikTok、Bahamut、Bilibili、Spotify 和通用媒体。
-13. Telegram、GitHub、X 和 Google。
-14. Microsoft 专用覆盖、Game、OneDrive 和 Microsoft。
-15. 国内共享云、动态国内补充、China 与 Global 精确域名集合。
-16. `GEOIP,CN`、公网 IPv4/IPv6 字面量兜底和 `Final`。
+5. 16 个大陆应用 DNS 主机进入 `Domestic`。
+6. 其余公网 DNS、DoT 与 8853 端口控制。
+7. Apple 配置引导查询。
+8. 出口检测端点和境外应用 DoH 域名。
+9. 动态钓鱼域名与 Pegasus 历史 IOC。
+10. APNs、Apple 国内服务、微信和固定直连集合。
+11. 固定 Ads 与动态基础广告域名。
+12. ChatGPT、Claude 和 Gemini。
+13. YouTube、Netflix、Disney+、HBO、PrimeVideo、Emby、TikTok、Bahamut、Bilibili、Spotify 和通用媒体。
+14. Telegram、GitHub、X 和 Google。
+15. Microsoft 专用覆盖、Game、OneDrive 和 Microsoft。
+16. 国内共享云、动态国内补充、China 与 Global 精确域名集合。
+17. 可解析未命中域名的 `GEOIP,CN`、公网 IPv4/IPv6 字面量兜底和 `Final`。
 
 几个容易冲突的位置由审计器直接约束。
 
 - STUN 必须位于公网 DNS 端口和所有公网域名、IP 规则之前。
+- 16 个大陆 DNS 主机必须完整、连续地位于 STUN 之后和通用 DNS 端口拒绝之前，并全部指向 `Domestic`。
+- 境外应用 DNS 主机必须保持固定顺序并指向 `Proxy`，不能提前绕过公网 DoT 端口拒绝。
 - 动态钓鱼必须位于 Pegasus，Pegasus 必须位于 APNs 和普通服务规则之前。
 - Apple 流媒体专用主机必须位于 `AppleCN.list` 之前。
 - `yt3.ggpht.com` 必须先于 Google 通用规则进入 `YouTube`。
@@ -367,7 +373,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 - `Game.list` 必须位于 `OneDrive.list` 和 `Microsoft.list` 之前。
 - `35.192.0.0/12` 必须先进入 `Proxy`，避免宽泛 Google Cloud 网段全部进入 `Games`。
 - 共享云和用户托管后缀必须进入 `Domestic`，并位于动态国内补充和 China 集合之前。
-- Global 必须位于 `GEOIP,CN,Domestic,no-resolve` 之前。
+- Global 必须位于 `GEOIP,CN,Domestic` 之前；该 GeoIP 规则不得恢复 `no-resolve`，否则未命中域名无法通过解析结果进入国内兜底。
 - CN GeoIP、公网 IPv4 和 IPv6 兜底必须紧贴唯一的末尾 `FINAL`。
 
 ## 远程规则库存
@@ -413,7 +419,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 
 ### 三个动态补充源
 
-R13.2 额外引用三份 SukkaW 维护资源。它们固定到精确域名与路径，不使用仓库 `main` 拼接地址，但内容会按上游发布变化。
+R13.2 起引用三份 SukkaW 维护资源，R13.3 原样保留。它们固定到精确域名与路径，不使用仓库 `main` 拼接地址，但内容会按上游发布变化。
 
 | 运行 URL | 类型 | 策略 | 更新间隔 | 发布时活动条目 |
 | --- | --- | --- | --- | ---: |
@@ -445,7 +451,7 @@ R13.2 额外引用三份 SukkaW 维护资源。它们固定到精确域名与路
 
 19 份第三方服务规则固定在 `blackmatrix7/ios_rule_script` 的提交 `c00517ce10760a93728b241923a451dfa617be80`。更新工具会核对 Git Blob 和 SHA-256，再按锁文件应用类型过滤、精确排除与显式补充。
 
-R13.2 延续下面这些边界。
+R13.3 延续下面这些边界。
 
 - Netflix 删除上游中的宽泛 `IP-CIDR` 和 `IP-CIDR6`，保留官方网络 `IP-ASN,2906,no-resolve`。
 - Disney 删除 Adobe、Braze、Conviva、New Relic 和 Optimizely 等共享遥测域名。
@@ -487,7 +493,7 @@ volcengine.com
 
 | 路径 | 用途 |
 | --- | --- |
-| `Surge.conf` | R13.2 主配置 |
+| `Surge.conf` | R13.3 主配置 |
 | `Rules/*.list` | 30 份固定运行规则快照 |
 | `Rules/r10.lock.json` | 配置哈希、运行资源、节点架构与安全不变量 |
 | `Rules/upstreams.lock.json` | 19 份服务规则的固定上游、排除项和本地补充 |
@@ -498,8 +504,8 @@ volcengine.com
 | `tools/audit_config.py` | 检查配置结构、策略组、规则顺序和失败边界 |
 | `tools/audit_rules.py` | 检查规则库存、哈希、语义边界和可选动态源在线格式 |
 | `tools/audit_precise_domains.py` | 检查 China 与 Global 精确域名集合 |
-| `tools/test_audit_config.py` | 110 项配置故障注入测试 |
-| `tools/test_stage_surge_zip.py` | 26 项候选 ZIP 和路径安全回归测试 |
+| `tools/test_audit_config.py` | 115 项配置故障注入测试 |
+| `tools/test_stage_surge_zip.py` | 27 项候选 ZIP 和路径安全回归测试 |
 | `tools/release_inventory.py` | 打包、清单和校验和共用的发布白名单 |
 | `tools/test_release_inventory.py` | 15 项目录、文本和升级清理回归测试 |
 | `tools/update_service_rules.py` | 固定上游下载、合并与验证 |
@@ -509,7 +515,7 @@ volcengine.com
 | `tools/package_release.py` | 生成确定性完整 ZIP |
 | `tools/stage_surge_zip.py` | 安全暂存候选 ZIP |
 | `AUDIT_REPORT.md` | 全仓审计结果、修正内容和剩余真机项目 |
-| `MIGRATION.md` | R13.1 到 R13.2 的迁移说明 |
+| `MIGRATION.md` | R13.2 到 R13.3 的迁移说明 |
 | `CHANGELOG.md` | 版本变化记录 |
 | `RELEASE_MANIFEST.txt` | 发布文件路径、用途和内容摘要 |
 | `SHA256SUMS.txt` | 发布文件 SHA-256 |
@@ -525,13 +531,13 @@ volcengine.com
 
 解压完整包，把全部文件按原目录结构上传到仓库。`Rules`、`tools`、`.github` 和 `THIRD_PARTY_LICENSES` 都要保留。提交到 `main` 后，公开主配置地址会继续指向根目录 `Surge.conf`。
 
-当前 30 个仓库运行 URL 固定到旧规则快照提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。更新 README、审计器或 R13.2 主配置不会自动改变这些 URL。只有规则文件经过重新审阅、产生新的固定提交后，才应同步升级运行地址和所有锁。三份 Sukka 补充源按日更新，不能被描述为固定快照。
+当前 30 个仓库运行 URL 固定到旧规则快照提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。更新 README、审计器或 R13.3 主配置不会自动改变这些 URL。只有规则文件经过重新审阅、产生新的固定提交后，才应同步升级运行地址和所有锁。三份 Sukka 补充源按日更新，不能被描述为固定快照。
 
 只上传 `Surge.conf` 会缺少规则快照、来源记录、维护工具、工作流和完整性清单。只上传 ZIP 也不会让 GitHub Raw 主配置地址自动可用，仓库仍需保留解压后的文件结构。
 
 ### 使用安装工作流
 
-可以把未解压的 `Surge-R13.2-Complete-No-Embedded-20260828.zip` 放在仓库根目录，并保留 `.github/workflows/install.yml`。随后在 Actions 中手动运行 `Install and audit Surge R13.2`，在必填的 `archive_sha256` 输入框填写包外公布的整包 SHA-256。
+可以把未解压的 `Surge-R13.3-Complete-No-Embedded-20260828.zip` 放在仓库根目录，并保留 `.github/workflows/install.yml`。随后在 Actions 中手动运行 `Install and audit Surge R13.3`，在必填的 `archive_sha256` 输入框填写包外公布的整包 SHA-256。
 
 工作流会先核对整包哈希，再检查路径、文件数量、单文件大小、解压总量、双份文件哈希、运行锁、来源锁、配置审计、规则审计和故障注入。全部通过后才会提交文件。
 
@@ -540,7 +546,7 @@ volcengine.com
 ### 本地生成发布包
 
 ```bash
-python3 tools/package_release.py --output ../Surge-R13.2-Complete-No-Embedded-20260828.zip
+python3 tools/package_release.py --output ../Surge-R13.3-Complete-No-Embedded-20260828.zip
 ```
 
 ZIP 使用固定顺序、固定时间戳和统一权限。相同输入会生成相同字节。整包 SHA-256 应在 ZIP 外单独发布，归档无法可靠地把自身哈希写进自身内容。
@@ -567,7 +573,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.2-Complete-No-Embedded-20260828.zip
+python3 tools/package_release.py --output ../Surge-R13.3-Complete-No-Embedded-20260828.zip
 ```
 
 当前基线的关键结果如下。
@@ -576,12 +582,12 @@ python3 tools/package_release.py --output ../Surge-R13.2-Complete-No-Embedded-20
 PASS: immutable_runtime_resources=30 dynamic_runtime_resources=3 embedded_rule_contents=0 reviewed_third_party_runtime_urls=3
 PASS: verified pinned resources=1 entries=1438
 PASS: verified upstream lock services=19
-PASS R13.2 groups=34 rules=130 runtime_resources=33 immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0
-PASS R13.2 runtime_sources=33 immutable_sources=30 dynamic_sources=3 local_rule_files=30 rules=130 embedded_rule_contents=0
+PASS R13.3 groups=34 rules=130 runtime_resources=33 immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0
+PASS R13.3 runtime_sources=33 immutable_sources=30 dynamic_sources=3 local_rule_files=30 rules=130 embedded_rule_contents=0
 PASS precise domains Domestic=306 Proxy=116 conflicts=0
-PASS R13.2 mutations=110
+PASS R13.3 mutations=115
 PASS: strict release inventory regression cases=15
-PASS: ZIP allowlist regression cases=26
+PASS: ZIP allowlist regression cases=27
 ```
 
 `audit_rules.py --check-dynamic` 需要联网，输出还会包含三行当前动态源的条目数、字节数和 SHA-256。动态内容发生正常更新时，当前哈希可以与发布观察值不同；HTTP、格式、重复行或大小边界异常才会失败。
@@ -736,6 +742,7 @@ R13.2 把 `Proxy` 的第一项改为 `AllServer`，但 Surge 可能按策略组�
 - Smart 会利用真实连接和测试数据，但不保证每个网站都选中同一节点，也不保证自动结果永远优于手动选择。
 - APNs 后备提供第二条路径，无法保证每个网络都能及时推送。
 - DNS 规则覆盖常见绕行方式，无法穷举所有加密解析协议和硬编码地址。
+- 末端 `GEOIP,CN` 会为尚未命中且尚未解析的域名触发一次解析，以换取国内服务的 IP 兜底；解析质量仍取决于配置的 DoH 与 Surge GeoIP 数据库。
 - 历史 Pegasus IOC 会过时，固定 Ads 与动态广告/钓鱼列表都可能误判或漏判。
 - 三份动态规则会在发布后变化；完整包只能证明发布时观察值和当前格式，不能逐条人工保证未来内容。
 - 固定提交可以锁定内容，无法保证 jsDelivr、GitHub 或用户网络永远可达。
@@ -757,6 +764,8 @@ R13.2 把 `Proxy` 的第一项改为 `AllServer`，但 Surge 可能按策略组�
 - [ ] `wifi-assist=false`，本机 Wi-Fi、热点和 Web 入口仍关闭
 - [ ] 双明文 DNS、双 DoH、两个 Host 引导和证书校验保持正确
 - [ ] STUN 位于公网 DNS 端口与公网规则之前
+- [ ] 16 个大陆应用 DNS 主机完整位于端口拒绝前并进入 `Domestic`
+- [ ] 13 个境外应用 DNS 主机保持位于端口拒绝后并进入 `Proxy`
 - [ ] 公网 53、853 和 8853 端口在局域网规则之后拒绝
 - [ ] `captive.apple.com` 与 `configuration.ls.apple.com` 精确直连，宽泛后缀没有恢复
 - [ ] Pegasus 与 Ads 都从本仓库固定提交加载
@@ -766,9 +775,9 @@ R13.2 把 `Proxy` 的第一项改为 `AllServer`，但 Surge 可能按策略组�
 - [ ] 28 个 `RULE-SET` 全部带 `no-resolve`
 - [ ] Bilibili 国际版、Viu、YouTube、Microsoft 和 Game 的专用顺序保持正确
 - [ ] 12 个共享云后缀位于动态国内补充和 China 之前并进入 `Domestic`
-- [ ] Global、CN GeoIP、公网 IPv4/IPv6 与唯一 `FINAL` 顺序正确
+- [ ] Global、`GEOIP,CN,Domestic`、公网 IPv4/IPv6 与唯一 `FINAL` 顺序正确，CN GeoIP 没有 `no-resolve`
 - [ ] 33 个远程资源、30 个本地规则文件、34 个策略组和 130 条规则通过审计
-- [ ] 110 项配置测试、26 项 ZIP 测试和 15 项发布清单测试通过
+- [ ] 115 项配置测试、27 项 ZIP 测试和 15 项发布清单测试通过
 - [ ] `RELEASE_MANIFEST.txt` 与两份 SHA-256 清单已经刷新
 - [ ] 完整 ZIP 已重新生成两次并确认字节一致
 - [ ] 整包 SHA-256 已在 ZIP 外记录

@@ -8,7 +8,7 @@
 
 ## 公开配置边界
 
-R13.2 的 `NodePool.policy-path` 必须保持下面的无效地址。
+R13.3 的 `NodePool.policy-path` 必须保持下面的无效地址。
 
 ```text
 https://example.invalid/REPLACE_WITH_SUB_STORE_URL
@@ -37,11 +37,11 @@ Pegasus 的 1,438 个域名通过本仓库固定 `DOMAIN-SET` 加载，来源与
 
 ## 网络边界
 
-Wi-Fi 访问、热点访问和 Web 控制面板默认关闭。公网 DNS 端口 53、853 和 8853 在局域网放行之后拒绝。应用常见 DoH 域名走 `Proxy`，Surge 自身 DoH 使用固定引导地址并保持证书校验。
+Wi-Fi 访问、热点访问和 Web 控制面板默认关闭。局域网和 16 个经审阅的大陆应用 DNS 主机先处理，其余公网 DNS 端口 53、853 和 8853 随后拒绝。大陆主机进入可见 `Domestic`，13 个境外 HTTPS DNS 主机进入 `Proxy`；Surge 自身 DoH 使用固定引导地址并保持证书校验。
 
 当前两个加密 DNS 会并发查询，而且 `encrypted-dns-follow-outbound-mode=false` 使 Surge 自身 DoH 直连。这降低了代理节点对 DNS 的影响，但不是匿名 DNS 方案；AliDNS 与 DNSPod 都可能看到查询。不要把这一设计描述为零泄漏或单一信任方。
 
-公网 IPv4 与 IPv6 字面量在 `FINAL` 前统一走 `Proxy`。`Proxy` 默认选择 `AllServer`，`AllServer` 和五个地区组使用 Surge Smart；`NodePool` 仍提供可见手动选择和 `Fail-Closed`。`UDP`、`Security`、`AdBlock` 与 `Domestic` 保持可见，用户可在误判、网络受限或 UDP 不兼容时显式切换。用户仍需在真机上检查节点的 UDP、APNs、DNS 和双栈能力。
+末端 `GEOIP,CN,Domestic` 允许为尚未命中的域名解析地址，以便中国 IP 进入 `Domestic`；这会把解析质量依赖带到国内兜底。其后的公网 IPv4 与 IPv6 字面量在 `FINAL` 前统一走 `Proxy`。`Proxy` 默认选择 `AllServer`，`AllServer` 和五个地区组使用 Surge Smart；`NodePool` 仍提供可见手动选择和 `Fail-Closed`。`UDP`、`Security`、`AdBlock` 与 `Domestic` 保持可见，用户可在误判、网络受限或 UDP 不兼容时显式切换。用户仍需在真机上检查节点的 UDP、APNs、DNS 和双栈能力。
 
 历史 Pegasus IOC 和动态钓鱼列表不能替代 iOS 更新、Lockdown Mode、账户保护或专业取证。报告中不要把 IOC 命中直接当作感染结论。
 
