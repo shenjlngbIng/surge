@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mutation tests for the R12.17 configuration auditor."""
+"""Mutation regression tests for the R13.2 configuration auditor."""
 
 from __future__ import annotations
 
@@ -8,11 +8,17 @@ import sys
 import tempfile
 from pathlib import Path
 
-from convert_to_remote_rules import REMOTE_BASE, RULE_SNAPSHOT_TAG, repository_line
+from convert_to_remote_rules import (
+    DYNAMIC_RULES,
+    REMOTE_BASE,
+    RULE_SNAPSHOT_TAG,
+    dynamic_line,
+    repository_line,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
-AUDIT = ROOT / "tools/audit_config.py"
+AUDIT = ROOT / "tools" / "audit_config.py"
 BASE = (ROOT / "Surge.conf").read_text(encoding="utf-8")
 
 
@@ -32,126 +38,150 @@ def rr(kind: str, filename: str, policy: str) -> str:
     return repository_line(kind, filename, policy)
 
 
-assert run(BASE).returncode == 0, "baseline"
+baseline = run(BASE)
+if baseline.returncode != 0:
+    raise AssertionError(f"baseline failed:\n{baseline.stdout}{baseline.stderr}")
 
-mutations = {
-    "attribution_header": (
-        "# > Surge Config Make by .ᐣ\n",
-        "# > Surge Config Make by unknown\n",
-    ),
-    "version_header": (
-        "# > Surge iOS Privacy + Push R12.17 |",
-        "# > Surge iOS Privacy + Push R12.16 |",
-    ),
-    "final_open": ("\nFINAL,Final,dns-failed\n", "\nFINAL,DIRECT\n"),
-    "final_group_direct": ("\nFinal = select, Proxy, REJECT,", "\nFinal = select, Proxy, DIRECT,"),
-    "telegram_direct": (f"\n{rr('RULE-SET','Telegram.list','Telegram')}\n", f"\n{rr('RULE-SET','Telegram.list','DIRECT')}\n"),
-    "apns_direct": (f"\n{rr('RULE-SET','APNs.list','ApplePush')}\n", f"\n{rr('RULE-SET','APNs.list','DIRECT')}\n"),
-    "pegasus_third_party_runtime": (
-        f"\n{rr('DOMAIN-SET','Pegasus.list','Security')}\n",
-        "\nDOMAIN-SET,https://raw.githubusercontent.com/AmnestyTech/investigations/3d8f248a0d015f183724ae7d096a5c46a8bb5fc7/2021-07-18_nso/domains.txt,Security,update-interval=-1\n",
-    ),
-    "capture_apns": ("\ninclude-apns = true\n", "\ninclude-apns = false\n"),
-    "capture_all": ("\ninclude-all-networks = true\n", "\ninclude-all-networks = false\n"),
-    "capture_cellular_services": ("\ninclude-cellular-services = false\n", "\ninclude-cellular-services = true\n"),
-    "auto_suspend": ("\nauto-suspend = true\n", "\nauto-suspend = false\n"),
-    "encrypted_dns_follow": ("\nencrypted-dns-follow-outbound-mode = false\n", "\nencrypted-dns-follow-outbound-mode = true\n"),
-    "encrypted_dns_certificate_verification": ("\nencrypted-dns-skip-cert-verification = false\n", "\nencrypted-dns-skip-cert-verification = true\n"),
-    "dns_server": ("\ndns-server = 223.5.5.5, 223.6.6.6\n", "\ndns-server = system, 223.5.5.5\n"),
-    "encrypted_dns_server": ("\nencrypted-dns-server = https://dns.alidns.com/dns-query, tls://dns.alidns.com\n", "\nencrypted-dns-server = https://1.1.1.1/dns-query\n"),
-    "dns_bootstrap": ("dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1", "dns.alidns.com = 1.1.1.1"),
-    "duplicate_dns_bootstrap": ("dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1\n", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1\ndns.alidns.com = 1.1.1.1\n"),
-    "skip_cgnat": (", 100.64.0.0/10,", ","),
-    "macos_hosts_option": ("\n# Access\n", "\nread-etc-hosts = true\n\n# Access\n"),
-    "fail_closed_alert": ("Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.1, 1"),
-    "test_timeout": ("\ntest-timeout = 5\n", "\ntest-timeout = 8\n"),
-    "proxy_test_url": ("\nproxy-test-url = http://cp.cloudflare.com/generate_204\n", "\nproxy-test-url = http://www.gstatic.com/generate_204\n"),
-    "proxy_test_udp": ("\nproxy-test-udp = apple.com@223.5.5.5\n", "\n"),
-    "block_quic": ("\nblock-quic = per-policy\n", "\nblock-quic = all-proxy\n"),
-    "udp_unsupported": ("\nudp-policy-not-supported-behaviour = REJECT\n", "\nudp-policy-not-supported-behaviour = DIRECT\n"),
-    "proxy_default": ("\nProxy = select, AllServer,", "\nProxy = select, HongKong,"),
-    "proxy_direct": ("\nProxy = select, AllServer, HongKong,", "\nProxy = select, AllServer, DIRECT, HongKong,"),
-    "hbo_forced_america": ("\nHBO = select, Proxy, America,", "\nHBO = select, America, Proxy,"),
-    "node_pool_mode": ("\nNodePool = select,", "\nNodePool = url-test,"),
-    "node_pool_hidden": ("update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0", "update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0"),
-    "node_pool_all_proxies": ("include-all-proxies=0\n\n# Smart groups", "include-all-proxies=true\n\n# Smart groups"),
-    "node_pool_direct_member": ("\nProxy = select, AllServer, HongKong,", "\nProxy = select, AllServer, NodePool, HongKong,"),
-    "allserver_mode": ("\nAllServer = smart,", "\nAllServer = select,"),
-    "allserver_sentinel": ("\nAllServer = smart, Fail-Closed,", "\nAllServer = smart,"),
-    "allserver_source": ("include-other-group=NodePool\n\n# Regions", "include-other-group=HongKong\n\n# Regions"),
-    "allserver_legacy_probe": ("AllServer = smart, Fail-Closed, no-alert=0", "AllServer = smart, Fail-Closed, interval=60, no-alert=0"),
-    "allserver_direct": ("\nAllServer = smart, Fail-Closed,", "\nAllServer = smart, Fail-Closed, DIRECT,"),
-    "region_mode": ("\nHongKong = smart,", "\nHongKong = url-test,"),
-    "region_sentinel": ("\nJapan = smart, Fail-Closed,", "\nJapan = smart,"),
-    "region_filter": ("\nSingapore = smart, Fail-Closed, policy-regex-filter=", "\nSingapore = smart, Fail-Closed, policy-filter="),
-    "region_legacy_probe": ("\nTaiWan = smart, Fail-Closed,", "\nTaiWan = smart, Fail-Closed, interval=1800,"),
-    "region_source": ("include-other-group=NodePool\nJapan =", "include-other-group=AllServer\nJapan ="),
-    "region_direct": ("\nJapan = smart, Fail-Closed,", "\nJapan = smart, Fail-Closed, DIRECT,"),
-    "rogue_fallback": ("\nChatGPT = select, America,", "\nChatGPT = fallback, America,"),
-    "rogue_policy_path": ("\nGitHub = select, Proxy,", "\nGitHub = select, policy-path=https://example.invalid/nodes, Proxy,"),
-    "telegram_direct_member": ("\nTelegram = select, Proxy,", "\nTelegram = select, DIRECT, Proxy,"),
-    "public_subscription": ("policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL", "policy-path=https://private.example/subscription"),
-    "apple_push_order": ("ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true", "ApplePush = fallback, DIRECT, Proxy, interval=60, evaluate-before-use=true"),
-    "apple_push_evaluation": ("ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true", "ApplePush = fallback, Proxy, DIRECT, interval=60"),
-    "apple_push_timeout": ("ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true", "ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true, timeout=5"),
-    "apple_push_visible": ("ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true, no-alert=0, hidden=1", "ApplePush = fallback, Proxy, DIRECT, interval=60, evaluate-before-use=true, no-alert=0, hidden=0"),
-    "adblock_off_switch": ("AdBlock = select, REJECT, REJECT-DROP, DIRECT,", "AdBlock = select, REJECT, REJECT-DROP,"),
-    "adblock_visible": ("AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0"),
-    "security_off_switch": ("Security = select, REJECT, REJECT-DROP, DIRECT,", "Security = select, REJECT, REJECT-DROP,"),
-    "security_visible": ("Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0"),
-    "udp_choices": ("UDP = select, Proxy, DIRECT, REJECT,", "UDP = select, Proxy, REJECT,"),
-    "udp_visible": ("UDP = select, Proxy, DIRECT, REJECT, no-alert=0, hidden=1", "UDP = select, Proxy, DIRECT, REJECT, no-alert=0, hidden=0"),
-    "privacy_mode": ("PrivacyAuto = url-test, Fail-Closed,", "PrivacyAuto = smart, Fail-Closed,"),
-    "privacy_direct": ("PrivacyAuto = url-test, Fail-Closed,", "PrivacyAuto = url-test, Fail-Closed, DIRECT,"),
-    "privacy_legacy_name": ("PrivacyAuto = url-test, Fail-Closed,", "Privacy = url-test, Fail-Closed,"),
-    "privacy_visible": ("no-alert=1, hidden=1, include-all-proxies=0, include-other-group=NodePool", "no-alert=1, hidden=0, include-all-proxies=0, include-other-group=NodePool"),
-    "privacy_source": ("hidden=1, include-all-proxies=0, include-other-group=NodePool", "hidden=1, include-all-proxies=0"),
-    "privacy_evaluation": (", evaluate-before-use=true, no-alert=1, hidden=1", ", no-alert=1, hidden=1"),
-    "privacy_interval": ("PrivacyAuto = url-test, Fail-Closed, interval=600,", "PrivacyAuto = url-test, Fail-Closed, interval=60,"),
-    "privacy_alert": ("evaluate-before-use=true, no-alert=1, hidden=1", "evaluate-before-use=true, no-alert=0, hidden=1"),
-    "privacy_nested_group": ("PrivacyAuto = url-test, Fail-Closed, interval=600,", "PrivacyAuto = url-test, Fail-Closed, Proxy, interval=600,"),
-    "stale_encrypted_dns_group": ("\nApplePush = fallback,", "\nEncryptedDNS = fallback, Proxy, DIRECT\nApplePush = fallback,"),
-    "inactive_doh_rule": ("\nDOMAIN,dns.alidns.com,Proxy\n", "\nPROTOCOL,DOH,Proxy\nDOMAIN,dns.alidns.com,Proxy\n"),
-    "alidns_app_direct": ("\nDOMAIN,dns.alidns.com,Proxy\n", "\nDOMAIN,dns.alidns.com,DIRECT\n"),
-    "dnspub_app_direct": ("\nDOMAIN,doh.pub,Proxy\n", "\nDOMAIN,doh.pub,DIRECT\n"),
-    "privacy_guard_missing": ("\nDOMAIN-SUFFIX,browserleaks.net,PrivacyAuto\n", "\n"),
-    "privacy_guard_smart": ("\nDOMAIN-SUFFIX,ippure.com,PrivacyAuto\n", "\nDOMAIN-SUFFIX,ippure.com,Proxy\n"),
-    "unsupported_protocol": ("\nPROTOCOL,STUN,UDP\n", "\nPROTOCOL,BOGUS,UDP\n"),
-    "stun_old_policy": ("\nPROTOCOL,STUN,UDP\n", "\nPROTOCOL,STUN,Proxy\n"),
-    "cgnat_rule": ("\nIP-CIDR,100.64.0.0/10,DIRECT,no-resolve\n", "\n"),
-    "apple_system_direct": ("\nDOMAIN-SUFFIX,ls.apple.com,DIRECT\n", "\nDOMAIN-SUFFIX,ls.apple.com,Proxy\n"),
-    "runtime_ruleset": ("\nFINAL,Final,dns-failed\n", "\nRULE-SET,https://example.invalid/a.list,Proxy\nFINAL,Final,dns-failed\n"),
-    "node_pool_rule_target": ("\nDOMAIN,sub.store,DIRECT\n", "\nDOMAIN,sub.store,NodePool\n"),
-    "remote_host": (f"{REMOTE_BASE}ChatGPT.list", "https://example.invalid/ChatGPT.list"),
-    "remote_http": (f"{REMOTE_BASE}ChatGPT.list", REMOTE_BASE.replace("https://", "http://") + "ChatGPT.list"),
-    "remote_main_ref": (f"{REMOTE_BASE}ChatGPT.list", "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/ChatGPT.list"),
-    "remote_tag_ref": (f"{REMOTE_BASE}ChatGPT.list", f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RULE_SNAPSHOT_TAG}/Rules/ChatGPT.list"),
-    "missing_update_interval": (rr("RULE-SET", "Claude.list", "Claude"), rr("RULE-SET", "Claude.list", "Claude").replace(",update-interval=-1", "")),
-    "bilibili_wrong_policy": (rr("RULE-SET", "BiliBili.list", "DIRECT"), rr("RULE-SET", "BiliBili.list", "Streaming")),
-    "bilibili_intl_wrong_policy": (rr("RULE-SET", "BiliBiliIntl.list", "Streaming"), rr("RULE-SET", "BiliBiliIntl.list", "DIRECT")),
-    "public_ipv4_direct": ("\nIP-CIDR,0.0.0.0/0,Proxy,no-resolve\n", "\nIP-CIDR,0.0.0.0/0,DIRECT,no-resolve\n"),
-    "public_ipv6_missing": ("\nIP-CIDR6,::/0,Proxy,no-resolve\n", "\n"),
-    "public_ipv4_resolve": ("\nIP-CIDR,0.0.0.0/0,Proxy,no-resolve\n", "\nIP-CIDR,0.0.0.0/0,Proxy\n"),
-    "geoip_direct_restored": ("\n# Public IP literals fail closed through the proxy.", "\nGEOIP,CN,DIRECT,no-resolve\n\n# Public IP literals fail closed through the proxy."),
-    "ruleset_local_resolve": (rr("RULE-SET", "Claude.list", "Claude"), rr("RULE-SET", "Claude.list", "Claude").replace(",no-resolve,", ",")),
-    "viu_override_missing": ("\nDOMAIN-SUFFIX,viu.now.com,Streaming\n", "\n"),
-    "youtube_asset_override_missing": ("\nDOMAIN,yt3.ggpht.com,YouTube\n", "\n"),
-    "google_shared_override_missing": ("\nDOMAIN-SUFFIX,ggpht.com,Google\n", "\n"),
-    "microsoft_login_override_missing": ("\nDOMAIN,login.live.com,Microsoft\n", "\n"),
-    "game_cloud_override_missing": ("\nIP-CIDR,35.192.0.0/12,Proxy,no-resolve\n", "\n"),
-    "stun_after_public_ip": (
-        "# UDP / STUN / QUIC\nPROTOCOL,STUN,UDP\n\n# Public IP literals fail closed through the proxy. Known local/private ranges and\n# reviewed service IP rules have already matched above; domain requests are skipped.\nIP-CIDR,0.0.0.0/0,Proxy,no-resolve\nIP-CIDR6,::/0,Proxy,no-resolve",
-        "# UDP / STUN / QUIC\n# Public IP literals fail closed through the proxy. Known local/private ranges and\n# reviewed service IP rules have already matched above; domain requests are skipped.\nIP-CIDR,0.0.0.0/0,Proxy,no-resolve\nIP-CIDR6,::/0,Proxy,no-resolve\n\nPROTOCOL,STUN,UDP",
-    ),
-    "game_after_microsoft": (
-        f"# Game (before Microsoft so Xbox/Minecraft/Bethesda rules are reachable)\n{rr('RULE-SET','Game.list','Games')}\n# OneDrive\n{rr('RULE-SET','OneDrive.list','Microsoft')}\n# Microsoft\n{rr('RULE-SET','Microsoft.list','Microsoft')}",
-        f"# OneDrive\n{rr('RULE-SET','OneDrive.list','Microsoft')}\n# Microsoft\n{rr('RULE-SET','Microsoft.list','Microsoft')}\n# Game (before Microsoft so Xbox/Minecraft/Bethesda rules are reachable)\n{rr('RULE-SET','Game.list','Games')}",
-    ),
-}
+cases: list[tuple[str, str]] = []
 
-for name, (old, new) in mutations.items():
-    assert old in BASE, f"mutation anchor missing: {name}"
-    result = run(BASE.replace(old, new, 1))
-    assert result.returncode != 0, f"mutation unexpectedly passed: {name}"
 
-print(f"PASS R12.17 mutations={len(mutations)}")
+def replace_once(name: str, old: str, new: str) -> None:
+    count = BASE.count(old)
+    if count != 1:
+        raise AssertionError(f"mutation anchor count for {name}: expected 1, got {count}")
+    cases.append((name, BASE.replace(old, new, 1)))
+
+
+def swap_once(name: str, left: str, right: str) -> None:
+    if BASE.count(left) != 1 or BASE.count(right) != 1:
+        raise AssertionError(f"swap anchor missing or duplicated: {name}")
+    marker = f"__R13_MUTATION_{name}__"
+    changed = BASE.replace(left, marker, 1).replace(right, left, 1).replace(marker, right, 1)
+    cases.append((name, changed))
+
+
+# Header, section, global privacy, DNS, and access invariants.
+replace_once("author", "# > Surge Config Make by .ᐣ", "# > Surge Config Make by unknown")
+replace_once("date", "# > Update Date: 2026.08.28", "# > Update Date: 2026.08.27")
+replace_once("version", "Surge iOS Privacy + Push R13.2 Enhanced", "Surge iOS Privacy + Push R13.1")
+replace_once("preservation_header", "# > Feature-preserving enhancement based on R13.1; no original service group or remote rule resource was removed.\n", "")
+replace_once("snapshot_header", "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).\n", "")
+replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
+replace_once("duplicate_section", "[Host]\n", "[Host]\n[Host]\n")
+replace_once("loglevel", "loglevel = notify", "loglevel = warning")
+replace_once("auto_suspend", "auto-suspend = true", "auto-suspend = false")
+replace_once("internet_probe", "internet-test-url = http://connectivitycheck.platform.hicloud.com/generate_204", "internet-test-url = http://example.com/")
+replace_once("proxy_probe", "proxy-test-url = http://cp.cloudflare.com/generate_204", "proxy-test-url = http://example.com/")
+replace_once("test_timeout", "test-timeout = 5", "test-timeout = 10")
+replace_once("udp_probe", "proxy-test-udp = apple.com@9.9.9.9", "proxy-test-udp = apple.com@223.5.5.5")
+replace_once("ipv6", "ipv6 = true", "ipv6 = false")
+replace_once("wifi_assist", "wifi-assist = false", "wifi-assist = true")
+replace_once("capture_all", "include-all-networks = true", "include-all-networks = false")
+replace_once("capture_apns", "include-apns = true", "include-apns = false")
+replace_once("capture_cellular", "include-cellular-services = false", "include-cellular-services = true")
+replace_once("cgnat_skip", ", 100.64.0.0/10,", ",")
+replace_once("dns_server", "dns-server = 223.5.5.5, 223.6.6.6", "dns-server = system")
+replace_once("encrypted_dns", "encrypted-dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query", "encrypted-dns-server = https://dns.alidns.com/dns-query")
+replace_once("dns_follow", "encrypted-dns-follow-outbound-mode = false", "encrypted-dns-follow-outbound-mode = true")
+replace_once("dns_cert", "encrypted-dns-skip-cert-verification = false", "encrypted-dns-skip-cert-verification = true")
+replace_once("hijack_dns", "hijack-dns = *:53", "hijack-dns = false")
+replace_once("wifi_access", "allow-wifi-access = false", "allow-wifi-access = true")
+replace_once("hotspot_access", "allow-hotspot-access = false", "allow-hotspot-access = true")
+replace_once("dashboard", "http-api-web-dashboard = false", "http-api-web-dashboard = true")
+replace_once("udp_unsupported", "udp-policy-not-supported-behaviour = REJECT", "udp-policy-not-supported-behaviour = DIRECT")
+replace_once("block_quic", "block-quic = per-policy", "block-quic = all-proxy")
+replace_once("mac_hosts", "# Access\n", "read-etc-hosts = true\n\n# Access\n")
+replace_once("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1")
+replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1", "dns.alidns.com = 223.5.5.5")
+replace_once("dnspub_bootstrap", "doh.pub = 1.12.12.12, 120.53.53.53", "doh.pub = 1.1.1.1")
+replace_once("fail_closed", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.1, 1")
+
+# Policy architecture, defaults, visibility, and source ownership.
+replace_once("final_direct", "Final = select, Proxy, REJECT, no-alert=0", "Final = select, Proxy, DIRECT, no-alert=0")
+replace_once("proxy_default", "Proxy = select, AllServer, NodePool", "Proxy = select, NodePool, AllServer")
+replace_once("proxy_cycle", "Proxy = select, AllServer, NodePool", "Proxy = select, Final, NodePool")
+replace_once("applepush_order", "ApplePush = fallback, Proxy, DIRECT, interval=60", "ApplePush = fallback, DIRECT, Proxy, interval=60")
+replace_once("applepush_mode", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = select, Proxy, DIRECT")
+replace_once("applepush_eval", "interval=60, evaluate-before-use=true, no-alert=0, hidden=1", "interval=60, no-alert=0, hidden=1")
+replace_once("adblock_off", "AdBlock = select, REJECT, REJECT-DROP, DIRECT,", "AdBlock = select, REJECT, REJECT-DROP,")
+replace_once("security_off", "Security = select, REJECT, REJECT-DROP, DIRECT,", "Security = select, REJECT, REJECT-DROP,")
+replace_once("adblock_hidden", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0", "AdBlock = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1")
+replace_once("security_hidden", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=0", "Security = select, REJECT, REJECT-DROP, DIRECT, no-alert=0, hidden=1")
+replace_once("udp_order", "UDP = select, Proxy, NodePool, REJECT, DIRECT,", "UDP = select, NodePool, Proxy, REJECT, DIRECT,")
+replace_once("udp_visible", "UDP = select, Proxy, NodePool, REJECT, DIRECT, no-alert=0, hidden=0", "UDP = select, Proxy, NodePool, REJECT, DIRECT, no-alert=0, hidden=1")
+replace_once("domestic_default", "Domestic = select, DIRECT, Proxy,", "Domestic = select, Proxy, DIRECT,")
+replace_once("domestic_missing", "Domestic = select, DIRECT, Proxy, no-alert=0, hidden=0, include-all-proxies=0\n", "")
+replace_once("service_direct", "ChatGPT = select, Proxy, America", "ChatGPT = select, DIRECT, America")
+replace_once("apple_default", "Apple = select, DIRECT, Proxy", "Apple = select, Proxy, DIRECT")
+replace_once("nodepool_mode", "NodePool = select, Fail-Closed,", "NodePool = url-test, Fail-Closed,")
+replace_once("nodepool_sentinel", "NodePool = select, Fail-Closed,", "NodePool = select,")
+replace_once("nodepool_hidden", "policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL, update-interval=3600, no-alert=0, hidden=0", "policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL, update-interval=3600, no-alert=0, hidden=1")
+replace_once("private_subscription", "policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL", "policy-path=https://private.example/user-token")
+replace_once("subscription_secret", "policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL", "policy-path=https://example.invalid/nodes?token=secret")
+replace_once("nodepool_probe", "NodePool = select, Fail-Closed, policy-path=", "NodePool = select, Fail-Closed, interval=60, policy-path=")
+replace_once("allserver_mode", "AllServer = smart, Fail-Closed,", "AllServer = url-test, Fail-Closed,")
+replace_once("allserver_sentinel", "AllServer = smart, Fail-Closed,", "AllServer = smart,")
+replace_once("allserver_interval", "AllServer = smart, Fail-Closed, evaluate-before-use=true,", "AllServer = smart, Fail-Closed, interval=1800, evaluate-before-use=true,")
+replace_once("allserver_source", "include-other-group=NodePool\n\n# Regions", "include-other-group=HongKong\n\n# Regions")
+replace_once("region_mode", "HongKong = smart, Fail-Closed,", "HongKong = select, Fail-Closed,")
+replace_once("region_filter", "Singapore = smart, Fail-Closed, evaluate-before-use=true, policy-regex-filter=", "Singapore = smart, Fail-Closed, evaluate-before-use=true, policy-filter=")
+replace_once("region_source", "include-other-group=NodePool\nJapan =", "include-other-group=AllServer\nJapan =")
+replace_once("rogue_policy_path", "GitHub = select, Proxy,", "GitHub = select, policy-path=https://example.invalid/nodes, Proxy,")
+replace_once("undefined_group", "Claude = select, Proxy, America", "Claude = select, MissingPolicy, America")
+
+# Embedded content, immutable remote resources, policies, and precedence.
+pegasus_remote = rr("DOMAIN-SET", "Pegasus.list", "Security")
+ads_remote = rr("RULE-SET", "Ads.list", "AdBlock")
+phishing_remote, dynamic_ads_remote, dynamic_domestic_remote = (dynamic_line(item) for item in DYNAMIC_RULES)
+replace_once("phishing_policy", phishing_remote, phishing_remote.replace(",Security,", ",DIRECT,"))
+replace_once("phishing_polling", phishing_remote, phishing_remote.replace("update-interval=86400", "update-interval=-1"))
+replace_once("pegasus_policy", pegasus_remote, rr("DOMAIN-SET", "Pegasus.list", "DIRECT"))
+replace_once("pegasus_embedded", pegasus_remote, "DOMAIN-SUFFIX,123tramites.com,Security\n" + pegasus_remote)
+swap_once("pegasus_order", pegasus_remote, rr("RULE-SET", "APNs.list", "ApplePush"))
+replace_once("ad_policy", ads_remote, rr("RULE-SET", "Ads.list", "DIRECT"))
+replace_once("ad_embedded", ads_remote, "DOMAIN-SUFFIX,doubleclick.net,AdBlock\n" + ads_remote)
+replace_once("ad_no_resolve", ads_remote, ads_remote.replace(",no-resolve,", ","))
+replace_once("apns_policy", rr("RULE-SET", "APNs.list", "ApplePush"), rr("RULE-SET", "APNs.list", "DIRECT"))
+replace_once("telegram_policy", rr("RULE-SET", "Telegram.list", "Telegram"), rr("RULE-SET", "Telegram.list", "DIRECT"))
+replace_once("bili_policy", rr("RULE-SET", "BiliBili.list", "Domestic"), rr("RULE-SET", "BiliBili.list", "Streaming"))
+replace_once("bili_intl_policy", rr("RULE-SET", "BiliBiliIntl.list", "Streaming"), rr("RULE-SET", "BiliBiliIntl.list", "DIRECT"))
+replace_once("remote_host", f"{REMOTE_BASE}ChatGPT.list", "https://example.invalid/ChatGPT.list")
+replace_once("remote_http", f"{REMOTE_BASE}Claude.list", REMOTE_BASE.replace("https://", "http://") + "Claude.list")
+replace_once("remote_main", f"{REMOTE_BASE}Gemini.list", "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Gemini.list")
+replace_once("remote_tag", f"{REMOTE_BASE}Netflix.list", f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RULE_SNAPSHOT_TAG}/Rules/Netflix.list")
+replace_once("ruleset_no_resolve", rr("RULE-SET", "Microsoft.list", "Microsoft"), rr("RULE-SET", "Microsoft.list", "Microsoft").replace(",no-resolve,", ","))
+replace_once("ruleset_polling", rr("RULE-SET", "OneDrive.list", "Microsoft"), rr("RULE-SET", "OneDrive.list", "Microsoft").replace(",update-interval=-1", ""))
+replace_once("dynamic_ad_policy", dynamic_ads_remote, dynamic_ads_remote.replace(",AdBlock,", ",DIRECT,"))
+replace_once("dynamic_domestic_no_resolve", dynamic_domestic_remote, dynamic_domestic_remote.replace(",no-resolve,", ","))
+replace_once("dynamic_domestic_policy", dynamic_domestic_remote, dynamic_domestic_remote.replace(",Domestic,", ",DIRECT,"))
+swap_once("remote_order", rr("RULE-SET", "ChatGPT.list", "ChatGPT"), rr("RULE-SET", "Claude.list", "Claude"))
+replace_once("stun_policy", "PROTOCOL,STUN,UDP", "PROTOCOL,STUN,Proxy")
+replace_once("dns53_open", "DEST-PORT,53,REJECT", "DEST-PORT,53,DIRECT")
+replace_once("dns853_open", "DEST-PORT,853,REJECT", "DEST-PORT,853,Proxy")
+replace_once("apple_bootstrap_broad", "DOMAIN,configuration.ls.apple.com,DIRECT", "DOMAIN-SUFFIX,ls.apple.com,DIRECT")
+replace_once("diagnostic_direct", "DOMAIN-SUFFIX,browserleaks.net,Proxy", "DOMAIN-SUFFIX,browserleaks.net,DIRECT")
+replace_once("doh_direct", "DOMAIN,doh.pub,Proxy", "DOMAIN,doh.pub,DIRECT")
+replace_once("cloud_direct", "DOMAIN-SUFFIX,aliyuncs.com,Domestic", "DOMAIN-SUFFIX,aliyuncs.com,DIRECT")
+replace_once("viu_policy", "DOMAIN-SUFFIX,viu.now.com,Streaming", "DOMAIN-SUFFIX,viu.now.com,HBO")
+replace_once("youtube_override", "DOMAIN,yt3.ggpht.com,YouTube", "DOMAIN,yt3.ggpht.com,Google")
+replace_once("microsoft_override", "DOMAIN,login.live.com,Microsoft", "DOMAIN,login.live.com,Games")
+replace_once("game_cloud", "IP-CIDR,35.192.0.0/12,Proxy,no-resolve", "IP-CIDR,35.192.0.0/12,Games,no-resolve")
+replace_once("ipv4_catchall", "IP-CIDR,0.0.0.0/0,Proxy,no-resolve", "IP-CIDR,0.0.0.0/0,DIRECT,no-resolve")
+replace_once("ipv6_catchall", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
+replace_once("cidr_resolve", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve", "IP-CIDR,1.1.1.1/32,Proxy")
+replace_once("invalid_cidr", "IP-CIDR,35.192.0.0/12,Proxy,no-resolve", "IP-CIDR,999.1.1.1/12,Proxy,no-resolve")
+replace_once("final_open", "FINAL,Final,dns-failed", "FINAL,DIRECT")
+swap_once("final_not_last", "IP-CIDR6,::/0,Proxy,no-resolve", "FINAL,Final,dns-failed")
+swap_once("stun_after_dns", "PROTOCOL,STUN,UDP", "DEST-PORT,53,REJECT")
+swap_once("bili_precedence", rr("RULE-SET", "BiliBiliIntl.list", "Streaming"), rr("RULE-SET", "BiliBili.list", "Domestic"))
+swap_once("game_precedence", rr("RULE-SET", "Game.list", "Games"), rr("RULE-SET", "Microsoft.list", "Microsoft"))
+replace_once("extra_rule", "FINAL,Final,dns-failed\n", "DOMAIN,unexpected.example,DIRECT\nFINAL,Final,dns-failed\n")
+replace_once("missing_rule", "DOMAIN-SUFFIX,ipip.net,Proxy\n", "")
+replace_once("duplicate_rule", "DOMAIN-SUFFIX,ipip.net,Proxy\n", "DOMAIN-SUFFIX,ipip.net,Proxy\nDOMAIN-SUFFIX,ipip.net,Proxy\n")
+
+for name, changed in cases:
+    result = run(changed)
+    if result.returncode == 0:
+        raise AssertionError(f"mutation unexpectedly passed: {name}")
+
+print(f"PASS R13.2 mutations={len(cases)}")

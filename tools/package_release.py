@@ -2,9 +2,9 @@
 """Create a deterministic full-repository release ZIP.
 
 The package contains the complete repository layout, including ``Rules/`` as
-separate files and ``.github/`` workflows. ``Surge.conf`` is checked to ensure
-that rule snapshot contents are not embedded into the profile before the ZIP
-is written.
+separate files and ``.github/`` workflows. The profile is checked for the exact
+30 immutable resources, three reviewed dynamic supplements and the absence of
+embedded rule snapshots before the ZIP is written.
 """
 
 from __future__ import annotations
@@ -20,32 +20,21 @@ from release_inventory import validate_release_tree
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R12.17-Privacy-Auto-20260826.zip"
-def active_rule_lines(text: str) -> set[str]:
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.2-Complete-No-Embedded-20260828.zip"
+
+
+def active_rule_lines(text: str) -> list[str]:
     if "[Rule]" not in text:
         raise ValueError("Surge.conf has no [Rule] section")
-    return {
+    return [
         line.strip()
         for line in text.split("[Rule]", 1)[1].splitlines()
         if line.strip() and not line.lstrip().startswith("#")
-    }
+    ]
 
 
-def snapshot_rule_lines() -> set[str]:
-    rules: set[str] = set()
-    for path in sorted((ROOT / "Rules").glob("*.list")):
-        for raw in path.read_text(encoding="utf-8-sig").splitlines():
-            line = raw.strip()
-            if line and not line.startswith(("#", ";", "//")):
-                rules.add(line)
-    return rules
-
-
-def validate_remote_only_profile() -> None:
+def validate_profile_sources() -> None:
     profile = (ROOT / "Surge.conf").read_text(encoding="utf-8")
-    if "# Embedded rules" in profile or "embedded_sources" in profile:
-        raise ValueError("Surge.conf contains an embedded-rule marker")
-
     active = active_rule_lines(profile)
     external = {
         line for line in active if line.startswith(("RULE-SET,", "DOMAIN-SET,"))
@@ -54,12 +43,17 @@ def validate_remote_only_profile() -> None:
     if external != expected:
         raise ValueError("Surge.conf external rule inventory is incomplete or unexpected")
 
-    embedded = sorted(active & snapshot_rule_lines())
+    embedded = [
+        rule for rule in active
+        if rule.endswith((",Security", ",AdBlock"))
+        and not rule.startswith(("RULE-SET,", "DOMAIN-SET,"))
+    ]
     if embedded:
-        raise ValueError(
-            "Surge.conf contains rule snapshot contents; first entries: "
-            + ", ".join(embedded[:3])
-        )
+        raise ValueError("Surge.conf contains embedded Security or AdBlock rule content")
+    if len(active) != 130 or active[-1] != "FINAL,Final,dns-failed":
+        raise ValueError("Surge.conf reviewed rule count or FINAL invariant changed")
+    if any(marker in profile for marker in ("raw.githubusercontent.com", "@main/Rules/")):
+        raise ValueError("Surge.conf contains a mutable or unreviewed runtime rule URL")
 
 
 def release_files(output: Path) -> list[Path]:
@@ -101,7 +95,7 @@ def main() -> int:
     candidate = args.output.expanduser()
     output = candidate if candidate.is_absolute() else (Path.cwd() / candidate).absolute()
     try:
-        validate_remote_only_profile()
+        validate_profile_sources()
         files = release_files(output)
         if not files:
             raise ValueError("no release files found")

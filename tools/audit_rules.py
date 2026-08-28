@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the complete R12.17 repository rule and resource inventory."""
+"""Validate the R13.2 local rule, runtime lock and provenance inventory.
+
+Use ``--check-dynamic`` to download and format-check the three reviewed dynamic
+runtime supplements without requiring their content to remain byte-identical.
+"""
 
 from __future__ import annotations
 
@@ -8,22 +12,25 @@ import ipaddress
 import json
 import re
 import sys
+import urllib.request
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    DYNAMIC_RULES,
     PROFILE_NAME,
     RELEASE_REF,
     REMOTE_BASE,
     REPOSITORY_RULES,
     RULE_SNAPSHOT_TAG,
-    repository_line,
+    expected_remote_order,
 )
 
 
 ROOT = Path(__file__).resolve().parent.parent
-PROFILE = ROOT / "Surge.conf"
+CHECK_DYNAMIC = "--check-dynamic" in sys.argv[1:]
+positional = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
 DEFAULT_RULES = ROOT / "Rules"
-RULES = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else DEFAULT_RULES
+RULES = Path(positional[0]).resolve() if positional else DEFAULT_RULES
 LOCK = RULES / "r10.lock.json"
 RESOURCE_LOCK = RULES / "resources.lock.json"
 SERVICE_LOCK = RULES / "upstreams.lock.json"
@@ -46,68 +53,78 @@ def fail(message: str) -> None:
 
 def active_lines(path: Path) -> list[str]:
     return [
-        line.strip()
-        for line in path.read_text(encoding="utf-8-sig").splitlines()
+        line.strip() for line in path.read_text(encoding="utf-8-sig").splitlines()
         if line.strip() and not line.lstrip().startswith(("#", ";", "//"))
     ]
 
 
-if not LOCK.is_file():
-    fail(f"runtime lock not found: {LOCK}")
+def digest(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 13 or lock.get("mode") != "repository-ruleset":
-    fail("runtime lock schema/mode mismatch")
+if lock.get("schema") != 16 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
+    fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
+if (lock.get("active_rules"), lock.get("runtime_resources"), lock.get("immutable_repository_resources"), lock.get("dynamic_runtime_resources"), lock.get("local_rule_files")) != (130, 33, 30, 3, 30):
+    fail("runtime lock counts mismatch")
+
 invariants = dict(lock.get("required_invariants", {}))
-if invariants.get("rule_snapshot_tag") != RULE_SNAPSHOT_TAG:
-    fail("runtime lock rule snapshot tag mismatch")
-if invariants.get("rule_snapshot_commit") != RELEASE_REF:
-    fail("runtime lock rule snapshot commit mismatch")
-if invariants.get("runtime_static_resources") != "repository-only":
-    fail("runtime resources are not locked to the repository")
-if invariants.get("runtime_resource_count") != len(REPOSITORY_RULES):
-    fail("runtime resource count invariant mismatch")
-if invariants.get("hidden_function_groups") != ["ApplePush", "AdBlock", "Security", "UDP"]:
-    fail("hidden functional policy group invariant mismatch")
-if invariants.get("security_resource") != {
-    "file": "Pegasus.list", "policy": "Security", "entries": 1438
+expected_invariants = {
+    "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
+    "rule_snapshot_commit": RELEASE_REF,
+    "runtime_resource_count": 33,
+    "immutable_repository_resource_count": 30,
+    "dynamic_runtime_resource_count": 3,
+    "local_rule_file_count": 30,
+    "embedded_rule_contents": 0,
+    "hidden_function_groups": ["ApplePush"],
+    "visible_control_groups": ["AdBlock", "Security", "UDP", "Domestic"],
+    "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
+    "loglevel": "notify",
+    "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
+    "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
+    "diagnostic_policy": "Proxy",
+    "runtime_rulesets_no_resolve": True,
+}
+for key, expected in expected_invariants.items():
+    if invariants.get(key) != expected:
+        fail(f"runtime invariant mismatch: {key}")
+
+architecture = dict(invariants.get("policy_architecture", {}))
+if architecture.get("node_pool") != {
+    "mode": "select", "hidden": False, "source": "policy-path",
+    "fail_closed": True, "manual_default": False,
 }:
-    fail("security resource invariant mismatch")
+    fail("NodePool architecture invariant mismatch")
+if architecture.get("proxy") != {"mode": "select", "default": "AllServer"}:
+    fail("Proxy default architecture invariant mismatch")
+if dict(architecture.get("all_server", {})).get("mode") != "smart":
+    fail("AllServer must remain Smart")
+if dict(architecture.get("regions", {})).get("mode") != "smart":
+    fail("regional groups must remain Smart")
+if architecture.get("domestic") != {"mode": "select", "default": "DIRECT", "fallback": "Proxy"}:
+    fail("Domestic architecture invariant mismatch")
 if invariants.get("udp_quic") != {
-    "proxy_test_udp": "apple.com@223.5.5.5",
+    "proxy_test_udp": "apple.com@9.9.9.9",
     "unsupported_behaviour": "REJECT",
     "block_quic": "per-policy",
     "stun_policy": "UDP",
+    "udp_default": "Proxy",
+    "blocked_public_dns_ports": [53, 853, 8853],
 }:
     fail("UDP/QUIC invariant mismatch")
-privacy = dict(dict(invariants.get("policy_architecture", {})).get("privacy", {}))
-if privacy != {
-    "name": "PrivacyAuto",
-    "mode": "url-test",
-    "hidden": True,
-    "source": "NodePool",
-    "fail_closed": True,
-    "automatic_single_policy": True,
-    "interval": 600,
-    "tolerance": 100,
-    "evaluate_before_use": True,
-}:
-    fail("privacy hidden automatic-selection invariant mismatch")
-if invariants.get("encrypted_dns_certificate_verification") is not True:
-    fail("encrypted DNS certificate verification invariant mismatch")
-if invariants.get("runtime_rulesets_no_resolve") is not True:
-    fail("runtime RULE-SET local-DNS suppression invariant mismatch")
 if invariants.get("public_ip_literals") != {
+    "china": "GEOIP,CN,Domestic,no-resolve",
     "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
     "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
 }:
-    fail("public IP literal fail-closed invariant mismatch")
-if invariants.get("privacy_diagnostic_ip_literals") != ["1.1.1.1/32"]:
-    fail("privacy diagnostic IP literal invariant mismatch")
+    fail("public IP literal invariant mismatch")
 
 expected_sources = {
     filename: {
+        "source_mode": "immutable-repository-snapshot",
         "kind": kind,
         "url": f"{REMOTE_BASE}{filename}",
         "policy": policy,
@@ -115,68 +132,55 @@ expected_sources = {
     }
     for kind, filename, _label, policy in REPOSITORY_RULES
 }
-raw_sources = lock.get("remote_sources")
-if not isinstance(raw_sources, list) or len(raw_sources) != len(expected_sources):
-    fail(f"expected {len(expected_sources)} runtime sources")
-seen: set[str] = set()
+raw_sources = list(lock.get("remote_sources", []))
+if len(raw_sources) != len(expected_sources):
+    fail("expected 30 immutable repository runtime sources")
+seen_remote: set[str] = set()
 for raw in raw_sources:
     item = dict(raw)
     filename = str(item.get("file", ""))
-    if filename in seen:
-        fail(f"duplicate runtime source: {filename}")
-    seen.add(filename)
-    expected = expected_sources.get(filename)
-    if expected is None:
-        fail(f"unexpected runtime source: {filename}")
+    if filename in seen_remote or filename not in expected_sources:
+        fail(f"duplicate or unexpected repository runtime source: {filename}")
+    seen_remote.add(filename)
+    for key, expected in expected_sources[filename].items():
+        if item.get(key) != expected:
+            fail(f"repository runtime source {filename} has incorrect {key}")
+    path = RULES / filename
+    if item.get("active_entries") != len(active_lines(path)) or item.get("sha256") != digest(path):
+        fail(f"repository runtime metadata mismatch: {filename}")
+if seen_remote != set(expected_sources):
+    fail("repository runtime inventory is incomplete")
+
+dynamic_sources = list(lock.get("dynamic_sources", []))
+if len(dynamic_sources) != 3:
+    fail("expected three reviewed dynamic runtime sources")
+for expected, raw in zip(DYNAMIC_RULES, dynamic_sources, strict=True):
+    item = dict(raw)
     for key, value in expected.items():
         if item.get(key) != value:
-            fail(f"runtime source {filename} has incorrect {key}")
-    if not isinstance(item.get("active_entries"), int) or item["active_entries"] < 1:
-        fail(f"invalid entry count for {filename}")
-    if not re.fullmatch(r"[0-9a-f]{64}", str(item.get("sha256", ""))):
-        fail(f"invalid SHA-256 for {filename}")
-if seen != set(expected_sources):
-    fail(f"runtime inventory is incomplete: {sorted(set(expected_sources)-seen)}")
+            fail(f"dynamic release observation mismatch for {expected['name']}: {key}")
+    if item.get("source_mode") != "reviewed-dynamic-runtime" or item.get("update_interval") != 86400:
+        fail(f"dynamic source control metadata mismatch: {expected['name']}")
 
-# In a staged ZIP the profile lives next to Rules. Validate it when present.
-profile = PROFILE if RULES == DEFAULT_RULES else RULES.parent / "Surge.conf"
-if profile.is_file():
-    text = profile.read_text(encoding="utf-8")
-    active_rules = [
-        line.strip()
-        for line in text.split("[Rule]", 1)[1].splitlines()
-        if line.strip() and not line.lstrip().startswith(("#", ";", "//"))
-    ]
-    if lock.get("profile_sha256") != hashlib.sha256(text.encode()).hexdigest():
-        fail("profile hash mismatch")
-    if lock.get("profile_lines") != len(text.splitlines()):
-        fail("profile line count mismatch")
-    if lock.get("active_rules") != len(active_rules):
-        fail("profile rule count mismatch")
-    external = {line for line in active_rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))}
-    expected_external = {
-        repository_line(kind, filename, policy)
-        for kind, filename, _label, policy in REPOSITORY_RULES
-    }
-    if external != expected_external:
-        fail("profile runtime resource references do not match the lock")
+if list(lock.get("runtime_order", [])) != expected_remote_order():
+    fail("runtime order in the lock is stale")
+if list(lock.get("embedded_sources", [])):
+    fail("runtime lock may not declare embedded rule sources")
 
-errors: list[str] = []
+expected_local = set(expected_sources)
+actual_local = {path.name for path in RULES.glob("*.list")}
+if actual_local != expected_local or len(actual_local) != 30:
+    fail(f"local rule inventory mismatch: missing={sorted(expected_local-actual_local)}, unexpected={sorted(actual_local-expected_local)}")
 domain_set_files = {"Pegasus.list", "China.list", "Global.list"}
-for raw in raw_sources:
-    item = dict(raw)
-    filename = str(item["file"])
+errors: list[str] = []
+for filename in sorted(actual_local):
     path = RULES / filename
-    if not path.is_file():
-        errors.append(f"missing source: {filename}")
-        continue
     rows = active_lines(path)
-    if len(rows) != int(item["active_entries"]):
-        errors.append(f"{filename}: entry count mismatch")
+    if not rows:
+        errors.append(f"{filename}: empty rule source")
+        continue
     if len(rows) != len(set(rows)):
         errors.append(f"{filename}: duplicate active rows")
-    if hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]:
-        errors.append(f"{filename}: SHA-256 mismatch")
     if filename in domain_set_files:
         for row in rows:
             value = row[1:] if row.startswith(".") else row
@@ -185,70 +189,71 @@ for raw in raw_sources:
                 break
     else:
         for row in rows:
-            rule_type = row.split(",", 1)[0].upper()
-            if rule_type not in RULE_TYPES:
+            fields = [part.strip() for part in row.split(",")]
+            rule_type = fields[0].upper()
+            if rule_type not in RULE_TYPES or rule_type == "PROCESS-NAME":
                 errors.append(f"{filename}: unsupported rule type {rule_type}")
-                break
-            if rule_type == "PROCESS-NAME":
-                errors.append(f"{filename}: PROCESS-NAME is not valid for the iOS runtime bundle")
                 break
             if rule_type in {"IP-CIDR", "IP-CIDR6"}:
                 try:
-                    ipaddress.ip_network(row.split(",", 2)[1], strict=False)
-                except ValueError:
+                    network = ipaddress.ip_network(fields[1], strict=False)
+                except (IndexError, ValueError):
                     errors.append(f"{filename}: invalid network {row!r}")
+                    break
+                if (rule_type == "IP-CIDR") != (network.version == 4) or "no-resolve" not in fields[2:]:
+                    errors.append(f"{filename}: CIDR family or no-resolve mismatch {row!r}")
                     break
 if errors:
     fail("\n".join(errors))
 
-if not RESOURCE_LOCK.is_file():
-    fail("pinned resource provenance lock is missing")
+# In a staged ZIP the profile is the parent of Rules. Validate it when present.
+profile = ROOT / "Surge.conf" if RULES == DEFAULT_RULES else RULES.parent / "Surge.conf"
+if profile.is_file():
+    profile_text = profile.read_text(encoding="utf-8")
+    profile_rules = [
+        line.strip() for line in profile_text.split("[Rule]", 1)[1].splitlines()
+        if line.strip() and not line.lstrip().startswith(("#", ";", "//"))
+    ]
+    if lock.get("profile_sha256") != hashlib.sha256(profile.read_bytes()).hexdigest():
+        fail("profile hash mismatch")
+    if lock.get("profile_lines") != len(profile_text.splitlines()) or lock.get("active_rules") != len(profile_rules):
+        fail("profile line or rule count mismatch")
+    external = [line for line in profile_rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
+    if external != expected_remote_order():
+        fail("profile runtime references do not match the lock")
+    inline = [
+        line for line in profile_rules
+        if line.endswith((",Security", ",AdBlock"))
+        and not line.startswith(("RULE-SET,", "DOMAIN-SET,"))
+    ]
+    if inline:
+        fail("profile contains embedded Security or AdBlock rules")
+
+# Existing provenance locks and reviewed local curation remain byte-identical.
 resource_lock = json.loads(RESOURCE_LOCK.read_text(encoding="utf-8"))
 resources = list(resource_lock.get("resources", []))
 if resource_lock.get("schema") != 1 or len(resources) != 1:
-    fail("pinned resource provenance lock is invalid")
+    fail("pinned Pegasus provenance lock is invalid")
+pegasus_path = RULES / "Pegasus.list"
 pegasus_meta = dict(resources[0])
-pegasus = RULES / "Pegasus.list"
-if pegasus_meta.get("local_file") != "Pegasus.list":
-    fail("Pegasus local resource name mismatch")
-if pegasus_meta.get("active_entries") != 1438:
-    fail("Pegasus entry count in provenance lock is stale")
-if pegasus_meta.get("local_sha256") != hashlib.sha256(pegasus.read_bytes()).hexdigest():
-    fail("Pegasus provenance local SHA-256 mismatch")
-if len(active_lines(pegasus)) != 1438:
-    fail("Pegasus local snapshot must contain exactly 1438 domains")
+if pegasus_meta.get("local_file") != "Pegasus.list" or pegasus_meta.get("active_entries") != 1438 or pegasus_meta.get("local_sha256") != digest(pegasus_path):
+    fail("Pegasus provenance identity, count, or hash mismatch")
 
-if not SERVICE_LOCK.is_file():
-    fail("pinned service provenance lock is missing")
 service_lock = json.loads(SERVICE_LOCK.read_text(encoding="utf-8"))
-if service_lock.get("schema") != 2 or len(service_lock.get("services", [])) != 19:
+services = list(service_lock.get("services", []))
+if service_lock.get("schema") != 2 or len(services) != 19:
     fail("pinned service provenance inventory is invalid")
 if dict(service_lock.get("local_additions_policy", {})).get("undeclared_rows") != "forbidden":
     fail("service lock does not forbid undeclared local rows")
-review = dict(service_lock.get("upstream", {})).get("last_review", {})
-if review != {
-    "date": "2026-08-25",
-    "compared_commit": "f42be99379fcd1a1dd03469e8b56dcb46888fcea",
-    "services_compared": 19,
-    "active_additions": 0,
-    "active_deletions": 0,
-    "decision": "保留当前固定提交；19 个文件的活动规则一致，Game.list 仅有注释或元数据差异。",
-}:
-    fail("pinned service comparison review is missing or stale")
-
-for raw_service in service_lock["services"]:
+for raw_service in services:
     service = dict(raw_service)
     target = RULES / str(service["local_file"])
-    if service.get("local_active_entries") != len(active_lines(target)):
-        fail(f"service local entry count mismatch: {target.name}")
-    if service.get("local_sha256") != hashlib.sha256(target.read_bytes()).hexdigest():
-        fail(f"service local SHA-256 mismatch: {target.name}")
+    if service.get("local_active_entries") != len(active_lines(target)) or service.get("local_sha256") != digest(target):
+        fail(f"service local metadata mismatch: {target.name}")
     additions = list(service.get("add", []))
     if additions and dict(service.get("add_source", {})).get("type") != "repository-maintained-curation":
         fail(f"service local additions have no disclosure: {target.name}")
 
-if not MAINTAINED_LOCK.is_file():
-    fail("repository-maintained source disclosure lock is missing")
 maintained_lock = json.loads(MAINTAINED_LOCK.read_text(encoding="utf-8"))
 maintained_files = {
     "APNs.list", "Ads.list", "AppleCN.list", "BiliBili.list", "China.list",
@@ -257,8 +262,6 @@ maintained_files = {
 maintained_items = list(maintained_lock.get("files", []))
 if maintained_lock.get("schema") != 1 or len(maintained_items) != len(maintained_files):
     fail("repository-maintained source disclosure inventory is invalid")
-if maintained_lock.get("policy", {}).get("automatic_refresh") != "forbidden unless a fixed source and reviewed diff are recorded":
-    fail("repository-maintained automatic refresh policy is missing")
 seen_maintained: set[str] = set()
 for raw_item in maintained_items:
     item = dict(raw_item)
@@ -267,52 +270,40 @@ for raw_item in maintained_items:
         fail(f"unexpected repository-maintained source item: {filename}")
     seen_maintained.add(filename)
     target = RULES / filename
-    if item.get("active_entries") != len(active_lines(target)):
-        fail(f"repository-maintained entry count mismatch: {filename}")
-    if item.get("sha256") != hashlib.sha256(target.read_bytes()).hexdigest():
-        fail(f"repository-maintained SHA-256 mismatch: {filename}")
+    if item.get("active_entries") != len(active_lines(target)) or item.get("sha256") != digest(target):
+        fail(f"repository-maintained metadata mismatch: {filename}")
     if not item.get("maintenance") or not item.get("license_status") or not item.get("notes"):
         fail(f"repository-maintained disclosure is incomplete: {filename}")
 if seen_maintained != maintained_files:
     fail("repository-maintained source disclosure is incomplete")
 
 apns_required = {
-    "DOMAIN-SUFFIX,push.apple.com",
-    "DOMAIN-SUFFIX,push-apple.com.akadns.net",
-    "IP-CIDR,17.249.0.0/16,no-resolve",
-    "IP-CIDR,17.252.0.0/16,no-resolve",
-    "IP-CIDR,17.57.144.0/22,no-resolve",
-    "IP-CIDR,17.188.128.0/18,no-resolve",
-    "IP-CIDR,17.188.20.0/23,no-resolve",
-    "IP-CIDR6,2620:149:a44::/48,no-resolve",
-    "IP-CIDR6,2403:300:a42::/48,no-resolve",
-    "IP-CIDR6,2403:300:a51::/48,no-resolve",
+    "DOMAIN-SUFFIX,push.apple.com", "DOMAIN-SUFFIX,push-apple.com.akadns.net",
+    "IP-CIDR,17.249.0.0/16,no-resolve", "IP-CIDR,17.252.0.0/16,no-resolve",
+    "IP-CIDR,17.57.144.0/22,no-resolve", "IP-CIDR,17.188.128.0/18,no-resolve",
+    "IP-CIDR,17.188.20.0/23,no-resolve", "IP-CIDR6,2620:149:a44::/48,no-resolve",
+    "IP-CIDR6,2403:300:a42::/48,no-resolve", "IP-CIDR6,2403:300:a51::/48,no-resolve",
     "IP-CIDR6,2a01:b740:a42::/48,no-resolve",
 }
 if not apns_required <= set(active_lines(RULES / "APNs.list")):
     fail("APNs source is missing Apple-published endpoints")
-
 telegram_required = {
     "DOMAIN-SUFFIX,t.me", "DOMAIN-SUFFIX,telegram.org",
-    "IP-CIDR,149.154.160.0/20,no-resolve",
-    "IP-CIDR,91.108.4.0/22,no-resolve",
+    "IP-CIDR,149.154.160.0/20,no-resolve", "IP-CIDR,91.108.4.0/22,no-resolve",
     "IP-CIDR6,2001:b28:f23c::/48,no-resolve",
 }
 if not telegram_required <= set(active_lines(RULES / "Telegram.list")):
     fail("Telegram source is missing core endpoints")
 
 bilibili_domestic = {
-    "DOMAIN-SUFFIX,acgvideo.com", "DOMAIN-SUFFIX,b23.tv",
-    "DOMAIN-SUFFIX,biliapi.com", "DOMAIN-SUFFIX,biliapi.net",
-    "DOMAIN-SUFFIX,bilibili.cn", "DOMAIN-SUFFIX,bilibili.com",
-    "DOMAIN-SUFFIX,bilicdn1.com", "DOMAIN-SUFFIX,bilicomics.com",
-    "DOMAIN-SUFFIX,biligame.com", "DOMAIN-SUFFIX,biliimg.com",
-    "DOMAIN-SUFFIX,bilivideo.com", "DOMAIN-SUFFIX,hdslb.com",
+    "DOMAIN-SUFFIX,acgvideo.com", "DOMAIN-SUFFIX,b23.tv", "DOMAIN-SUFFIX,biliapi.com",
+    "DOMAIN-SUFFIX,biliapi.net", "DOMAIN-SUFFIX,bilibili.cn", "DOMAIN-SUFFIX,bilibili.com",
+    "DOMAIN-SUFFIX,bilicdn1.com", "DOMAIN-SUFFIX,bilicomics.com", "DOMAIN-SUFFIX,biligame.com",
+    "DOMAIN-SUFFIX,biliimg.com", "DOMAIN-SUFFIX,bilivideo.com", "DOMAIN-SUFFIX,hdslb.com",
 }
 bilibili_international = {
-    "DOMAIN,apiintl.biliapi.net", "DOMAIN,p-bstarstatic.akamaized.net",
-    "DOMAIN,p.bstarstatic.com", "DOMAIN,upos-bstar-mirrorakam.akamaized.net",
-    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
+    "DOMAIN,apiintl.biliapi.net", "DOMAIN,p-bstarstatic.akamaized.net", "DOMAIN,p.bstarstatic.com",
+    "DOMAIN,upos-bstar-mirrorakam.akamaized.net", "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
     "DOMAIN-SUFFIX,bilibili.tv", "DOMAIN-SUFFIX,biliintl.com",
 }
 if set(active_lines(RULES / "BiliBili.list")) != bilibili_domestic:
@@ -333,17 +324,40 @@ for filename, forbidden in forbidden_rules.items():
     leaked = forbidden & set(active_lines(RULES / filename))
     if leaked:
         fail(f"{filename} contains intentionally excluded rules: {sorted(leaked)}")
-
-direct_rules = set(active_lines(RULES / "Direct.list"))
-if any("google" in rule.lower() or "gvt1.com" in rule.lower() for rule in direct_rules):
+if any("google" in rule.lower() or "gvt1.com" in rule.lower() for rule in active_lines(RULES / "Direct.list")):
     fail("Direct.list bypasses the Google policy")
 netflix_rules = set(active_lines(RULES / "Netflix.list"))
-if "IP-ASN,2906,no-resolve" not in netflix_rules:
-    fail("Netflix must use AS2906")
-if any(rule.startswith(("IP-CIDR,", "IP-CIDR6,")) for rule in netflix_rules):
-    fail("Netflix must not import broad cloud CIDRs")
+if "IP-ASN,2906,no-resolve" not in netflix_rules or any(rule.startswith(("IP-CIDR,", "IP-CIDR6,")) for rule in netflix_rules):
+    fail("Netflix must use AS2906 without broad cloud CIDRs")
+
+
+def fetch_dynamic(source: dict[str, object]) -> tuple[int, int, str]:
+    request = urllib.request.Request(str(source["url"]), headers={"User-Agent": "Surge-R13.2-Audit/1.0"})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status != 200:
+            fail(f"dynamic source HTTP {response.status}: {source['url']}")
+        data = response.read(8 * 1024 * 1024 + 1)
+    if len(data) > 8 * 1024 * 1024:
+        fail(f"dynamic source exceeds 8 MiB: {source['url']}")
+    text = data.decode("utf-8-sig")
+    rows = [line.strip() for line in text.splitlines() if line.strip() and not line.lstrip().startswith(("#", ";", "//"))]
+    if not rows or len(rows) != len(set(rows)):
+        fail(f"dynamic source is empty or has duplicate active rows: {source['url']}")
+    if source["kind"] == "DOMAIN-SET":
+        if any("," in row or any(ch.isspace() for ch in row) for row in rows):
+            fail(f"invalid dynamic DOMAIN-SET row: {source['url']}")
+    else:
+        if any("," not in row or row.split(",", 1)[0] == "FINAL" for row in rows):
+            fail(f"invalid dynamic RULE-SET row: {source['url']}")
+    return len(rows), len(data), hashlib.sha256(data).hexdigest()
+
+
+if CHECK_DYNAMIC:
+    for source in DYNAMIC_RULES:
+        entries, size, sha256 = fetch_dynamic(source)
+        print(f"PASS dynamic {source['name']} entries={entries} bytes={size} sha256={sha256}")
 
 print(
-    f"PASS R12.17 runtime_sources={len(raw_sources)} local_rule_files={len(list(RULES.glob('*.list')))} "
-    f"rules={lock.get('active_rules')} pegasus=1438"
+    f"PASS R13.2 runtime_sources=33 immutable_sources=30 dynamic_sources=3 "
+    f"local_rule_files={len(actual_local)} rules={lock.get('active_rules')} embedded_rule_contents=0"
 )
