@@ -1,141 +1,123 @@
-# Surge R13.4 Strict DNS 全量审计报告
+# R13.5 全盘分流审计报告
 
 审计日期：2026-08-29
+对象：`Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP 与 GitHub Actions。
 
 ## 结论
 
-R13.4 的静态结构、策略引用、循环依赖、规则顺序、本地规则库存、来源锁、动态端点格式、故障注入与发布白名单检查通过。国内 `BiliBili.list` 固定为 `DIRECT`，HTTPDNS 误杀已用精确前置规则修复，国际版专用资源已退役；受地区限制的 AI、TikTok 和动画疯默认出口也完成校准。
+本次是全盘详细检查，不是单独修补 BiliBili。配置中的国内外软件策略、首条命中、策略组失效行为、DNS、UDP、APNs、双栈兜底、固定/动态资源和发布链均已逐项复核并修正。
 
-本版同时解决末端 CN GeoIP 本地解析、BiliBili 加载等待和地区受限服务默认出口三类问题。它没有通过放开整份广告表来换取可用性；除 `httpdns.bilivideo.com` 外，BiliBili 遥测与广告重叠项仍受拦截。节点服务端 DNS、运营商路径、APNs、UDP 和 iOS 后台行为仍需 Surge iOS 真机验证。
+静态目标基线为 29 个策略组、142 条活动规则、29 个不可变运行资源、1 个动态国内资源和 29 个本地 `.list` 文件。主配置没有嵌入规则快照，也不含公开订阅凭据。
 
-## R13.3 到当前 R13.4
+## 发现与处理
 
-| 检查项 | R13.3 | R13.4 | 结果 |
-| --- | ---: | ---: | --- |
-| 策略组 | 34 | 34 | 34/34 保留 |
-| 规则匹配条件 | 130 | 137 | 新增 8 条精确护栏，移除 1 个国际规则引用 |
-| 远程运行资源 | 33 | 32 | 国际版资源退役 |
-| 固定远程 URL | 30 | 29 | 其余固定 URL 不变 |
-| 动态运行 URL | 3 | 3 | 3/3 保留 |
-| 本地 `.list` | 30 | 29 | `BiliBiliIntl.list` 删除 |
-| `NodePool.policy-path` | 1 处占位符 | 相同 | 保留 |
-| `Fail-Closed` | `127.0.0.1:1` | 相同 | 保留 |
-| APNs、AI、流媒体、游戏等服务组 | 存在 | 存在 | 保留 |
-
-当前主配置相对 R13.3 的功能行为变化如下。
-
-- `GEOIP,CN,Domestic` 改为 `GEOIP,CN,Domestic,no-resolve`。
-- `AdBlock`、`Security`、`UDP` 和 `Domestic` 的 `hidden=0` 改为 `hidden=1`。
-- 国内 `BiliBili.list` 从 `Domestic` 改为内建 `DIRECT`，避免沿用隐藏组的历史 `Proxy` 选择。
-- `httpdns.bilivideo.com` 在广告规则前精确直连，国际版专用规则删除并由七条通用 `Proxy` 护栏防止误分流。
-- ChatGPT、Claude、Gemini 和 TikTok 默认日本；动画疯默认台湾。香港从 AI 与 TikTok 候选中移除。
-
-四个隐藏组的类型、成员顺序和默认选择保持不变。除国内 BiliBili 专用规则固定直连外，其他既有引用保持不变；隐藏只影响策略控制面板显示，不改变规则执行。
-
-## 配置结构
-
-| 检查项 | 结果 |
-| --- | ---: |
-| 配置节 | 5/5 |
-| 策略组 | 34 |
-| 活动规则 | 137 |
-| 运行时远程资源 | 32 |
-| 固定提交资源 | 29 |
-| 动态资源 | 3 |
-| 本地规则文件 | 29 |
-| 未知策略引用 | 0 |
-| 策略组循环 | 0 |
-| 重复活动规则 | 0 |
-| 地区正则编译 | 5/5 |
-| `FINAL` | 1 条且位于末尾 |
-| 订阅占位符 | 恰好 1 处 |
-| 主配置内嵌规则快照 | 0 |
-
-`Surge.conf` 为 UTF-8、LF、无 BOM、无 NUL，并以换行结束。主配置 SHA-256 为 `73080afd4a5bcf16809270d69f9d4f62c10f6c4d5bb3bc03ad399454cbb5ef73`。
-
-## 严格 DNS 修正
-
-R13.3 的末端 CN GeoIP 会为未命中且尚未解析的域名触发本地解析。配置中的 AliDNS 与 DNSPod DoH 由 Surge 内部直连，因此代理网页可能出现境外出口和大陆解析器并存。
-
-R13.4 的末端顺序为：
-
-1. 动态国内补充与固定 China 精确域名进入 `Domestic`。
-2. 固定 Global 精确域名进入 `Proxy`。
-3. `GEOIP,CN,Domestic,no-resolve` 只判断已有 IP 的连接。
-4. 公网 IPv4 与 IPv6 字面量进入 `Proxy`。
-5. 未命中域名落入 `FINAL,Final,dns-failed`，`Final` 默认选择 `Proxy`，由代理侧解析主机名。
-
-`encrypted-dns-follow-outbound-mode=false` 保留。直接改成 `true` 不能作为严格隔离保证，因为域名型代理服务器在启动时可能需要先解析自身主机名，形成依赖并触发直连回退。当前方案在代理域名边界和代理节点启动可用性之间取了更稳妥的平衡。
-
-R13.3 的国内性能修正仍保留。16 个已审阅大陆应用 DNS 主机完整、连续地位于 STUN 之后和通用端口拒绝之前，并进入默认 `DIRECT` 的 `Domestic`。13 个境外应用 DNS 主机保持固定顺序并进入 `Proxy`。其余公网 53、853、8853 仍拒绝。
-
-## 界面隐藏审计
-
-| 策略组 | 默认成员 | R13.4 可见性 | 规则与功能 |
-| --- | --- | --- | --- |
-| `ApplePush` | `Proxy`，后备 `DIRECT` | 隐藏 | 保留 |
-| `AdBlock` | `REJECT` | 隐藏 | 固定 Ads 与动态 reject 保留 |
-| `Security` | `REJECT` | 隐藏 | 动态钓鱼与固定 Pegasus 保留 |
-| `UDP` | `Proxy` | 隐藏 | STUN 与 UDP 策略保留 |
-| `Domestic` | `DIRECT` | 隐藏 | 除 BiliBili 专用直连外的国内规则、共享云、China 与已解析 CN IP 保留 |
-
-审计器要求这五个组精确为 `hidden=1`。`Final`、`Proxy`、`NodePool`、Smart 地区组和服务组保持可见。需要人工覆盖辅助组时，只在私人副本中临时改为 `hidden=0`。
-
-## BiliBili 国内版加载修复
-
-动态广告源与国内规则有五个域名重叠，其中 `httpdns.bilivideo.com` 会影响 CDN 选择并造成等待回退。主配置只把这个功能域名提前直连，`cm`、`dataflow` 等遥测或广告项仍维持拦截。`BiliBili.list` 的 12 条国内核心后缀继续固定 `DIRECT`，不再受隐藏 `Domestic` 历史选择影响。
-
-`BiliBiliIntl.list`、来源锁条目和运行引用均已删除。七个历史国际域名以前置通用 `Proxy` 规则覆盖，防止 `apiintl.biliapi.net` 被国内父后缀直连，也防止旧固定 `ProxyMedia.list` 把国际媒体送入 `Streaming`。本地 `ProxyMedia.list` 同时删除四条国际版行，为下一次规则快照更新清理遗留内容。
-
-## 规则来源
-
-29 个固定 URL 全部指向：
-
-```text
-https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/
-```
-
-包内共有 29 份 `.list`。Pegasus、18 份服务规则和 10 份仓库维护规则的来源锁继续通过；18 份服务规则按现有过滤逻辑与 2026-08-28 上游提交 `65e8adff06ea66c81bc61ed64329dae4fbfa7438` 比较，活动规则差异均为零。
-
-三个动态运行资源已于 2026-08-28 重新下载并通过 HTTP、UTF-8、格式、重复行和 8 MiB 上限检查。
-
-| 资源 | 类型 | 策略 | 条目 | 字节 | SHA-256 |
-| --- | --- | --- | ---: | ---: | --- |
-| `reject_phishing.conf` | DOMAIN-SET | Security | 147,474 | 3,146,841 | `7c7b64d378542824170c87cf63511bc67974db39c6894493153f9d003a89756e` |
-| `reject.conf` | DOMAIN-SET | AdBlock | 135,224 | 3,013,194 | `4b87642adc8c58c0336b58a570abf33342b81043f358691fed16e207be028b49` |
-| `domestic.conf` | RULE-SET | Domestic | 869 | 22,632 | `56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa` |
-
-动态内容不随 ZIP 分发。相较 R13.3 发布观察值，钓鱼列表增加 6 条，广告列表减少 80 条，国内列表不变；这是上游正常更新，不改变 URL、格式或策略。新的观察值已写入 schema 18 运行锁。
-
-## 自动化测试
-
-| 测试 | 结果 |
-| --- | ---: |
-| 配置故障注入 | 125/125 被拒绝 |
-| ZIP 安全回归 | 27/27 通过 |
-| 发布清单回归 | 15/15 通过 |
-| Python 编译 | 15/15 工具通过 |
-| 运行锁再生成 | 与受审配置一致 |
-| Pegasus 固定来源锁 | 通过 |
-| 18 份服务规则来源锁 | 通过 |
-| 动态规则在线格式 | 3/3 通过 |
-| China/Global 精确集合 | Domestic 306、Proxy 116、冲突 0 |
-| 严格发布目录 | 65/65 文件 |
-| 双份 SHA-256 | 一致并全部校验通过 |
-| 确定性打包 | 相同输入两次 ZIP 字节一致 |
-
-运行锁保持 schema 18，并记录严格 CN GeoIP、未命中域名 `Final/Proxy` 兜底、代理侧解析意图、隐藏辅助组以及国内 BiliBili 绕过隐藏策略选择。故障注入会拒绝 BiliBili 国内规则恢复到 `Domestic` 或改走 `Streaming`，也会拒绝 CN GeoIP 去掉 `no-resolve`、四个辅助组重新显示、DNS 规则块错位、远程源变化和失败关闭退化。
-
-## 剩余风险与真机项目
-
-| 风险 | 实际影响 | 当前处理 |
+| 严重度 | 发现 | 修复 |
 | --- | --- | --- |
-| 未知国内域名 | 不再按解析后的 CN IP 自动直连，可能走代理并增加延迟 | 现有精确国内规则优先；按最近请求补充经审阅域名 |
-| Surge 或模块语义差异 | 模块可在主配置之前触发解析 | 无额外模块基线复测，审阅模块的 `no-resolve` 与 General 覆盖 |
-| 本地 DNS 仍有合法用途 | 明确 Domestic、本地网络和 Surge 自身功能可使用本地解析 | 不把严格边界误称为全局零 DNS 可见性 |
-| 节点服务端 DNS | 客户端无法替节点决定递归解析器 | 更换节点或由服务方修复 |
-| 动态列表变化 | 可能误报、撤回或上游故障 | 精确 URL、隐藏组可临时恢复显示、在线检查和定期监控 |
-| 固定规则陈旧 | 稳定但不会自动获得新提交 | 固定快照并人工审阅新版本 |
-| Smart 结果非固定 | 不同站点可能选择不同节点 | 可把 Proxy 切到 NodePool 手动固定 |
+| 高 | Smart 空组会 `DIRECT/SUBSTITUTE`，旧版失败关闭声明不成立 | 删除 `AllServer` Smart；NodePool 与五个地区组改为手动 `select`，首项为 `reject` 别名 |
+| 高 | `AdBlock`、`Security`、`UDP`、`Domestic` 会继承旧选择，实际行为可能偏离文档默认 | 删除四个状态组，规则固定为 `REJECT`、`Proxy` 或 `DIRECT` |
+| 高 | 十万级动态广告/钓鱼表不适合 iOS，并已误杀功能域名 | 删除两份移动端动态表，保留 152 条固定 Ads 与固定 Pegasus |
+| 高 | 国内 BiliBili 固定集合缺四个后缀，HTTPDNS/H5 与广告表重叠 | 补为 16 后缀，增加两条 Ads 前置直连护栏并启用扩展匹配 |
+| 中 | Spotify 音视频/电视/Podcast、Google `gvt2`、OpenAI RUM 与广告表重叠 | 增加七条对应策略护栏，与 BiliBili 合计九条 |
+| 中 | ChatGPT 规则未覆盖当前官方网络建议中的部分依赖 | 增加 11 条官方依赖，本地活动规则 52 增至 63 |
+| 中 | 固定资源只按普通 DNS 路径匹配，SNI/Host 可能漏分流 | 除 Ads 外的固定资源及动态国内补充启用 `extended-matching` |
+| 中 | AI/TikTok/Bahamut 可通过通用 Proxy 或不合适地区绕过限制 | AI/TikTok 仅四个支持地区；Bahamut 仅台湾、香港 |
+| 中 | 固定规则使用旧快照提交且远程内容未逐文件在线核验 | 新快照钉住 `ce744020…`，增加 29 文件 CDN 哈希校验 |
+| 低 | Pegasus 文件头仍声明旧 `Security` 策略 | 文件头、资源锁和运行规则统一为 `REJECT` |
 
-真机至少应在重新载入配置和清缓存后，用两个检测站点、两个代理节点分别检查网页出口与 DNS；测试常用国内软件首屏、登录、图片和视频 CDN；在 Wi-Fi 与蜂窝分别检查 APNs、IPv4、IPv6、UDP、AI 和流媒体；确认日志没有持续解析环、规则下载或代理循环错误。
+## 策略组审计
+
+严格失败关闭需要区分“静态可证明”和“自动好用”。Surge 官方文档明确说明，自动组没有可用策略时会替代为 `DIRECT`；Smart 不使用内建策略或嵌套组作为候选。把 `Fail-Closed` 写进 Smart 不能改变这两个事实。
+
+R13.5 采用以下边界：
+
+- `[Proxy] Fail-Closed = reject` 使用内建策略别名，不再伪造本地端口失败节点。
+- `NodePool` 是手动 `select`，首项 `Fail-Closed`，其余成员由私人 `policy-path` 提供。
+- 香港、台湾、日本、新加坡、美国均为手动 `select`，首项 `Fail-Closed`，只导入名称匹配的 NodePool 节点。
+- `Proxy` 首项 `NodePool`，不引用任何自动组。
+- `ApplePush` 保留 `Proxy → DIRECT` fallback，这是通知可达性的明确例外。
+- 配置没有 Smart、url-test 或 load-balance 节点组，没有策略引用循环或未知成员。
+
+## 软件与地区审计
+
+| 软件/类别 | 审计结果 |
+| --- | --- |
+| ChatGPT、Claude、Gemini | 仅日本、新加坡、台湾、美国；不允许通用 Proxy 绕过地区边界 |
+| TikTok | 同上 |
+| Bahamut | 仅台湾、香港 |
+| GitHub | Proxy、香港、日本、新加坡、美国 |
+| YouTube、Netflix、Disney+、Emby、Spotify、Streaming、Telegram、X、Google、Microsoft、Games | 默认 Proxy，可手动选择五个地区 |
+| HBO、Prime Video | 默认 Proxy，并保留各自更适合的地区排序 |
+| Apple | DIRECT 首选；流媒体域名在 AppleCN 前进入 Streaming |
+| 微信、Direct、China、CN GeoIP、国内 DNS、共享国内云 | 固定 DIRECT |
+| 国内 BiliBili | 固定 DIRECT，16 后缀与两条前置功能护栏 |
+| BiliBili 国际版 | 专用文件/策略保持删除，七条历史域名只走通用 Proxy |
+
+18 份固定服务规则重新用锁定上游与本地过滤/增补边界生成比较，除 ChatGPT 明确新增的 11 条官方依赖外，现有服务快照无非预期增删。
+
+## BiliBili 根因
+
+旧版已把固定 BiliBili 列表指向 `DIRECT`，但仍可能长时间等待：
+
+1. 固定列表不含 `biligame.net`、`bilivideo.cn`、`bilicomic.com`、`bilivideo.net`。
+2. 动态广告表命中 `httpdns.bilivideo.com` 和 `line3-h5-mobile-api.biligame.com`。
+3. 固定 BiliBili 规则位于广告边界之后，重叠功能域名会先被拒绝。
+4. 普通规则匹配未覆盖所有 SNI/Host 路径。
+
+处理后，两个确认重叠的功能主机位于 Ads 前，16 后缀集合与动态国内补充均固定直连；BiliBili 固定资源启用 `extended-matching`。国际兼容护栏仍在国内父后缀前，因此 `apiintl.biliapi.net` 不会被 `biliapi.net` 直连覆盖。
+
+## 广告与安全边界
+
+动态 `reject.conf` 与 `reject_phishing.conf` 已从运行配置删除。审计时确认其中至少存在以下功能重叠：
+
+- `httpdns.bilivideo.com`
+- `line3-h5-mobile-api.biligame.com`
+- `audio-ak.cdn.spotify.com`
+- `video-ak.cdn.spotify.com`
+- `audio-ak-spotify-com.akamaized.net`
+- `pod.spoti.fi`
+- `tv-static.scdn.co`
+- `gvt2.com`
+- `rum.browser-intake-datadoghq.com`
+
+当前只保留固定 Ads 与固定 Pegasus。固定列表可通过提交 SHA、锁文件、活动条目数与 SHA-256 复核；误报时必须走审阅差异，不允许临时切换隐藏 `DIRECT` 组。
+
+## DNS、UDP、APNs 与双栈
+
+- 两个传统 DNS、两个 DoH、固定 Host 引导和证书校验均被审计锁定。
+- 16 条大陆应用 DNS 在端口拒绝前固定直连；13 条境外应用 DNS 在端口拒绝后固定代理。
+- 公网 53、853、8853 在局域网例外之后拒绝。
+- STUN 在公网 DNS 与普通业务规则之前固定代理。
+- `GEOIP,CN,DIRECT,no-resolve` 不为未知域名强制本地解析。
+- IPv4 `0.0.0.0/0` 与 IPv6 `::/0` 紧贴唯一 FINAL 之前固定代理。
+- 不支持 UDP 的节点行为为 `REJECT`；QUIC 保持按策略处理。
+- APNs 继续先代理后直连，避免严格代理边界造成通知不可达。
+
+## 供应链与发布
+
+| 资源 | 模式 | 控制 |
+| --- | --- | --- |
+| 29 份仓库规则 | 不可变 | 完整提交 SHA、活动条目、文件 SHA-256、CDN 在线比对 |
+| `domestic.conf` | 动态 | 精确 URL、格式/规模在线检查、24 小时更新 |
+| 18 份服务上游 | 维护输入 | 固定提交、Git Blob、上游/本地 SHA-256、显式增删边界 |
+| Pegasus 上游 | 维护输入 | 固定 Amnesty 提交、Git Blob、上游/本地 SHA-256 |
+| 发布目录 | 固定白名单 | 65 文件 ZIP、UTF-8/LF/无 BOM/NUL/符号链接检查 |
+
+运行配置不直接访问 Blackmatrix7 或 Amnesty 上游；设备读取仓库固定副本。动态国内表是唯一会在发布后改变内容的运行资源。
+
+## 自动验证
+
+已覆盖：
+
+- 配置结构、29 个策略组与 142 条规则；
+- 30 个运行资源的类型、策略、顺序、更新间隔和扩展匹配；
+- 16 个 BiliBili 精确后缀、国际版退役与前置功能护栏；
+- 18 份服务来源锁、Pegasus 锁和维护来源锁；
+- DNS、UDP、APNs、双栈和唯一 FINAL；
+- 82 项故障注入；
+- 发布目录与 ZIP 导入安全回归；
+- 动态国内在线格式检查、固定上游零差异检查；
+- 快照推送后的 29 份 jsDelivr 文件逐一哈希检查。
+
+## 剩余风险
+
+静态配置无法证明私人节点在线、地区标签真实、节点 DNS 无泄漏、运营商链路正常，也无法检查未随仓库提供的 Surge 模块。最终必须在真实设备的 Wi-Fi 和蜂窝网络完成验收。若命中规则与策略正确但速度仍差，应检查服务端、运营商、DNS 或节点质量，不能继续用更宽泛规则掩盖链路问题。
