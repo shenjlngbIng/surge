@@ -2,11 +2,11 @@
 
 这是一套面向 Surge iOS 的规则模式配置。它把私有订阅、Smart 自动节点、手动节点池、国内流量总开关、DNS 出口、UDP、APNs、广告与钓鱼防护、历史 Pegasus IOC、服务分流和发布校验放在同一套可复核结构中。公开版本不包含真实订阅、节点、令牌、证书、MITM、脚本或重写内容。
 
-R13.4 是 R13.3 基础上的保留式 DNS 隐私修正。原有 34 个策略组、130 个规则匹配条件、30 个固定远程 URL、3 个动态补充源、30 份本地规则快照和唯一订阅入口全部保留。末端中国 GeoIP 恢复 `no-resolve`，不再为未命中域名强制调用本地 DoH；这类域名落入默认 `Final/Proxy`，由代理侧解析。`AdBlock`、`Security`、`UDP` 和 `Domestic` 保持隐藏，定义、成员与默认值没有删除。2026-08-29 热修复把国内 `BiliBili.list` 固定为 `DIRECT`，避免它继承隐藏 `Domestic` 组的旧 `Proxy` 选择；国际版仍由更靠前的 `BiliBiliIntl.list → Streaming` 接管。
+R13.4 在严格 DNS 基线之上完成了全量软件分流复核。国内 `BiliBili.list` 固定为 `DIRECT`，`httpdns.bilivideo.com` 在广告库之前精确直连，解决动态广告表误杀后等待回退的问题；国际版专用规则文件与运行引用已经移除。ChatGPT、Claude、Gemini 与 TikTok 默认使用日本节点，并只把官方支持地区放在通用代理之前；动画疯默认台湾、香港后备。`AdBlock`、`Security`、`UDP` 和 `Domestic` 仍保持隐藏且功能完整。
 
 `Proxy` 默认使用 `AllServer` Smart 组，`NodePool` 仍是唯一订阅入口和手动节点池。`AllServer` 与五个地区组根据真实连接质量和测试结果自适应选择代理。`UDP` 默认跟随 `Proxy`。订阅为空、格式错误或地区无节点时，`Fail-Closed` 使连接明确失败，不会无提示直连。
 
-主配置共有 34 个策略组、130 条活动规则和 33 个运行时远程资源，其中 30 个继续固定到原仓库完整提交，3 个 Sukka 补充源按 24 小时更新。发布包保存原来的 30 份本地规则快照；动态补充源只记录 URL、审计观察值和许可，不把 28 万余条内容复制进包内或主配置。
+主配置共有 34 个策略组、137 条活动规则和 32 个运行时远程资源，其中 29 个固定到仓库完整提交，3 个 Sukka 补充源按 24 小时更新。发布包保存 29 份本地规则快照；动态补充源只记录 URL、审计观察值和许可，不把 28 万余条内容复制进包内或主配置。
 
 公开主配置地址
 
@@ -21,13 +21,13 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 推荐环境 | Surge iOS 5.14.6 及以上，建议 5.21.0 及以上 |
 | 运行模式 | Rule |
 | 策略组 | 34 个 |
-| 主配置活动规则 | 130 条 |
-| 运行时远程资源 | 33 个 |
-| 固定提交资源 | 30 个，全部沿用 R13.2 URL |
+| 主配置活动规则 | 137 条 |
+| 运行时远程资源 | 32 个 |
+| 固定提交资源 | 29 个，全部使用完整提交 URL |
 | 动态补充资源 | 3 个，固定到审核过的域名与路径 |
-| 普通 `RULE-SET` | 28 个 |
+| 普通 `RULE-SET` | 27 个 |
 | `DOMAIN-SET` | 5 个 |
-| 本地规则文件 | 30 个 |
+| 本地规则文件 | 29 个 |
 | 中国精确域名 | 306 条 |
 | 全球精确域名 | 116 条 |
 | 精确域名交叉冲突 | 0 个 |
@@ -37,10 +37,10 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 动态国内补充 | 869 条发布时规则 |
 | 第三方运行时规则 URL | 3 个，均为 `ruleset.skk.moe` 精确 URL |
 | 主配置内嵌规则快照 | 0 条 |
-| 配置故障注入测试 | 117 项 |
-| ZIP 安全回归测试 | 28 项 |
+| 配置故障注入测试 | 125 项 |
+| ZIP 安全回归测试 | 27 项 |
 | 发布清单回归测试 | 15 项 |
-| 完整发布文件 | 66 个 |
+| 完整发布文件 | 65 个 |
 | 固定规则快照 | `d1d714d575d5494ef1a7613238f4f301e1b293df` |
 | 完整包名 | `Surge-R13.4-Complete-No-Embedded-20260828.zip` |
 
@@ -59,7 +59,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | DNS | 系统 DNS、代理 DNS 和应用 DoH 混用 | 已知国内域名使用本地加密 DNS；未命中域名不在 CN GeoIP 处本地解析，默认交给代理侧 | 代理域名不再因国内 GeoIP 兜底而暴露给本地解析器；未知国内域名可能改走代理 |
 | 国内流量 | 多条规则分别写死直连或代理 | 已知国内规则进入隐藏的 `Domestic`；国内 BiliBili 核心规则固定 `DIRECT` | 国内总开关仍可切换其他已知国内服务；BiliBili 不受历史组选择影响 |
 | 控制面板 | 所有辅助组都常驻显示 | `AdBlock`、`Security`、`UDP`、`Domestic` 隐藏 | 界面更简洁，规则仍照常引用这些组，默认处置不变 |
-| 规则来源 | 全部固定后逐渐陈旧，或全部浮动难以复核 | 原 30 份保持固定，3 份高价值补充源动态更新 | 稳定基线不丢失，同时补足时效；动态变化需持续监测 |
+| 规则来源 | 全部固定后逐渐陈旧，或全部浮动难以复核 | 29 份保持固定，3 份高价值补充源动态更新 | 稳定基线不丢失，同时补足时效；动态变化需持续监测 |
 | 规则内容 | 把大量 IOC 或广告行写进主配置 | 所有规则保持外部引用 | 主配置没有逐条规则快照，完整包也不复制三份大型动态内容 |
 | 最终流量 | `FINAL` 可直接选择 `DIRECT` | `Final` 只有 `Proxy` 与 `REJECT` | 未命中流量仍维持代理或拒绝边界 |
 | 发布方式 | 只交付一个 `.conf` | 配置、规则、锁、工具、清单、哈希和工作流一起发布 | 下载者可以检查完整性，维护者可以复现同一份 ZIP |
@@ -92,7 +92,7 @@ Surge 采用首条命中。两个内容正确的规则文件只要位置颠倒�
 
 解压发布包后保留原目录结构。`Surge.conf` 会读取仓库中的固定远程规则，维护工具还依赖 `Rules`、锁文件和清单。只拿走主配置可以导入设备，但无法得到完整的来源记录、审计和可复现发布能力。
 
-公开包共有 66 个文件。解压后不要把其他配置、日志、缓存、订阅备份或 ZIP 放进发布目录，再运行打包器时这些未知文件会被拒绝。
+公开包共有 65 个文件。解压后不要把其他配置、日志、缓存、订阅备份或 ZIP 放进发布目录，再运行打包器时这些未知文件会被拒绝。
 
 ### 准备私人配置
 
@@ -203,9 +203,9 @@ Smart 仍会产生测试连接，但不会使用 R13.1 的 `interval=1800` 和 `
 
 | 策略组 | 默认选择 | 对应远程规则 |
 | --- | --- | --- |
-| `ChatGPT` | `Proxy` | `ChatGPT.list` |
-| `Claude` | `Proxy` | `Claude.list` |
-| `Gemini` | `Proxy` | `Gemini.list` |
+| `ChatGPT` | `Japan` | `ChatGPT.list` |
+| `Claude` | `Japan` | `Claude.list` |
+| `Gemini` | `Japan` | `Gemini.list` |
 | `GitHub` | `Proxy` | `Github.list` |
 | `YouTube` | `Proxy` | `YouTube.list` |
 | `NETFLIX` | `Proxy` | `Netflix.list` |
@@ -213,10 +213,10 @@ Smart 仍会产生测试连接，但不会使用 R13.1 的 `interval=1800` 和 `
 | `HBO` | `Proxy` | `HBO.list` |
 | `PrimeVideo` | `Proxy` | `PrimeVideo.list` |
 | `Emby` | `Proxy` | `Emby.list` |
-| `TikTok` | `Proxy` | `TikTok.list` |
-| `Bahamut` | `Proxy` | `Bahamut.list` |
+| `TikTok` | `Japan` | `TikTok.list` |
+| `Bahamut` | `TaiWan` | `Bahamut.list` |
 | `Spotify` | `Proxy` | `Spotify.list` |
-| `Streaming` | `Proxy` | `BiliBiliIntl.list` 与 `ProxyMedia.list` |
+| `Streaming` | `Proxy` | `ProxyMedia.list` |
 | `Telegram` | `Proxy` | `Telegram.list` |
 | `X` | `Proxy` | `Twitter.list` |
 | `Apple` | `DIRECT` | `AppleCN.list` |
@@ -226,7 +226,7 @@ Smart 仍会产生测试连接，但不会使用 R13.1 的 `interval=1800` 和 `
 
 代理类服务组没有 `DIRECT`。`Apple` 以国内服务兼容为目标，默认保留 `DIRECT`，同时允许手动改用代理或地区组。
 
-国内版 BiliBili 不新增策略组。`BiliBiliIntl.list` 先进入 `Streaming`，随后 `BiliBili.list` 直接使用 Surge 内建 `DIRECT`；因此隐藏 `Domestic` 组即使曾被手动切到 `Proxy`，也不会拖慢国内版核心 API、图片和视频 CDN。
+国内版 BiliBili 不新增策略组。`BiliBili.list` 直接使用 Surge 内建 `DIRECT`，`httpdns.bilivideo.com` 又在动态广告源之前精确直连；因此隐藏 `Domestic` 的旧选择和广告误报都不会拖慢 CDN 选择。国际版专用规则已退役，七个历史域名只以前置通用 `Proxy` 兼容护栏防止误入国内后缀或旧媒体快照，不再进入 `Streaming`。
 
 ## 失败关闭设计
 
@@ -343,7 +343,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 
 ## 规则顺序
 
-主配置的 130 条活动规则按下面的结构排列。
+主配置的 137 条活动规则按下面的结构排列。
 
 1. 局域网发现与允许的多播地址。
 2. 无效地址和其余多播范围拒绝。
@@ -355,7 +355,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 8. 出口检测端点和境外应用 DoH 域名。
 9. 动态钓鱼域名与 Pegasus 历史 IOC。
 10. APNs、Apple 国内服务、微信和固定直连集合。
-11. 固定 Ads 与动态基础广告域名。
+11. BiliBili 国内 HTTPDNS 与国际域名通用代理护栏，随后是固定 Ads 与动态基础广告域名。
 12. ChatGPT、Claude 和 Gemini。
 13. YouTube、Netflix、Disney+、HBO、PrimeVideo、Emby、TikTok、Bahamut、Bilibili、Spotify 和通用媒体。
 14. Telegram、GitHub、X 和 Google。
@@ -372,7 +372,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 - Apple 流媒体专用主机必须位于 `AppleCN.list` 之前。
 - `yt3.ggpht.com` 必须先于 Google 通用规则进入 `YouTube`。
 - `viu.now.com` 必须先于 HBO 的 `now.com` 父级规则进入 `Streaming`。
-- `BiliBiliIntl.list` 必须位于国内 `BiliBili.list` 之前。
+- BiliBili HTTPDNS 和七条国际域名通用代理护栏必须连续位于广告规则之前；国际版专用规则文件不得恢复。
 - Microsoft 登录与商店覆盖必须位于 `Game.list` 之前。
 - `Game.list` 必须位于 `OneDrive.list` 和 `Microsoft.list` 之前。
 - `35.192.0.0/12` 必须先进入 `Proxy`，避免宽泛 Google Cloud 网段全部进入 `Games`。
@@ -382,9 +382,9 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 
 ## 远程规则库存
 
-`Surge.conf` 继续通过 jsDelivr 加载仓库中的 30 份规则文件。运行地址全部固定到完整 Git 提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。便于识别的标签 `r12.17-20260825` 已核实指向同一提交，运行时不依赖标签。
+`Surge.conf` 继续通过 jsDelivr 加载仓库中的 29 份规则文件。运行地址全部固定到完整 Git 提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。便于识别的标签 `r12.17-20260825` 已核实指向同一提交，运行时不依赖标签。
 
-19 份服务规则保存固定上游提交、Git Blob、SHA-256、排除项和显式本地补充。Pegasus 使用独立来源锁。其余 10 份仓库维护列表通过 `maintained_sources.lock.json` 披露来源状态、哈希、条目数与许可边界。
+18 份服务规则保存固定上游提交、Git Blob、SHA-256、排除项和显式本地补充。它们按现有过滤逻辑与 2026-08-28 上游最新提交复核后活动行差异为零。Pegasus 使用独立来源锁，其余 10 份仓库维护列表通过 `maintained_sources.lock.json` 披露来源状态、哈希、条目数与许可边界。
 
 | 规则文件 | 策略 | 活动条目 |
 | --- | --- | --- |
@@ -405,10 +405,9 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 | `Emby.list` | `Emby` | 218 |
 | `TikTok.list` | `TikTok` | 86 |
 | `Bahamut.list` | `Bahamut` | 7 |
-| `BiliBiliIntl.list` | `Streaming` | 7 |
 | `BiliBili.list` | `DIRECT` | 12 |
 | `Spotify.list` | `Spotify` | 30 |
-| `ProxyMedia.list` | `Streaming` | 319 |
+| `ProxyMedia.list` | `Streaming` | 315 |
 | `Telegram.list` | `Telegram` | 51 |
 | `Github.list` | `GitHub` | 31 |
 | `Twitter.list` | `X` | 33 |
@@ -419,7 +418,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 | `China.list` | `Domestic` | 306 |
 | `Global.list` | `Proxy` | 116 |
 
-30 个文件都放在发布包里，便于审阅、来源复核和仓库上传。设备运行时仍从固定 CDN URL 加载它们，主配置不复制逐条内容。
+29 个文件都放在发布包里，便于审阅、来源复核和仓库上传。设备运行时仍从固定 CDN URL 加载它们，主配置不复制逐条内容。
 
 ### 三个动态补充源
 
@@ -453,7 +452,7 @@ R13.2 起引用三份 SukkaW 维护资源，R13.4 原样保留 URL、类型、�
 
 ## 服务规则的本地筛选
 
-19 份第三方服务规则固定在 `blackmatrix7/ios_rule_script` 的提交 `c00517ce10760a93728b241923a451dfa617be80`。更新工具会核对 Git Blob 和 SHA-256，再按锁文件应用类型过滤、精确排除与显式补充。
+18 份第三方服务规则固定在 `blackmatrix7/ios_rule_script` 的提交 `c00517ce10760a93728b241923a451dfa617be80`。更新工具会核对 Git Blob 和 SHA-256，再按锁文件应用类型过滤、精确排除与显式补充。
 
 R13.4 延续下面这些边界。
 
@@ -466,7 +465,7 @@ R13.4 延续下面这些边界。
 - TikTok 删除宽泛 `snssdk.com`，明确的 TikTok 海外主机和网络继续进入 `TikTok`。
 - Google 删除共享 `appspot.com`，减少用户托管内容被统一归入 Google 服务策略的范围。
 
-历史终审发现过 278 条只存在于本地生成结果、没有写进锁文件的旧行。这些内容已经进入对应服务的显式 `add` 数组。现在从空目录按固定上游和锁文件重建，结果会与当前 19 份服务快照逐字节一致。
+历史终审发现过 278 条只存在于本地生成结果、没有写进锁文件的旧行。这些内容已经进入对应服务的显式 `add` 数组。现在从空目录按固定上游和锁文件重建，结果会与当前 18 份服务快照逐字节一致。
 
 不要直接手改生成后的服务文件来绕过来源锁。需要增加或删除规则时，先修改 `Rules/upstreams.lock.json` 的输入边界，再运行更新工具和全部审计。
 
@@ -498,18 +497,18 @@ volcengine.com
 | 路径 | 用途 |
 | --- | --- |
 | `Surge.conf` | R13.4 主配置 |
-| `Rules/*.list` | 30 份固定运行规则快照 |
+| `Rules/*.list` | 29 份固定运行规则快照 |
 | `Rules/r10.lock.json` | 配置哈希、运行资源、节点架构与安全不变量 |
-| `Rules/upstreams.lock.json` | 19 份服务规则的固定上游、排除项和本地补充 |
+| `Rules/upstreams.lock.json` | 18 份服务规则的固定上游、排除项和本地补充 |
 | `Rules/resources.lock.json` | Pegasus 固定来源、上游哈希和本地哈希 |
 | `Rules/maintained_sources.lock.json` | 10 份仓库维护规则的来源状态与许可披露 |
-| `tools/convert_to_remote_rules.py` | 检查 30 个固定与 3 个动态远程引用、选项和零内嵌内容 |
+| `tools/convert_to_remote_rules.py` | 检查 29 个固定与 3 个动态远程引用、选项和零内嵌内容 |
 | `tools/generate_runtime_lock.py` | 按当前配置生成运行锁元数据 |
 | `tools/audit_config.py` | 检查配置结构、策略组、规则顺序和失败边界 |
 | `tools/audit_rules.py` | 检查规则库存、哈希、语义边界和可选动态源在线格式 |
 | `tools/audit_precise_domains.py` | 检查 China 与 Global 精确域名集合 |
-| `tools/test_audit_config.py` | 117 项配置故障注入测试 |
-| `tools/test_stage_surge_zip.py` | 28 项候选 ZIP 和路径安全回归测试 |
+| `tools/test_audit_config.py` | 125 项配置故障注入测试 |
+| `tools/test_stage_surge_zip.py` | 27 项候选 ZIP 和路径安全回归测试 |
 | `tools/release_inventory.py` | 打包、清单和校验和共用的发布白名单 |
 | `tools/test_release_inventory.py` | 15 项目录、文本和升级清理回归测试 |
 | `tools/update_service_rules.py` | 固定上游下载、合并与验证 |
@@ -527,7 +526,7 @@ volcengine.com
 | `.github/workflows/install.yml` | 安装与持续审计工作流 |
 | `THIRD_PARTY_LICENSES` | 第三方许可证和来源说明副本 |
 
-发布目录固定为 66 个文件，其中包含 30 份 `.list`、4 份 JSON 锁、15 个 Python 工具、3 份第三方许可文本、1 份工作流和 13 个根目录文件。唯一允许清单由 `tools/release_inventory.py` 维护，文档、打包器和工作流共用同一来源。
+发布目录固定为 65 个文件，其中包含 29 份 `.list`、4 份 JSON 锁、15 个 Python 工具、3 份第三方许可文本、1 份工作流和 13 个根目录文件。唯一允许清单由 `tools/release_inventory.py` 维护，文档、打包器和工作流共用同一来源。
 
 ## 上传与发布
 
@@ -535,7 +534,7 @@ volcengine.com
 
 解压完整包，把全部文件按原目录结构上传到仓库。`Rules`、`tools`、`.github` 和 `THIRD_PARTY_LICENSES` 都要保留。提交到 `main` 后，公开主配置地址会继续指向根目录 `Surge.conf`。
 
-当前 30 个仓库运行 URL 固定到旧规则快照提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。更新 README、审计器或 R13.4 主配置不会自动改变这些 URL。只有规则文件经过重新审阅、产生新的固定提交后，才应同步升级运行地址和所有锁。三份 Sukka 补充源按日更新，不能被描述为固定快照。
+当前 29 个仓库运行 URL 固定到旧规则快照提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。更新 README、审计器或 R13.4 主配置不会自动改变这些 URL。只有规则文件经过重新审阅、产生新的固定提交后，才应同步升级运行地址和所有锁。三份 Sukka 补充源按日更新，不能被描述为固定快照。
 
 只上传 `Surge.conf` 会缺少规则快照、来源记录、维护工具、工作流和完整性清单。只上传 ZIP 也不会让 GitHub Raw 主配置地址自动可用，仓库仍需保留解压后的文件结构。
 
@@ -583,15 +582,15 @@ python3 tools/package_release.py --output ../Surge-R13.4-Complete-No-Embedded-20
 当前基线的关键结果如下。
 
 ```text
-PASS: immutable_runtime_resources=30 dynamic_runtime_resources=3 embedded_rule_contents=0 reviewed_third_party_runtime_urls=3
+PASS: immutable_runtime_resources=29 dynamic_runtime_resources=3 embedded_rule_contents=0 reviewed_third_party_runtime_urls=3
 PASS: verified pinned resources=1 entries=1438
-PASS: verified upstream lock services=19
-PASS R13.4 groups=34 rules=130 runtime_resources=33 immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0
-PASS R13.4 runtime_sources=33 immutable_sources=30 dynamic_sources=3 local_rule_files=30 rules=130 embedded_rule_contents=0
+PASS: verified upstream lock services=18
+PASS R13.4 groups=34 rules=137 runtime_resources=32 immutable_resources=29 dynamic_resources=3 embedded_rule_contents=0
+PASS R13.4 runtime_sources=32 immutable_sources=29 dynamic_sources=3 local_rule_files=29 rules=137 embedded_rule_contents=0
 PASS precise domains Domestic=306 Proxy=116 conflicts=0
-PASS R13.4 mutations=117
+PASS R13.4 mutations=125
 PASS: strict release inventory regression cases=15
-PASS: ZIP allowlist regression cases=28
+PASS: ZIP allowlist regression cases=27
 ```
 
 `audit_rules.py --check-dynamic` 需要联网，输出还会包含三行当前动态源的条目数、字节数和 SHA-256。动态内容发生正常更新时，当前哈希可以与发布观察值不同；HTTP、格式、重复行或大小边界异常才会失败。
@@ -686,9 +685,9 @@ R13.2 把 `Proxy` 的第一项改为 `AllServer`，但 Surge 可能按策略组�
 
 ### 规则文件出现 404
 
-先区分资源类型。30 个仓库 URL 应使用完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`；另外 3 个动态 URL 应精确位于 `ruleset.skk.moe/List/...` 的已审阅路径。不要把其中任何一个改成猜测的镜像或浮动 GitHub 分支。
+先区分资源类型。29 个仓库 URL 应使用完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`；另外 3 个动态 URL 应精确位于 `ruleset.skk.moe/List/...` 的已审阅路径。不要把其中任何一个改成猜测的镜像或浮动 GitHub 分支。
 
-本地包里的 30 份规则文件用于审阅和仓库发布，不等于设备会自动读取本地目录。CDN 或 Sukka 服务暂时不可达时，现有缓存可能继续工作，新设备或清缓存后的设备则可能加载失败。使用 `python3 tools/audit_rules.py --check-dynamic` 可以单独检查三个动态端点。
+本地包里的 29 份规则文件用于审阅和仓库发布，不等于设备会自动读取本地目录。CDN 或 Sukka 服务暂时不可达时，现有缓存可能继续工作，新设备或清缓存后的设备则可能加载失败。使用 `python3 tools/audit_rules.py --check-dynamic` 可以单独检查三个动态端点。
 
 ### DNS 解析异常
 
@@ -774,14 +773,14 @@ R13.2 把 `Proxy` 的第一项改为 `AllServer`，但 Surge 可能按策略组�
 - [ ] `captive.apple.com` 与 `configuration.ls.apple.com` 精确直连，宽泛后缀没有恢复
 - [ ] Pegasus 与 Ads 都从本仓库固定提交加载
 - [ ] 主配置没有 Pegasus 域名、Ads 明细或其他内嵌规则快照
-- [ ] 原 30 个运行 URL 全部保留并固定到 `d1d714d575d5494ef1a7613238f4f301e1b293df`
+- [ ] 29 个运行 URL 全部固定到 `d1d714d575d5494ef1a7613238f4f301e1b293df`
 - [ ] 3 个动态运行 URL 与更新间隔精确匹配审阅清单
-- [ ] 28 个 `RULE-SET` 全部带 `no-resolve`
-- [ ] Bilibili 国际版保持在国内版之前，国内版固定 `DIRECT`；Viu、YouTube、Microsoft 和 Game 的专用顺序保持正确
+- [ ] 27 个 `RULE-SET` 全部带 `no-resolve`
+- [ ] Bilibili 国际版规则文件已删除，HTTPDNS 与七条兼容护栏位于 Ads 之前；Viu、YouTube、Microsoft 和 Game 的专用顺序保持正确
 - [ ] 12 个共享云后缀位于动态国内补充和 China 之前并进入 `Domestic`
 - [ ] Global、`GEOIP,CN,Domestic,no-resolve`、公网 IPv4/IPv6 与唯一 `FINAL` 顺序正确，CN GeoIP 保留 `no-resolve`
-- [ ] 33 个远程资源、30 个本地规则文件、34 个策略组和 130 条规则通过审计
-- [ ] 117 项配置测试、28 项 ZIP 测试和 15 项发布清单测试通过
+- [ ] 32 个远程资源、29 个本地规则文件、34 个策略组和 137 条规则通过审计
+- [ ] 125 项配置测试、27 项 ZIP 测试和 15 项发布清单测试通过
 - [ ] `RELEASE_MANIFEST.txt` 与两份 SHA-256 清单已经刷新
 - [ ] 完整 ZIP 已重新生成两次并确认字节一致
 - [ ] 整包 SHA-256 已在 ZIP 外记录
@@ -812,7 +811,7 @@ Surge 官方资料
 
 固定维护输入
 
-- [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script)，19 份服务规则的固定输入
+- [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script)，18 份服务规则的固定输入
 - [AmnestyTech/investigations](https://github.com/AmnestyTech/investigations)，Pegasus 历史 IOC 的固定输入
 - [SukkaW/Surge](https://github.com/SukkaW/Surge)，三份动态补充源及 AGPL-3.0 许可
 

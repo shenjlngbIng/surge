@@ -18,17 +18,17 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 
 ## 规则供应链
 
-原有 30 个运行资源只能来自本仓库完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。`main`、可移动标签或其他提交都属于拒绝条件。新增运行资源只允许以下三个经过审阅的精确动态 URL，不能替换为镜像、重定向地址或猜测路径。
+现有 29 个固定运行资源只能来自本仓库完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。`main`、可移动标签或其他提交都属于拒绝条件。新增运行资源只允许以下三个经过审阅的精确动态 URL，不能替换为镜像、重定向地址或猜测路径。
 
 - `https://ruleset.skk.moe/List/domainset/reject_phishing.conf`
 - `https://ruleset.skk.moe/List/domainset/reject.conf`
 - `https://ruleset.skk.moe/List/non_ip/domestic.conf`
 
-Pegasus 的 1,438 个域名通过本仓库固定 `DOMAIN-SET` 加载，来源与本地哈希由 `Rules/resources.lock.json` 固定。152 条固定广告规则通过仓库 `RULE-SET` 加载。19 份服务规则由 `Rules/upstreams.lock.json` 管理，其余仓库维护列表由 `Rules/maintained_sources.lock.json` 披露。三份动态资源的发布观察值由 `Rules/r10.lock.json` 记录，但预期会变化，因此在线审计验证 HTTP、UTF-8、规则格式、重复行和大小边界，不把发布时 SHA-256 当作永久固定值。主配置不得保存这些资源的逐条内容。
+Pegasus 的 1,438 个域名通过本仓库固定 `DOMAIN-SET` 加载，来源与本地哈希由 `Rules/resources.lock.json` 固定。152 条固定广告规则通过仓库 `RULE-SET` 加载。18 份服务规则由 `Rules/upstreams.lock.json` 管理，其余仓库维护列表由 `Rules/maintained_sources.lock.json` 披露。三份动态资源的发布观察值由 `Rules/r10.lock.json` 记录，但预期会变化，因此在线审计验证 HTTP、UTF-8、规则格式、重复行和大小边界，不把发布时 SHA-256 当作永久固定值。主配置不得保存这些资源的逐条内容。
 
 发现下面任一情况时应停止发布。
 
-- 30 个仓库 URL 没有固定到指定完整提交。
+- 29 个仓库 URL 没有固定到指定完整提交。
 - 动态 URL、类型、策略、更新间隔或先后顺序偏离审阅清单。
 - 锁文件中的 Git Blob、SHA-256、条目数或来源身份不一致。
 - Pegasus、固定 Ads 或本地规则内容发生未记录变化。
@@ -49,6 +49,6 @@ Surge 可能在升级时按策略组名称保留旧选择。隐藏组之前应�
 
 ## 发布安全
 
-打包器使用 66 文件严格白名单，拒绝未知路径、符号链接、特殊文件、BOM、CRLF、NUL 和缺失结尾换行。候选 ZIP 导入器还会检查路径穿越、大小上限、加密条目、CRC、大小写碰撞和 Unicode 归一化碰撞。
+打包器使用 65 文件严格白名单，拒绝未知路径、符号链接、特殊文件、BOM、CRLF、NUL 和缺失结尾换行。候选 ZIP 导入器还会检查路径穿越、大小上限、加密条目、CRC、大小写碰撞和 Unicode 归一化碰撞。
 
 GitHub Actions 手动安装要求包外取得的整包 SHA-256。工作流在复制文件前验证 ZIP、双份文件哈希、运行锁、来源锁、配置审计、规则审计、动态源在线格式和故障注入。快照标签还会解析到固定提交，避免标签被移动后继续安装。
