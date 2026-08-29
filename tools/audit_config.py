@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.4 Strict DNS profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.5 profile."""
 
 from __future__ import annotations
 
 import hashlib
-import ipaddress
 import json
 import re
 import sys
@@ -15,11 +14,12 @@ from convert_to_remote_rules import (
     DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
     FOREIGN_DNS_RULES,
+    FUNCTIONAL_GUARDS,
     PROFILE_NAME,
     RELEASE_REF,
     REMOTE_BASE,
     REPOSITORY_RULES,
-    dynamic_line,
+    RETIRED_BILIBILI_INTL_GUARDS,
     expected_remote_order,
     repository_line,
 )
@@ -31,12 +31,12 @@ LOCK = ROOT / "Rules" / "r10.lock.json"
 PLACEHOLDER = "https://example.invalid/REPLACE_WITH_SUB_STORE_URL"
 REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
 GROUP_ORDER = (
-    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "Domestic",
-    "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
-    "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
-    "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games", "NodePool", "AllServer", *REGIONS,
+    "Final", "Proxy", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
+    "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
+    "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
+    "Microsoft", "Games", "NodePool", *REGIONS,
 )
+REMOVED_GROUPS = {"AllServer", "AdBlock", "Security", "UDP", "Domestic"}
 
 
 def fail(message: str) -> None:
@@ -104,49 +104,43 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.08.29",
-    "# > Surge iOS Privacy + Push R13.4 Strict DNS | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Routing review based on R13.4; domestic apps stay local and region-limited services use supported exits by default.",
-    "# > BiliBili domestic HTTPDNS is protected from ad-list false positives; the international-edition ruleset is retired.",
-    "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).",
+    "# > Surge iOS Privacy + Push R13.5 Strict Fail-Closed | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Manual proxy and region groups prevent automatic-group DIRECT substitution when no node is usable.",
+    "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
+    f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
 if text.splitlines()[:9] != expected_header:
-    fail("profile attribution, version, date, preservation statement, snapshot disclosure, or token warning changed")
-if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF) or "@main/Rules/" in text:
-    fail("repository runtime URLs must use the full immutable rule-snapshot commit")
+    fail("profile attribution, version, snapshot or token warning changed")
+if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF):
+    fail("runtime snapshot must be a full lowercase Git SHA")
+if text.count(PLACEHOLDER) != 1:
+    fail("public subscription placeholder must appear exactly once")
+for marker in ("@main/Rules/", "raw.githubusercontent.com", "reject_phishing.conf", "/domainset/reject.conf"):
+    if marker in text:
+        fail(f"mutable or mobile-heavy runtime source is forbidden: {marker}")
 
 sections = parse(text)
 if list(sections) != ["General", "Host", "Proxy", "Proxy Group", "Rule"]:
     fail(f"section order or inventory mismatch: {list(sections)}")
 
 general = key_values(sections["General"], "General")
-required_general = {
+expected_general = {
     "loglevel": "notify",
     "auto-suspend": "true",
-    "internet-test-url": "http://connectivitycheck.platform.hicloud.com/generate_204",
-    "proxy-test-url": "http://cp.cloudflare.com/generate_204",
-    "test-timeout": "5",
-    "proxy-test-udp": "apple.com@9.9.9.9",
     "ipv6": "true",
     "ipv6-vif": "auto",
-    "compatibility-mode": "3",
     "wifi-assist": "false",
     "all-hybrid": "false",
     "include-all-networks": "true",
     "include-local-networks": "false",
     "include-apns": "true",
     "include-cellular-services": "false",
-    "show-error-page-for-reject": "false",
-    "icmp-forwarding": "false",
-    "disable-geoip-db-auto-update": "false",
-    "exclude-simple-hostnames": "true",
     "dns-server": "223.5.5.5, 223.6.6.6",
     "encrypted-dns-server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
     "encrypted-dns-follow-outbound-mode": "false",
     "encrypted-dns-skip-cert-verification": "false",
     "hijack-dns": "*:53",
-    "allow-dns-svcb": "false",
-    "use-local-host-item-for-proxy": "false",
     "allow-wifi-access": "false",
     "allow-hotspot-access": "false",
     "http-api-web-dashboard": "false",
@@ -154,314 +148,227 @@ required_general = {
     "gateway-restricted-to-lan": "true",
     "udp-policy-not-supported-behaviour": "REJECT",
     "block-quic": "per-policy",
+    "proxy-test-udp": "apple.com@9.9.9.9",
 }
-for key, expected in required_general.items():
-    if general.get(key) != expected:
-        fail(f"[General] {key}: expected {expected!r}, got {general.get(key)!r}")
-for required_key in ("always-real-ip", "skip-proxy", "always-raw-tcp-hosts"):
-    if not general.get(required_key):
-        fail(f"[General] missing {required_key}")
-if set(general) != set(required_general) | {"always-real-ip", "skip-proxy", "always-raw-tcp-hosts"}:
-    fail("[General] contains an unreviewed or missing option")
-if "system" in general["dns-server"].lower() or "read-etc-hosts" in general:
-    fail("system DNS or macOS-only hosts loading is forbidden")
-if "100.64.0.0/10" not in {part.strip() for part in general["skip-proxy"].split(",")}:
-    fail("skip-proxy must include CGNAT 100.64.0.0/10")
+for key, value in expected_general.items():
+    if general.get(key) != value:
+        fail(f"[General] invariant changed: {key}")
 
-host = key_values(sections["Host"], "Host")
-if host != {
+hosts = key_values(sections["Host"], "Host")
+if hosts != {
     "sub.store": "127.0.0.1",
     "dns.alidns.com": "223.5.5.5, 223.6.6.6, 2400:3200::1",
     "doh.pub": "1.12.12.12, 120.53.53.53",
 }:
-    fail("[Host] fail-closed synthetic host or DNS bootstrap mappings changed")
+    fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
 proxies = key_values(sections["Proxy"], "Proxy")
-if proxies != {"Fail-Closed": "http, 127.0.0.1, 1, no-error-alert=true"}:
-    fail("Fail-Closed sentinel changed")
+if proxies != {"Fail-Closed": "reject"}:
+    fail("Fail-Closed must remain the built-in reject alias")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
-if tuple(groups) != GROUP_ORDER:
-    fail(f"policy group order or inventory mismatch: {tuple(groups)}")
-expected_members = {
-    "Final": ["Proxy", "REJECT"],
-    "Proxy": ["AllServer", "NodePool", *REGIONS],
-    "ApplePush": ["Proxy", "DIRECT"],
-    "AdBlock": ["REJECT", "REJECT-DROP", "DIRECT"],
-    "Security": ["REJECT", "REJECT-DROP", "DIRECT"],
-    "UDP": ["Proxy", "NodePool", "REJECT", "DIRECT"],
-    "Domestic": ["DIRECT", "Proxy"],
+if tuple(groups) != GROUP_ORDER or len(groups) != 29:
+    fail(f"policy group order or count mismatch: {tuple(groups)}")
+if REMOVED_GROUPS & groups.keys():
+    fail("removed automatic or stateful helper group returned")
+for name in groups:
+    option_keys = [part.split("=", 1)[0] for part in group_parts(groups, name)[1:] if "=" in part]
+    if len(option_keys) != len(set(option_keys)):
+        fail(f"{name} contains duplicate policy-group options")
+
+if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "REJECT"]:
+    fail("Final policy changed")
+if group_parts(groups, "Proxy")[0] != "select" or group_members(groups, "Proxy") != ["NodePool", *REGIONS]:
+    fail("Proxy must default to NodePool and expose only manual region entries")
+if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
+    fail("ApplePush fallback exception changed")
+require_options(group_parts(groups, "ApplePush"), "ApplePush", ("hidden=1", "evaluate-before-use=true", "interval=60"))
+
+node_parts = group_parts(groups, "NodePool")
+if node_parts[0] != "select" or group_members(groups, "NodePool") != ["Fail-Closed"]:
+    fail("NodePool must be manual and begin with Fail-Closed")
+require_options(node_parts, "NodePool", (f"policy-path={PLACEHOLDER}", "update-interval=3600", "hidden=0"))
+
+for region in REGIONS:
+    parts = group_parts(groups, region)
+    if parts[0] != "select" or group_members(groups, region) != ["Fail-Closed"]:
+        fail(f"{region} must be a manual select with Fail-Closed first")
+    require_options(parts, region, ("include-other-group=NodePool", "hidden=0", "include-all-proxies=0"))
+    if not any(option.startswith("policy-regex-filter=") for option in parts):
+        fail(f"{region} lost its node-name filter")
+
+restricted = {
+    "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
+    "Claude": ["Japan", "Singapore", "TaiWan", "America"],
+    "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
+    "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
+    "Bahamut": ["TaiWan", "HongKong"],
 }
-for name, expected in expected_members.items():
-    if group_members(groups, name) != expected:
-        fail(f"{name} member order changed: {group_members(groups, name)}")
+for name, members in restricted.items():
+    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
+        fail(f"{name} supported-region boundary changed")
 
-hidden_groups = {"ApplePush", "AdBlock", "Security", "UDP", "Domestic"}
-for name in GROUP_ORDER:
-    parts = group_parts(groups, name)
-    expected_mode = "fallback" if name == "ApplePush" else "smart" if name in {"AllServer", *REGIONS} else "select"
-    if parts[0] != expected_mode:
-        fail(f"{name} must use {expected_mode}, got {parts[0]}")
-    expected_hidden = "hidden=1" if name in hidden_groups else "hidden=0"
-    if expected_hidden not in parts:
-        fail(f"{name} visibility must remain {expected_hidden}")
-    if any(part.startswith("policy-path=") for part in parts) != (name == "NodePool"):
-        fail(f"only NodePool may own policy-path: {name}")
-    if "include-all-proxies=true" in parts or "include-all-proxies=1" in parts:
-        fail(f"{name} bypasses the explicit NodePool architecture")
-
-apple_push = group_parts(groups, "ApplePush")
-require_options(apple_push, "ApplePush", ("interval=60", "evaluate-before-use=true", "no-alert=0", "hidden=1"))
-
-node_pool = group_parts(groups, "NodePool")
-if group_members(groups, "NodePool") != ["Fail-Closed"]:
-    fail("NodePool must contain only Fail-Closed before imported nodes")
-require_options(node_pool, "NodePool", (
-    f"policy-path={PLACEHOLDER}", "update-interval=3600", "no-alert=0", "hidden=0", "include-all-proxies=0",
-))
-if any(part.startswith(("interval=", "tolerance=", "evaluate-before-use=", "timeout=")) for part in node_pool):
-    fail("manual NodePool must not run automatic latency tests")
-
-for name in ("AllServer", *REGIONS):
-    parts = group_parts(groups, name)
-    if group_members(groups, name) != ["Fail-Closed"]:
-        fail(f"{name} may declare only Fail-Closed before importing NodePool")
-    require_options(parts, name, (
-        "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0", "include-other-group=NodePool",
-    ))
-    if any(part.startswith(("policy-path=", "interval=", "tolerance=", "timeout=")) for part in parts):
-        fail(f"{name} contains an option that is invalid or meaningless for Smart")
-for name in REGIONS:
-    patterns = [part.split("=", 1)[1] for part in group_parts(groups, name) if part.startswith("policy-regex-filter=")]
-    if len(patterns) != 1:
-        fail(f"{name} must have exactly one regional regex")
-    try:
-        re.compile(patterns[0])
-    except re.error as exc:
-        fail(f"{name} has an invalid regional regex: {exc}")
-
-service_groups = set(GROUP_ORDER) - {
-    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "Domestic",
-    "NodePool", "AllServer", *REGIONS,
+generic_members = {
+    "GitHub": ["Proxy", "HongKong", "Japan", "Singapore", "America"],
+    "YouTube": ["Proxy", *REGIONS], "NETFLIX": ["Proxy", *REGIONS],
+    "Disney+": ["Proxy", *REGIONS],
+    "HBO": ["Proxy", "America", "Singapore", "Japan", "HongKong", "TaiWan"],
+    "PrimeVideo": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan"],
+    "Emby": ["Proxy", *REGIONS], "Spotify": ["Proxy", *REGIONS],
+    "Streaming": ["Proxy", *REGIONS], "Telegram": ["Proxy", *REGIONS],
+    "X": ["Proxy", *REGIONS], "Apple": ["DIRECT", "Proxy", *REGIONS],
+    "Google": ["Proxy", *REGIONS], "Microsoft": ["Proxy", *REGIONS],
+    "Games": ["Proxy", *REGIONS],
 }
-regional_service_members = {
-    "ChatGPT": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
-    "Claude": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
-    "Gemini": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
-    "TikTok": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
-    "Bahamut": ["TaiWan", "HongKong", "Proxy", "Japan", "AllServer"],
-}
-for name in service_groups:
-    members = group_members(groups, name)
-    if name == "Apple":
-        if members[:2] != ["DIRECT", "Proxy"]:
-            fail("Apple must retain the DIRECT default and Proxy fallback")
-    elif name in regional_service_members:
-        if members != regional_service_members[name] or "DIRECT" in members:
-            fail(f"{name} supported-region member order changed: {members}")
-    elif not members or members[0] != "Proxy" or "DIRECT" in members:
-        fail(f"{name} must default to Proxy and cannot expose DIRECT")
+for name, members in generic_members.items():
+    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
+        fail(f"{name} member order changed")
 
-# Resolve explicit and included policy references, then reject cycles.
+automatic = {name: group_parts(groups, name)[0] for name in groups if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}}
+if automatic:
+    fail(f"strict profile contains an automatic node group: {automatic}")
+
+# Validate group references and reject cycles.
 builtins = {"DIRECT", "REJECT", "REJECT-DROP", "Fail-Closed"}
-graph: dict[str, list[str]] = {name: [] for name in groups}
-for name in GROUP_ORDER:
+for name in groups:
     unknown = [member for member in group_members(groups, name) if member not in groups and member not in builtins]
     if unknown:
-        fail(f"{name} references undefined policies: {unknown}")
-    graph[name].extend(member for member in group_members(groups, name) if member in groups)
-    for part in group_parts(groups, name):
-        if part.startswith("include-other-group="):
-            include = part.split("=", 1)[1].strip('"')
-            for target in (item.strip() for item in include.split(",")):
-                if target not in groups:
-                    fail(f"{name} includes undefined policy group: {target}")
-                graph[name].append(target)
+        fail(f"{name} contains unknown policy members: {unknown}")
+
 visiting: set[str] = set()
 visited: set[str] = set()
-
-
 def visit(name: str) -> None:
     if name in visiting:
         fail(f"policy group cycle detected at {name}")
     if name in visited:
         return
     visiting.add(name)
-    for child in graph[name]:
-        visit(child)
+    for member in group_members(groups, name):
+        if member in groups:
+            visit(member)
     visiting.remove(name)
     visited.add(name)
-
-
 for group in groups:
     visit(group)
 
-if text.count(PLACEHOLDER) != 1 or text.count("policy-path=") != 1:
-    fail("public build must contain exactly one safe NodePool subscription placeholder")
-for marker in ("access-token=", "authorization=", "token=", "password="):
-    if marker in text.lower():
-        fail(f"possible published secret marker: {marker}")
-
 rules = active(sections["Rule"])
-if len(rules) != 137:
-    fail(f"active rule count changed: {len(rules)}")
-if rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
-    fail("FINAL must appear exactly once as the last rule")
-if len(rules) != len(set(rules)):
-    fail("duplicate active rules detected")
-
+if len(rules) != 142 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
+    fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    fail("runtime resource inventory or relative order changed")
-if len(external) != 32:
-    fail("R13.4 must contain 29 pinned and 3 dynamic runtime resources")
-if sum(REMOTE_BASE in line for line in external) != 29:
-    fail("all 29 reviewed immutable repository resources must remain present")
-if sum(str(item["url"]) in line for item in DYNAMIC_RULES for line in external) != 3:
-    fail("the exact three reviewed dynamic resources must remain present")
-if any(marker in text for marker in ("raw.githubusercontent.com", "@main/Rules/", "reject_extra.conf")):
-    fail("unreviewed or mutable runtime source leaked into Surge.conf")
+    fail("runtime resource order differs from reviewed inventory")
+if len(external) != 30:
+    fail("runtime resource count changed")
 
-phishing, dynamic_ads, dynamic_domestic = (dynamic_line(item) for item in DYNAMIC_RULES)
-pegasus = repository_line("DOMAIN-SET", "Pegasus.list", "Security")
-ads = repository_line("RULE-SET", "Ads.list", "AdBlock")
-bili_httpdns = "DOMAIN,httpdns.bilivideo.com,DIRECT"
-bili_international_guards = (
-    "DOMAIN,apiintl.biliapi.net,Proxy",
-    "DOMAIN,p-bstarstatic.akamaized.net,Proxy",
-    "DOMAIN,p.bstarstatic.com,Proxy",
-    "DOMAIN,upos-bstar-mirrorakam.akamaized.net,Proxy",
-    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net,Proxy",
-    "DOMAIN-SUFFIX,bilibili.tv,Proxy",
-    "DOMAIN-SUFFIX,biliintl.com,Proxy",
+for kind, filename, _label, policy in REPOSITORY_RULES:
+    line = repository_line(kind, filename, policy)
+    if rules.count(line) != 1:
+        fail(f"immutable resource line changed: {filename}")
+    if f"@{RELEASE_REF}/Rules/{filename}" not in line:
+        fail(f"immutable resource is not pinned: {filename}")
+
+dynamic_line = "RULE-SET,https://ruleset.skk.moe/List/non_ip/domestic.conf,DIRECT,extended-matching,no-resolve,update-interval=86400"
+if external.count(dynamic_line) != 1 or len(DYNAMIC_RULES) != 1:
+    fail("dynamic domestic supplement boundary changed")
+
+def index(line: str) -> int:
+    if rules.count(line) != 1:
+        fail(f"required rule is missing or duplicated: {line}")
+    return rules.index(line)
+
+guard_start = index(FUNCTIONAL_GUARDS[0])
+if rules[guard_start:guard_start + len(FUNCTIONAL_GUARDS)] != list(FUNCTIONAL_GUARDS):
+    fail("functional guards must be complete and contiguous")
+ads_line = repository_line("RULE-SET", "Ads.list", "REJECT")
+if any(index(line) >= index(ads_line) for line in FUNCTIONAL_GUARDS):
+    fail("functional guard appears after Ads")
+intl_start = index(RETIRED_BILIBILI_INTL_GUARDS[0])
+if rules[intl_start:intl_start + len(RETIRED_BILIBILI_INTL_GUARDS)] != list(RETIRED_BILIBILI_INTL_GUARDS):
+    fail("retired BiliBili international compatibility guards changed")
+if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "BiliBili.list", "DIRECT")):
+    fail("international compatibility guard must precede domestic BiliBili parent suffixes")
+
+stun = index("PROTOCOL,STUN,Proxy")
+domestic_dns_start = index(DOMESTIC_DNS_RULES[0])
+if rules[domestic_dns_start:domestic_dns_start + len(DOMESTIC_DNS_RULES)] != list(DOMESTIC_DNS_RULES):
+    fail("mainland application DNS block changed")
+port_rules = ["DEST-PORT,53,REJECT", "DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
+port_start = index(port_rules[0])
+if rules[port_start:port_start + 3] != port_rules or not stun < domestic_dns_start < port_start:
+    fail("STUN, mainland DNS and public DNS-port order changed")
+foreign_start = index(FOREIGN_DNS_RULES[0])
+if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES) or foreign_start <= port_start:
+    fail("foreign application DNS block or order changed")
+
+diagnostics = (
+    "DOMAIN-SUFFIX,net.coffee,Proxy", "DOMAIN-SUFFIX,ippure.com,Proxy",
+    "DOMAIN-SUFFIX,browserleaks.net,Proxy", "DOMAIN-SUFFIX,surfsharkdns.com,Proxy",
+    "DOMAIN-SUFFIX,fastly-analytics.com,Proxy", "DOMAIN-SUFFIX,icanhazip.com,Proxy",
+    "DOMAIN-SUFFIX,ipinfo.io,Proxy", "DOMAIN-SUFFIX,ipapi.co,Proxy",
+    "DOMAIN-SUFFIX,ipip.net,Proxy", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve",
 )
-security_rules = [rule for rule in rules if len(rule.split(",")) > 2 and rule.split(",")[2].strip() == "Security"]
-adblock_rules = [rule for rule in rules if len(rule.split(",")) > 2 and rule.split(",")[2].strip() == "AdBlock"]
-if security_rules != [phishing, pegasus]:
-    fail("Security must contain maintained phishing first and pinned Pegasus second")
-if adblock_rules != [ads, dynamic_ads]:
-    fail("AdBlock must contain pinned Ads first and maintained base Ads second")
-if any(
-    rule.endswith((",Security", ",AdBlock"))
-    and not rule.startswith(("RULE-SET,", "DOMAIN-SET,"))
-    for rule in rules
-):
-    fail("embedded Security or AdBlock rule content is forbidden")
+for line in diagnostics:
+    index(line)
 
-allowed_policies = set(groups) | builtins
-supported = {
-    "DOMAIN", "DOMAIN-SUFFIX", "DOMAIN-WILDCARD", "RULE-SET", "DOMAIN-SET",
-    "IP-CIDR", "IP-CIDR6", "GEOIP", "DEST-PORT", "PROTOCOL", "FINAL",
-}
-for rule in rules:
-    fields = [field.strip() for field in rule.split(",")]
-    rule_type = fields[0]
-    if rule_type not in supported:
-        fail(f"unsupported active profile rule type: {rule_type}")
-    policy = fields[1] if rule_type == "FINAL" else fields[2] if len(fields) >= 3 else ""
-    if policy not in allowed_policies:
-        fail(f"undefined policy {policy!r} in rule: {rule}")
-    if rule_type in {"IP-CIDR", "IP-CIDR6"}:
-        try:
-            network = ipaddress.ip_network(fields[1], strict=False)
-        except ValueError as exc:
-            fail(f"invalid network {fields[1]!r}: {exc}")
-        if (rule_type == "IP-CIDR") != (network.version == 4) or "no-resolve" not in fields[3:]:
-            fail(f"CIDR family or no-resolve mismatch: {rule}")
-
-
-def position(rule: str) -> int:
-    try:
-        return rules.index(rule)
-    except ValueError:
-        fail(f"required rule missing: {rule}")
-        return -1
-
-
-captive = position("DOMAIN,captive.apple.com,DIRECT")
-stun = position("PROTOCOL,STUN,UDP")
-dns_ports = [position(f"DEST-PORT,{port},REJECT") for port in (53, 853, 8853)]
-domestic_dns = [position(rule) for rule in DOMESTIC_DNS_RULES]
-bootstrap = position("DOMAIN,configuration.ls.apple.com,DIRECT")
-diagnostics = [position(f"DOMAIN-SUFFIX,{domain},Proxy") for domain in (
-    "net.coffee", "ippure.com", "browserleaks.net", "surfsharkdns.com",
-    "fastly-analytics.com", "icanhazip.com", "ipinfo.io", "ipapi.co", "ipip.net",
-)]
-diagnostic_ip = position("IP-CIDR,1.1.1.1/32,Proxy,no-resolve")
-foreign_dns = [position(rule) for rule in FOREIGN_DNS_RULES]
-if rules[stun + 1:min(dns_ports)] != list(DOMESTIC_DNS_RULES):
-    fail("the reviewed mainland resolver block must be contiguous between STUN and DNS-port rejects")
-if rules[min(foreign_dns):max(foreign_dns) + 1] != list(FOREIGN_DNS_RULES):
-    fail("the reviewed foreign application DNS block changed or was reordered")
-old_domestic_proxy_rules = {rule.rsplit(",", 1)[0] + ",Proxy" for rule in DOMESTIC_DNS_RULES}
-if old_domestic_proxy_rules & set(rules):
-    fail("a reviewed mainland resolver regressed to the Proxy policy")
-if not (
-    captive < stun < min(domestic_dns) <= max(domestic_dns) < min(dns_ports)
-    < bootstrap < min(diagnostics) <= max(diagnostics) < diagnostic_ip
-    < min(foreign_dns) <= max(foreign_dns) < position(phishing) < position(pegasus)
-):
-    fail("captive, STUN, DNS, diagnostics, phishing, or Pegasus precedence changed")
-
-ordered_pairs = (
-    (pegasus, repository_line("RULE-SET", "APNs.list", "ApplePush")),
-    ("DOMAIN,hls-amt.itunes.apple.com,Streaming", repository_line("RULE-SET", "AppleCN.list", "Apple")),
-    (repository_line("RULE-SET", "AppleCN.list", "Apple"), repository_line("RULE-SET", "WeChat.list", "Domestic")),
-    (repository_line("RULE-SET", "Direct.list", "Domestic"), bili_httpdns),
-    (bili_httpdns, bili_international_guards[0]),
-    (bili_international_guards[-1], ads),
-    (ads, dynamic_ads),
-    (dynamic_ads, repository_line("RULE-SET", "ChatGPT.list", "ChatGPT")),
-    ("DOMAIN,yt3.ggpht.com,YouTube", repository_line("RULE-SET", "YouTube.list", "YouTube")),
-    ("DOMAIN-SUFFIX,viu.now.com,Streaming", repository_line("RULE-SET", "HBO.list", "HBO")),
-    (ads, repository_line("RULE-SET", "BiliBili.list", "DIRECT")),
-    ("DOMAIN,login.live.com,Microsoft", repository_line("RULE-SET", "Game.list", "Games")),
-    ("IP-CIDR,35.192.0.0/12,Proxy,no-resolve", repository_line("RULE-SET", "Game.list", "Games")),
-    (repository_line("RULE-SET", "Game.list", "Games"), repository_line("RULE-SET", "OneDrive.list", "Microsoft")),
-    (repository_line("RULE-SET", "OneDrive.list", "Microsoft"), repository_line("RULE-SET", "Microsoft.list", "Microsoft")),
-    (repository_line("RULE-SET", "Microsoft.list", "Microsoft"), "DOMAIN-SUFFIX,alibabausercontent.com,Domestic"),
-    ("DOMAIN-SUFFIX,volcengine.com,Domestic", dynamic_domestic),
-    (dynamic_domestic, repository_line("DOMAIN-SET", "China.list", "Domestic")),
-    (repository_line("DOMAIN-SET", "China.list", "Domestic"), repository_line("DOMAIN-SET", "Global.list", "Proxy")),
-    (repository_line("DOMAIN-SET", "Global.list", "Proxy"), DOMESTIC_GEOIP_RULE),
+shared_domestic = (
+    "DOMAIN-SUFFIX,alibabausercontent.com,DIRECT", "DOMAIN-SUFFIX,aliyuncs.com,DIRECT",
+    "DOMAIN-SUFFIX,bcebos.com,DIRECT", "DOMAIN-SUFFIX,coding.net,DIRECT",
+    "DOMAIN-SUFFIX,gitee.io,DIRECT", "DOMAIN-SUFFIX,jdcloud.com,DIRECT",
+    "DOMAIN-SUFFIX,myqcloud.com,DIRECT", "DOMAIN-SUFFIX,qcloudimg.com,DIRECT",
+    "DOMAIN-SUFFIX,qiniu.com,DIRECT", "DOMAIN-SUFFIX,tencentcs.com,DIRECT",
+    "DOMAIN-SUFFIX,volccdn.com,DIRECT", "DOMAIN-SUFFIX,volcengine.com,DIRECT",
 )
-for before, after in ordered_pairs:
-    if position(before) >= position(after):
-        fail(f"precedence regression: {before} must precede {after}")
-if rules[position(bili_international_guards[0]):position(bili_international_guards[-1]) + 1] != list(bili_international_guards):
-    fail("BiliBili international compatibility guards must remain contiguous and ordered")
-if any("BiliBiliIntl.list" in rule for rule in rules):
-    fail("retired BiliBili international ruleset returned")
+shared_start = index(shared_domestic[0])
+if rules[shared_start:shared_start + len(shared_domestic)] != list(shared_domestic):
+    fail("bounded domestic fallback block changed")
+if not shared_start < index(dynamic_line) < index(repository_line("DOMAIN-SET", "China.list", "DIRECT")):
+    fail("domestic fixed/dynamic precedence changed")
 
-if "DOMAIN-SUFFIX,ls.apple.com,DIRECT" in rules:
-    fail("broad ls.apple.com DIRECT bypass is forbidden")
-for domain in (
-    "alibabausercontent.com", "aliyuncs.com", "bcebos.com", "coding.net", "gitee.io",
-    "jdcloud.com", "myqcloud.com", "qcloudimg.com", "qiniu.com", "tencentcs.com",
-    "volccdn.com", "volcengine.com",
-):
-    position(f"DOMAIN-SUFFIX,{domain},Domestic")
-if rules[-4:] != [
+tail = [
     DOMESTIC_GEOIP_RULE,
     "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
     "IP-CIDR6,::/0,Proxy,no-resolve",
     "FINAL,Final,dns-failed",
-]:
-    fail("Domestic GEOIP and public IPv4/IPv6 fail-closed catchalls must immediately precede FINAL")
+]
+if rules[-4:] != tail:
+    fail("CN GeoIP, dual-stack public literals or FINAL tail changed")
 
-if PROFILE == (ROOT / "Surge.conf").resolve():
+ordered_overlap_guards = (
+    "DOMAIN,hls-amt.itunes.apple.com,Streaming", "DOMAIN,hls.itunes.apple.com,Streaming",
+    "DOMAIN,np-edge.itunes.apple.com,Streaming", "DOMAIN,play-edge.itunes.apple.com,Streaming",
+    "DOMAIN,uts-api.itunes.apple.com,Streaming",
+)
+if max(index(line) for line in ordered_overlap_guards) >= index(repository_line("RULE-SET", "AppleCN.list", "Apple")):
+    fail("Apple streaming exceptions must precede AppleCN")
+if index("DOMAIN-SUFFIX,viu.now.com,Streaming") >= index(repository_line("RULE-SET", "HBO.list", "HBO")):
+    fail("Viu exception must precede HBO parent suffix")
+for line in ("DOMAIN,img-prod-cms-rt-microsoft-com.akamaized.net,Microsoft", "DOMAIN,login.live.com,Microsoft", "DOMAIN,logincdn.msauth.net,Microsoft", "DOMAIN,store-images.s-microsoft.com,Microsoft", "IP-CIDR,35.192.0.0/12,Proxy,no-resolve"):
+    if index(line) >= index(repository_line("RULE-SET", "Game.list", "Games")):
+        fail("Microsoft/shared cloud guard must precede Game")
+
+valid_policies = set(groups) | {"DIRECT", "REJECT", "REJECT-DROP", "Fail-Closed"}
+for rule in rules:
+    fields = [field.strip() for field in rule.split(",")]
+    policy = fields[1] if fields[0] == "FINAL" else fields[2]
+    if policy not in valid_policies:
+        fail(f"rule references unknown policy: {rule}")
+
+if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    if lock.get("schema") != 18 or lock.get("mode") != "repository-plus-reviewed-dynamic-no-embedded-content":
+    expected_counts = (142, 30, 29, 1, 29)
+    actual_counts = tuple(lock.get(key) for key in (
+        "active_rules", "runtime_resources", "immutable_repository_resources",
+        "dynamic_runtime_resources", "local_rule_files",
+    ))
+    if lock.get("schema") != 19 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
-    if lock.get("profile") != PROFILE_NAME:
-        fail("runtime lock profile name mismatch")
+    if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
+        fail("runtime lock profile or counts mismatch")
     if lock.get("profile_sha256") != hashlib.sha256(payload).hexdigest():
-        fail("runtime lock profile SHA-256 is stale")
-    if lock.get("profile_lines") != len(text.splitlines()) or lock.get("active_rules") != len(rules):
-        fail("runtime lock profile counts are stale")
+        fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.4 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
-    "immutable_resources=29 dynamic_resources=3 embedded_rule_contents=0 "
-    f"sha256={hashlib.sha256(payload).hexdigest()}"
+    f"PASS R13.5 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
+    f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

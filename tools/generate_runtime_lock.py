@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.4 no-embedded-content runtime lock.
-
-The lock records 29 immutable repository snapshots, three reviewed dynamic
-runtime supplements and the configuration invariants enforced by the auditors.
-"""
+"""Regenerate the R13.5 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -15,12 +11,15 @@ from convert_to_remote_rules import (
     DOMESTIC_DNS_RULES,
     DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
+    EXTENDED_MATCH_RESOURCES,
     FOREIGN_DNS_RULES,
+    FUNCTIONAL_GUARDS,
     PROFILE_NAME,
     RELEASE_DATE,
     RELEASE_REF,
     REMOTE_BASE,
     REPOSITORY_RULES,
+    RETIRED_BILIBILI_INTL_GUARDS,
     RULE_SNAPSHOT_TAG,
     expected_remote_order,
 )
@@ -30,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
 RULES = ROOT / "Rules"
 LOCK = RULES / "r10.lock.json"
+REGIONS = ["HongKong", "TaiWan", "Japan", "Singapore", "America"]
 
 
 def active_rows(path: Path) -> list[str]:
@@ -53,15 +53,9 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.4 inventory")
-
-embedded = [
-    row for row in profile_rules
-    if row.endswith((",Security", ",AdBlock"))
-    and not row.startswith(("RULE-SET,", "DOMAIN-SET,"))
-]
-if embedded:
-    raise SystemExit(f"embedded Security/AdBlock rule content is forbidden: {embedded[:3]}")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.5 inventory")
+if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
+    raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
 repository_sources: list[dict[str, object]] = []
 for kind, filename, _label, policy in REPOSITORY_RULES:
@@ -73,12 +67,13 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         "file": filename,
         "url": f"{REMOTE_BASE}{filename}",
         "policy": policy,
+        "extended_matching": filename in EXTENDED_MATCH_RESOURCES,
         "update_interval": -1,
         "active_entries": len(rows),
         "sha256": sha256_bytes(path.read_bytes()),
     })
 
-dynamic_sources = []
+dynamic_sources: list[dict[str, object]] = []
 for source in DYNAMIC_RULES:
     item = dict(source)
     item["source_mode"] = "reviewed-dynamic-runtime"
@@ -88,8 +83,8 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 18,
-    "mode": "repository-plus-reviewed-dynamic-no-embedded-content",
+    "schema": 19,
+    "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
     "source_repository": "shenjlngbIng/surge",
@@ -104,50 +99,48 @@ lock = {
         "final": "FINAL,Final,dns-failed",
         "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
         "rule_snapshot_commit": RELEASE_REF,
-        "runtime_resource_count": 32,
+        "runtime_resource_count": 30,
         "immutable_repository_resource_count": 29,
-        "dynamic_runtime_resource_count": 3,
+        "dynamic_runtime_resource_count": 1,
         "local_rule_file_count": 29,
         "embedded_rule_contents": 0,
-        "hidden_function_groups": ["ApplePush", "AdBlock", "Security", "UDP", "Domestic"],
+        "hidden_function_groups": ["ApplePush"],
+        "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer"],
         "visible_control_groups": ["Final", "Proxy", "NodePool"],
         "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
         "loglevel": "notify",
+        "fail_closed_alias": "reject",
         "policy_architecture": {
             "node_pool": {
-                "mode": "select",
-                "hidden": False,
-                "source": "policy-path",
-                "fail_closed": True,
-                "manual_default": False,
+                "mode": "select", "hidden": False, "source": "policy-path",
+                "first_member": "Fail-Closed", "automatic_fallback": False,
             },
-            "proxy": {"mode": "select", "default": "AllServer"},
-            "all_server": {
-                "mode": "smart",
-                "source": "NodePool",
-                "fail_closed": True,
-                "evaluate_before_use": True,
-            },
+            "proxy": {"mode": "select", "default": "NodePool"},
             "regions": {
-                "mode": "smart",
-                "source": "NodePool",
-                "fail_closed": True,
-                "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
+                "mode": "select", "source": "NodePool", "first_member": "Fail-Closed",
+                "automatic_fallback": False, "names": REGIONS,
             },
-            "domestic": {"mode": "select", "default": "DIRECT", "fallback": "Proxy", "hidden": True},
+            "restricted_services": {
+                "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
+                "Claude": ["Japan", "Singapore", "TaiWan", "America"],
+                "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
+                "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
+                "Bahamut": ["TaiWan", "HongKong"],
+            },
         },
         "security_resources": [
-            {"name": "reject_phishing.conf", "mode": "dynamic", "policy": "Security"},
-            {"name": "Pegasus.list", "mode": "immutable", "policy": "Security", "entries": len(active_rows(RULES / "Pegasus.list"))},
+            {"name": "Pegasus.list", "mode": "immutable", "policy": "REJECT", "entries": len(active_rows(RULES / "Pegasus.list"))},
         ],
         "advertising_resources": [
-            {"name": "Ads.list", "mode": "immutable", "policy": "AdBlock", "entries": len(active_rows(RULES / "Ads.list"))},
-            {"name": "reject.conf", "mode": "dynamic", "policy": "AdBlock"},
+            {"name": "Ads.list", "mode": "immutable", "policy": "REJECT", "entries": len(active_rows(RULES / "Ads.list"))},
         ],
+        "mobile_dynamic_reject_sources": [],
+        "functional_guards_before_ads": list(FUNCTIONAL_GUARDS),
+        "extended_matching_resources": sorted(EXTENDED_MATCH_RESOURCES),
         "domestic_resources": {
             "dynamic_supplement": "domestic.conf",
             "pinned_precise_set": "China.list",
-            "policy": "Domestic",
+            "policy": "DIRECT",
             "geoip": DOMESTIC_GEOIP_RULE,
             "geoip_resolves_unmatched_domains": False,
             "unmatched_domain_fallback": "Final/Proxy",
@@ -159,7 +152,7 @@ lock = {
             "certificate_verification": True,
             "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
             "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
-            "domestic_resolver_policy": "Domestic",
+            "domestic_resolver_policy": "DIRECT",
             "foreign_resolver_policy": "Proxy",
             "unmatched_domains_force_local_resolution": False,
             "proxy_hostname_uses_remote_resolution": True,
@@ -178,8 +171,7 @@ lock = {
             "proxy_test_udp": "apple.com@9.9.9.9",
             "unsupported_behaviour": "REJECT",
             "block_quic": "per-policy",
-            "stun_policy": "UDP",
-            "udp_default": "Proxy",
+            "stun_policy": "Proxy",
             "blocked_public_dns_ports": [53, 853, 8853],
         },
         "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
@@ -192,11 +184,11 @@ lock = {
             "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
         },
         "bilibili": {
-            "domestic": {"file": "BiliBili.list", "policy": "DIRECT"},
-            "domestic_httpdns_exception": "DOMAIN,httpdns.bilivideo.com,DIRECT",
+            "domestic": {"file": "BiliBili.list", "policy": "DIRECT", "entries": 16},
+            "functional_guards": list(FUNCTIONAL_GUARDS[:2]),
             "international_ruleset_retired": True,
             "international_compatibility_policy": "Proxy",
-            "domestic_bypasses_hidden_policy_selection": True,
+            "international_compatibility_guards": list(RETIRED_BILIBILI_INTL_GUARDS),
         },
     },
     "runtime_order": external,

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the R13.4 external runtime-rule inventory.
+"""Validate the R13.5 external runtime-rule inventory.
 
-The profile keeps 29 reviewed repository snapshots pinned to one immutable
-commit and adds exactly three reviewed, auto-updating Sukka runtime supplements.
-No rule snapshot may be embedded in the public profile.
+The iOS profile loads 29 repository snapshots from one immutable commit and
+one reviewed dynamic domestic supplement.  Large mutable reject lists are not
+part of the mobile runtime.
 """
 
 from __future__ import annotations
@@ -13,31 +13,31 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.4 Strict DNS"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.5 Strict Fail-Closed"
 RELEASE_DATE = "2026-08-29"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
-RELEASE_REF = "d1d714d575d5494ef1a7613238f4f301e1b293df"
+RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
 
 DOMESTIC_DNS_RULES: tuple[str, ...] = (
-    "DOMAIN,dns.alidns.com,Domestic",
-    "DOMAIN,dns.pub,Domestic",
-    "DOMAIN,doh.pub,Domestic",
-    "DOMAIN,dot.pub,Domestic",
-    "DOMAIN,dns.360.cn,Domestic",
-    "DOMAIN,doh.360.cn,Domestic",
-    "DOMAIN-SUFFIX,alibabadns.com,Domestic",
-    "DOMAIN-SUFFIX,alidns.com,Domestic",
-    "DOMAIN-SUFFIX,bdydns.com,Domestic",
-    "DOMAIN-SUFFIX,bytednsdoc.com,Domestic",
-    "DOMAIN-SUFFIX,dns.la,Domestic",
-    "DOMAIN-SUFFIX,dnspod.cn,Domestic",
-    "DOMAIN-SUFFIX,dnspod.com,Domestic",
-    "DOMAIN-SUFFIX,dnsv1.com,Domestic",
-    "DOMAIN-SUFFIX,jomodns.com,Domestic",
-    "DOMAIN-SUFFIX,smtcdns.net,Domestic",
+    "DOMAIN,dns.alidns.com,DIRECT",
+    "DOMAIN,dns.pub,DIRECT",
+    "DOMAIN,doh.pub,DIRECT",
+    "DOMAIN,dot.pub,DIRECT",
+    "DOMAIN,dns.360.cn,DIRECT",
+    "DOMAIN,doh.360.cn,DIRECT",
+    "DOMAIN-SUFFIX,alibabadns.com,DIRECT",
+    "DOMAIN-SUFFIX,alidns.com,DIRECT",
+    "DOMAIN-SUFFIX,bdydns.com,DIRECT",
+    "DOMAIN-SUFFIX,bytednsdoc.com,DIRECT",
+    "DOMAIN-SUFFIX,dns.la,DIRECT",
+    "DOMAIN-SUFFIX,dnspod.cn,DIRECT",
+    "DOMAIN-SUFFIX,dnspod.com,DIRECT",
+    "DOMAIN-SUFFIX,dnsv1.com,DIRECT",
+    "DOMAIN-SUFFIX,jomodns.com,DIRECT",
+    "DOMAIN-SUFFIX,smtcdns.net,DIRECT",
 )
 
 FOREIGN_DNS_RULES: tuple[str, ...] = (
@@ -56,17 +56,37 @@ FOREIGN_DNS_RULES: tuple[str, ...] = (
     "DOMAIN-SUFFIX,nextdns.io,Proxy",
 )
 
-DOMESTIC_GEOIP_RULE = "GEOIP,CN,Domestic,no-resolve"
+DOMESTIC_GEOIP_RULE = "GEOIP,CN,DIRECT,no-resolve"
 
-# The reviewed runtime snapshots. BiliBiliIntl was retired after the full
-# domestic/international routing audit; all remaining URLs stay immutable.
+FUNCTIONAL_GUARDS: tuple[str, ...] = (
+    "DOMAIN,httpdns.bilivideo.com,DIRECT",
+    "DOMAIN,line3-h5-mobile-api.biligame.com,DIRECT",
+    "DOMAIN,audio-ak.cdn.spotify.com,Spotify",
+    "DOMAIN,video-ak.cdn.spotify.com,Spotify",
+    "DOMAIN,audio-ak-spotify-com.akamaized.net,Spotify",
+    "DOMAIN-SUFFIX,pod.spoti.fi,Spotify",
+    "DOMAIN-SUFFIX,tv-static.scdn.co,Spotify",
+    "DOMAIN-SUFFIX,gvt2.com,Google",
+    "DOMAIN,rum.browser-intake-datadoghq.com,ChatGPT",
+)
+
+RETIRED_BILIBILI_INTL_GUARDS: tuple[str, ...] = (
+    "DOMAIN,apiintl.biliapi.net,Proxy",
+    "DOMAIN,p-bstarstatic.akamaized.net,Proxy",
+    "DOMAIN,p.bstarstatic.com,Proxy",
+    "DOMAIN,upos-bstar-mirrorakam.akamaized.net,Proxy",
+    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net,Proxy",
+    "DOMAIN-SUFFIX,bilibili.tv,Proxy",
+    "DOMAIN-SUFFIX,biliintl.com,Proxy",
+)
+
 REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
-    ("DOMAIN-SET", "Pegasus.list", "Pegasus spyware IOC", "Security"),
+    ("DOMAIN-SET", "Pegasus.list", "Pegasus spyware IOC", "REJECT"),
     ("RULE-SET", "APNs.list", "APNs", "ApplePush"),
     ("RULE-SET", "AppleCN.list", "AppleCN · Apple", "Apple"),
-    ("RULE-SET", "WeChat.list", "WeChat · Domestic", "Domestic"),
-    ("RULE-SET", "Direct.list", "Direct · Domestic", "Domestic"),
-    ("RULE-SET", "Ads.list", "Ads · AdBlock", "AdBlock"),
+    ("RULE-SET", "WeChat.list", "WeChat · DIRECT", "DIRECT"),
+    ("RULE-SET", "Direct.list", "Direct · DIRECT", "DIRECT"),
+    ("RULE-SET", "Ads.list", "Ads · REJECT", "REJECT"),
     ("RULE-SET", "ChatGPT.list", "ChatGPT", "ChatGPT"),
     ("RULE-SET", "Claude.list", "Claude", "Claude"),
     ("RULE-SET", "Gemini.list", "Gemini", "Gemini"),
@@ -88,40 +108,22 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("RULE-SET", "Game.list", "Game", "Games"),
     ("RULE-SET", "OneDrive.list", "OneDrive", "Microsoft"),
     ("RULE-SET", "Microsoft.list", "Microsoft", "Microsoft"),
-    ("DOMAIN-SET", "China.list", "China domains · precise", "Domestic"),
+    ("DOMAIN-SET", "China.list", "China domains · precise", "DIRECT"),
     ("DOMAIN-SET", "Global.list", "Global domains · precise", "Proxy"),
 )
 
-# Exact reviewed third-party runtime supplements and release-time observations.
-# These files are intentionally not bundled because they are dynamic sources.
+EXTENDED_MATCH_RESOURCES = frozenset(
+    filename for _kind, filename, _label, _policy in REPOSITORY_RULES
+    if filename != "Ads.list"
+)
+
 DYNAMIC_RULES: tuple[dict[str, object], ...] = (
-    {
-        "name": "reject_phishing.conf",
-        "kind": "DOMAIN-SET",
-        "url": "https://ruleset.skk.moe/List/domainset/reject_phishing.conf",
-        "policy": "Security",
-        "active_entries": 147474,
-        "size_bytes": 3146841,
-        "last_updated": "2026-08-28T05:59:58.088Z",
-        "content_hash_v1": "ZZWjEn5pEka4NbiG9zg0OkMmib0aU6vxkPj1mS7BkE4",
-        "sha256": "7c7b64d378542824170c87cf63511bc67974db39c6894493153f9d003a89756e",
-    },
-    {
-        "name": "reject.conf",
-        "kind": "DOMAIN-SET",
-        "url": "https://ruleset.skk.moe/List/domainset/reject.conf",
-        "policy": "AdBlock",
-        "active_entries": 135224,
-        "size_bytes": 3013194,
-        "last_updated": "2026-08-28T05:59:58.088Z",
-        "content_hash_v1": "sYj8bnVsQRgGiRCGGukfGJm3KSLJL0-r7zFAuhD692g",
-        "sha256": "4b87642adc8c58c0336b58a570abf33342b81043f358691fed16e207be028b49",
-    },
     {
         "name": "domestic.conf",
         "kind": "RULE-SET",
         "url": "https://ruleset.skk.moe/List/non_ip/domestic.conf",
-        "policy": "Domestic",
+        "policy": "DIRECT",
+        "extended_matching": True,
         "active_entries": 869,
         "size_bytes": 22632,
         "last_updated": "2026-08-08T06:31:42.029Z",
@@ -132,24 +134,32 @@ DYNAMIC_RULES: tuple[dict[str, object], ...] = (
 
 
 def repository_line(kind: str, filename: str, policy: str) -> str:
-    options = f"no-resolve,{UPDATE_OPTION}" if kind == "RULE-SET" else UPDATE_OPTION
-    return f"{kind},{REMOTE_BASE}{filename},{policy},{options}"
+    options: list[str] = []
+    if filename in EXTENDED_MATCH_RESOURCES:
+        options.append("extended-matching")
+    if kind == "RULE-SET":
+        options.append("no-resolve")
+    options.append(UPDATE_OPTION)
+    return f"{kind},{REMOTE_BASE}{filename},{policy},{','.join(options)}"
 
 
 def dynamic_line(item: dict[str, object]) -> str:
-    middle = ",no-resolve" if item["kind"] == "RULE-SET" else ""
-    return f"{item['kind']},{item['url']},{item['policy']}{middle},{DYNAMIC_UPDATE_OPTION}"
+    options: list[str] = []
+    if item.get("extended_matching"):
+        options.append("extended-matching")
+    if item["kind"] == "RULE-SET":
+        options.append("no-resolve")
+    options.append(DYNAMIC_UPDATE_OPTION)
+    return f"{item['kind']},{item['url']},{item['policy']},{','.join(options)}"
 
 
 def expected_remote_order() -> list[str]:
-    phishing, advertising, domestic = (dynamic_line(item) for item in DYNAMIC_RULES)
-    ordered = [phishing]
+    domestic = dynamic_line(DYNAMIC_RULES[0])
+    ordered: list[str] = []
     for kind, filename, _label, policy in REPOSITORY_RULES:
         if filename == "China.list":
             ordered.append(domestic)
         ordered.append(repository_line(kind, filename, policy))
-        if filename == "Ads.list":
-            ordered.append(advertising)
     return ordered
 
 
@@ -172,35 +182,28 @@ def main() -> int:
     rules = active_rule_lines(text)
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or relative order differs from the reviewed R13.4 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.5 inventory")
 
-    repository_urls = {f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES}
+    repository_urls = {
+        f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES
+    }
     dynamic_urls = {str(item["url"]) for item in DYNAMIC_RULES}
     for line in external:
         fields = [field.strip() for field in line.split(",")]
         url = fields[1]
-        expected_fields = 5 if fields[0] == "RULE-SET" else 4
-        if len(fields) != expected_fields:
-            raise SystemExit(f"runtime resource field count changed: {line}")
-        if fields[0] == "RULE-SET" and fields[3] != "no-resolve":
-            raise SystemExit(f"runtime RULE-SET may not trigger local DNS: {line}")
-        if url in repository_urls and fields[-1] != UPDATE_OPTION:
-            raise SystemExit(f"immutable repository resource options changed: {line}")
-        if url in dynamic_urls and fields[-1] != DYNAMIC_UPDATE_OPTION:
-            raise SystemExit(f"dynamic resource options changed: {line}")
         if url not in repository_urls | dynamic_urls:
             raise SystemExit(f"unreviewed runtime resource URL: {url}")
+        if fields[-1] not in {UPDATE_OPTION, DYNAMIC_UPDATE_OPTION}:
+            raise SystemExit(f"runtime resource update interval changed: {line}")
+        if fields[0] == "RULE-SET" and "no-resolve" not in fields[3:]:
+            raise SystemExit(f"runtime RULE-SET may not trigger local DNS: {line}")
 
-    embedded = [
-        line for line in rules
-        if line.endswith((",Security", ",AdBlock"))
-        and not line.startswith(("RULE-SET,", "DOMAIN-SET,"))
-    ]
-    if embedded:
-        raise SystemExit(f"embedded Security/AdBlock rules are forbidden: {embedded[:3]}")
+    forbidden = ("reject_phishing.conf", "/domainset/reject.conf", "@main/Rules/", "raw.githubusercontent.com")
+    if any(marker in text for marker in forbidden):
+        raise SystemExit("profile contains a mutable, mobile-heavy or unreviewed runtime source")
     print(
-        "PASS: immutable_runtime_resources=29 dynamic_runtime_resources=3 "
-        "embedded_rule_contents=0 reviewed_third_party_runtime_urls=3"
+        "PASS: immutable_runtime_resources=29 dynamic_runtime_resources=1 "
+        "embedded_rule_contents=0 reviewed_third_party_runtime_urls=1"
     )
     return 0
 
