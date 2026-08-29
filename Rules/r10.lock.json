@@ -2,10 +2,10 @@
   "schema": 18,
   "mode": "repository-plus-reviewed-dynamic-no-embedded-content",
   "profile": "Surge iOS Privacy + Push R13.4 Strict DNS",
-  "generated": "2026-08-28",
+  "generated": "2026-08-29",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "ddca552fcce4b4d04f2b8f254fefd152423d042200d8b0bec93215effb64069b",
-  "profile_lines": 358,
+  "profile_sha256": "889501d0b0b465bc4a63239ab6068510476b27046c7c8532f4cbcaf3152ffd92",
+  "profile_lines": 360,
   "active_rules": 130,
   "runtime_resources": 33,
   "immutable_repository_resources": 30,
@@ -189,13 +189,14 @@
     "bilibili": {
       "domestic": {
         "file": "BiliBili.list",
-        "policy": "Domestic"
+        "policy": "DIRECT"
       },
       "international": {
         "file": "BiliBiliIntl.list",
         "policy": "Streaming"
       },
-      "international_precedes_domestic": true
+      "international_precedes_domestic": true,
+      "domestic_bypasses_hidden_policy_selection": true
     }
   },
   "runtime_order": [
@@ -219,7 +220,7 @@
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/TikTok.list,TikTok,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Bahamut.list,Bahamut,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBiliIntl.list,Streaming,no-resolve,update-interval=-1",
-    "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list,Domestic,no-resolve,update-interval=-1",
+    "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list,DIRECT,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Spotify.list,Spotify,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/ProxyMedia.list,Streaming,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Telegram.list,Telegram,no-resolve,update-interval=-1",
@@ -420,7 +421,7 @@
       "kind": "RULE-SET",
       "file": "BiliBili.list",
       "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list",
-      "policy": "Domestic",
+      "policy": "DIRECT",
       "update_interval": -1,
       "active_entries": 12,
       "sha256": "de1171b012a98e50fd7a85cbf477848a39bed83460d63ab3afc0315034e65f85"
@@ -549,7 +550,7 @@
       "sha256": "7c7b64d378542824170c87cf63511bc67974db39c6894493153f9d003a89756e",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
-      "release_audited": "2026-08-28"
+      "release_audited": "2026-08-29"
     },
     {
       "name": "reject.conf",
@@ -563,7 +564,7 @@
       "sha256": "4b87642adc8c58c0336b58a570abf33342b81043f358691fed16e207be028b49",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
-      "release_audited": "2026-08-28"
+      "release_audited": "2026-08-29"
     },
     {
       "name": "domestic.conf",
@@ -577,7 +578,7 @@
       "sha256": "56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
-      "release_audited": "2026-08-28"
+      "release_audited": "2026-08-29"
     }
   ]
 }
