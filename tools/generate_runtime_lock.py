@@ -192,9 +192,10 @@ lock = {
             "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
         },
         "bilibili": {
-            "domestic": {"file": "BiliBili.list", "policy": "Domestic"},
+            "domestic": {"file": "BiliBili.list", "policy": "DIRECT"},
             "international": {"file": "BiliBiliIntl.list", "policy": "Streaming"},
             "international_precedes_domestic": True,
+            "domestic_bypasses_hidden_policy_selection": True,
         },
     },
     "runtime_order": external,

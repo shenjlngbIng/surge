@@ -13,7 +13,7 @@ OUTPUT = ROOT / "RELEASE_MANIFEST.txt"
 files = manifest_files(ROOT)
 lines = [
     "Surge iOS Privacy + Push R13.4 Strict DNS release manifest",
-    "Generated: 2026-08-28",
+    "Generated: 2026-08-29",
     f"Files: {len(files)}",
     "",
 ]

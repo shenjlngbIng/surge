@@ -103,13 +103,14 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.08.28",
+    "# > Update Date: 2026.08.29",
     "# > Surge iOS Privacy + Push R13.4 Strict DNS | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
     "# > Privacy-hardening correction based on R13.3; no policy group, rule, remote resource, or subscription entry was removed.",
+    "# > Hotfix: BiliBili domestic traffic stays DIRECT and cannot inherit a stale hidden Domestic selection.",
     "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
-if text.splitlines()[:8] != expected_header:
+if text.splitlines()[:9] != expected_header:
     fail("profile attribution, version, date, preservation statement, snapshot disclosure, or token warning changed")
 if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF) or "@main/Rules/" in text:
     fail("repository runtime URLs must use the full immutable rule-snapshot commit")
@@ -391,7 +392,7 @@ ordered_pairs = (
     (dynamic_ads, repository_line("RULE-SET", "ChatGPT.list", "ChatGPT")),
     ("DOMAIN,yt3.ggpht.com,YouTube", repository_line("RULE-SET", "YouTube.list", "YouTube")),
     ("DOMAIN-SUFFIX,viu.now.com,Streaming", repository_line("RULE-SET", "HBO.list", "HBO")),
-    (repository_line("RULE-SET", "BiliBiliIntl.list", "Streaming"), repository_line("RULE-SET", "BiliBili.list", "Domestic")),
+    (repository_line("RULE-SET", "BiliBiliIntl.list", "Streaming"), repository_line("RULE-SET", "BiliBili.list", "DIRECT")),
     ("DOMAIN,login.live.com,Microsoft", repository_line("RULE-SET", "Game.list", "Games")),
     ("IP-CIDR,35.192.0.0/12,Proxy,no-resolve", repository_line("RULE-SET", "Game.list", "Games")),
     (repository_line("RULE-SET", "Game.list", "Games"), repository_line("RULE-SET", "OneDrive.list", "Microsoft")),

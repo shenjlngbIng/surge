@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
 PROFILE_NAME = "Surge iOS Privacy + Push R13.4 Strict DNS"
-RELEASE_DATE = "2026-08-28"
+RELEASE_DATE = "2026-08-29"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "d1d714d575d5494ef1a7613238f4f301e1b293df"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
@@ -79,7 +79,7 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("RULE-SET", "TikTok.list", "TikTok", "TikTok"),
     ("RULE-SET", "Bahamut.list", "Bahamut", "Bahamut"),
     ("RULE-SET", "BiliBiliIntl.list", "BiliBili international edition", "Streaming"),
-    ("RULE-SET", "BiliBili.list", "BiliBili domestic API and video CDN", "Domestic"),
+    ("RULE-SET", "BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
     ("RULE-SET", "Spotify.list", "Spotify", "Spotify"),
     ("RULE-SET", "ProxyMedia.list", "ProxyMedia · Streaming", "Streaming"),
     ("RULE-SET", "Telegram.list", "Telegram", "Telegram"),
