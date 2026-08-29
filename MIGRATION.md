@@ -16,9 +16,10 @@ R13.4 是 R13.3 基础上的定向 DNS 隐私修正与界面精简。它不删�
 | 大陆应用 DNS | 16 条规则进入 `Domestic`，位于端口拒绝前 | 原样保留 |
 | 境外应用 DNS | 13 条规则进入 `Proxy` | 原样保留 |
 | 中国 GeoIP | `GEOIP,CN,Domestic` | `GEOIP,CN,Domestic,no-resolve` |
+| BiliBili 国内版 | `BiliBili.list → Domestic` | `BiliBili.list → DIRECT`；国际版仍先进入 `Streaming` |
 | 隐藏辅助组 | `ApplePush` | `ApplePush`、`AdBlock`、`Security`、`UDP`、`Domestic` |
 | 运行锁 | schema 17 | schema 18 |
-| 配置故障注入 | 115 项 | 116 项 |
+| 配置故障注入 | 115 项 | 117 项（含 BiliBili 热修复退化检查） |
 | ZIP 安全回归 | 27 项 | 28 项 |
 | 完整发布文件 | 66 | 66 |
 | 完整包 | `Surge-R13.3-Complete-No-Embedded-20260828.zip` | `Surge-R13.4-Complete-No-Embedded-20260828.zip` |
@@ -29,6 +30,8 @@ R13.3 为了让未收录的国内服务按 IP 进入 `Domestic`，在末端 CN G
 
 R13.4 恢复 `no-resolve`。已知国内域名继续由 WeChat、Direct、BiliBili、Sukka domestic、China 精确集合、共享云后缀和服务规则匹配；仍未命中的域名不在 CN GeoIP 处解析，而是落入 `Final`，默认由 `Proxy` 以主机名交给代理侧解析。已经解析为中国 IP 的字面量连接仍可进入 `Domestic`。
 
+2026-08-29 热修复将国内 `BiliBili.list` 从 `Domestic` 改为 `DIRECT`。Surge 可能按策略组名称保留升级前的手动选择，而 R13.4 又隐藏了 `Domestic`；旧选择若是 `Proxy`，国内 BiliBili 就会绕海外节点并出现首屏或播放长时间加载。热修复只绕过这一个隐藏选择，国际版规则仍保持更高优先级并进入 `Streaming`。
+
 没有把检测网站单独加到代理规则来伪装结果，也没有把 `encrypted-dns-follow-outbound-mode` 改为 `true`。后者在代理服务器本身使用域名时可能形成启动解析依赖并回退直连，不能作为严格隔离的保证。
 
 `AdBlock`、`Security`、`UDP` 和 `Domestic` 只把 `hidden=0` 改为 `hidden=1`。Surge 仍会执行这些组，所有成员、默认选择和规则引用都在。需要排错时，在私人副本中临时改回 `hidden=0` 即可。
@@ -37,7 +40,7 @@ R13.4 恢复 `no-resolve`。已知国内域名继续由 WeChat、Direct、BiliBi
 
 - 34 个策略组的名称、类型、成员结构和默认选择全部保留。
 - `Proxy → AllServer → NodePool`、五个 Smart 地区组和 `Fail-Closed` 保留。
-- `Domestic` 成员顺序仍是 `DIRECT`、`Proxy`，只是从控制面板隐藏。
+- `Domestic` 成员顺序仍是 `DIRECT`、`Proxy`，只是从控制面板隐藏；国内 BiliBili 专用规则不再引用该组。
 - 30 个固定远程 URL 仍固定到提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
 - 三个 Sukka 动态运行 URL、策略和 86,400 秒更新间隔保留。
 - 30 份 `.list`、四份来源锁、APNs、UDP、广告、钓鱼、Pegasus、AI、流媒体和服务分流保留。

@@ -2,7 +2,7 @@
 
 这是一套面向 Surge iOS 的规则模式配置。它把私有订阅、Smart 自动节点、手动节点池、国内流量总开关、DNS 出口、UDP、APNs、广告与钓鱼防护、历史 Pegasus IOC、服务分流和发布校验放在同一套可复核结构中。公开版本不包含真实订阅、节点、令牌、证书、MITM、脚本或重写内容。
 
-R13.4 是 R13.3 基础上的保留式 DNS 隐私修正。原有 34 个策略组、130 个规则匹配条件、30 个固定远程 URL、3 个动态补充源、30 份本地规则快照和唯一订阅入口全部保留。末端中国 GeoIP 恢复 `no-resolve`，不再为未命中域名强制调用本地 DoH；这类域名落入默认 `Final/Proxy`，由代理侧解析。`AdBlock`、`Security`、`UDP` 和 `Domestic` 只改为隐藏，定义、成员、默认值和规则引用均未删除。
+R13.4 是 R13.3 基础上的保留式 DNS 隐私修正。原有 34 个策略组、130 个规则匹配条件、30 个固定远程 URL、3 个动态补充源、30 份本地规则快照和唯一订阅入口全部保留。末端中国 GeoIP 恢复 `no-resolve`，不再为未命中域名强制调用本地 DoH；这类域名落入默认 `Final/Proxy`，由代理侧解析。`AdBlock`、`Security`、`UDP` 和 `Domestic` 保持隐藏，定义、成员与默认值没有删除。2026-08-29 热修复把国内 `BiliBili.list` 固定为 `DIRECT`，避免它继承隐藏 `Domestic` 组的旧 `Proxy` 选择；国际版仍由更靠前的 `BiliBiliIntl.list → Streaming` 接管。
 
 `Proxy` 默认使用 `AllServer` Smart 组，`NodePool` 仍是唯一订阅入口和手动节点池。`AllServer` 与五个地区组根据真实连接质量和测试结果自适应选择代理。`UDP` 默认跟随 `Proxy`。订阅为空、格式错误或地区无节点时，`Fail-Closed` 使连接明确失败，不会无提示直连。
 
@@ -17,7 +17,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 项目 | 当前值 |
 | --- | --- |
 | 配置版本 | R13.4 Strict DNS |
-| 更新日期 | 2026.08.28 |
+| 更新日期 | 2026.08.29 |
 | 推荐环境 | Surge iOS 5.14.6 及以上，建议 5.21.0 及以上 |
 | 运行模式 | Rule |
 | 策略组 | 34 个 |
@@ -37,7 +37,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | 动态国内补充 | 869 条发布时规则 |
 | 第三方运行时规则 URL | 3 个，均为 `ruleset.skk.moe` 精确 URL |
 | 主配置内嵌规则快照 | 0 条 |
-| 配置故障注入测试 | 116 项 |
+| 配置故障注入测试 | 117 项 |
 | ZIP 安全回归测试 | 28 项 |
 | 发布清单回归测试 | 15 项 |
 | 完整发布文件 | 66 个 |
@@ -57,7 +57,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 | UDP | 直接跟订阅首节点或直连 | 隐藏 `UDP`，默认仍使用 `Proxy` | STUN/UDP 跟随主代理；临时取消隐藏后仍可手选、拒绝或直连排错 |
 | APNs | 全程代理或全程直连 | `ApplePush` 先用 `Proxy`，失败后回落 `DIRECT` | 推送保留第二条可用路径，普通国际服务仍受代理策略约束 |
 | DNS | 系统 DNS、代理 DNS 和应用 DoH 混用 | 已知国内域名使用本地加密 DNS；未命中域名不在 CN GeoIP 处本地解析，默认交给代理侧 | 代理域名不再因国内 GeoIP 兜底而暴露给本地解析器；未知国内域名可能改走代理 |
-| 国内流量 | 多条规则分别写死直连或代理 | 已知国内规则统一进入隐藏的 `Domestic` | 默认直连；需切换时只临时把 `hidden=1` 改为 `hidden=0`，功能没有删除 |
+| 国内流量 | 多条规则分别写死直连或代理 | 已知国内规则进入隐藏的 `Domestic`；国内 BiliBili 核心规则固定 `DIRECT` | 国内总开关仍可切换其他已知国内服务；BiliBili 不受历史组选择影响 |
 | 控制面板 | 所有辅助组都常驻显示 | `AdBlock`、`Security`、`UDP`、`Domestic` 隐藏 | 界面更简洁，规则仍照常引用这些组，默认处置不变 |
 | 规则来源 | 全部固定后逐渐陈旧，或全部浮动难以复核 | 原 30 份保持固定，3 份高价值补充源动态更新 | 稳定基线不丢失，同时补足时效；动态变化需持续监测 |
 | 规则内容 | 把大量 IOC 或广告行写进主配置 | 所有规则保持外部引用 | 主配置没有逐条规则快照，完整包也不复制三份大型动态内容 |
@@ -78,7 +78,7 @@ https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf
 6. Apple 引导查询、出口检测站点和境外应用 DoH 域名按各自策略匹配。
 7. 动态钓鱼域名与固定 Pegasus 历史 IOC 依次进入 `Security`。
 8. APNs、Apple 国内服务、微信和固定直连集合继续处理。
-9. 固定 Ads 与动态基础广告源依次进入 `AdBlock`，随后处理 AI、流媒体、国际服务和游戏。
+9. 固定 Ads 与动态基础广告源依次进入 `AdBlock`，随后处理 AI、流媒体、国际服务和游戏；BiliBili 国际版先进入 `Streaming`，国内版随后固定直连。
 10. 国内共享云后缀进入 `Domestic`，动态国内补充和固定 China 集合继续补齐国内边界。
 11. Global 精确集合先走 `Proxy`；末端 `GEOIP,CN,Domestic,no-resolve` 只处理已有 IP 的连接，不为未命中域名触发本地解析。
 12. 其余公网 IPv4 和 IPv6 字面量强制进入 `Proxy`。
@@ -193,7 +193,7 @@ Smart 仍会产生测试连接，但不会使用 R13.1 的 `interval=1800` 和 `
 | `AdBlock` | `select` | `REJECT` | 隐藏 | 固定与动态广告规则处置，可临时取消隐藏后选择 `REJECT-DROP` 或 `DIRECT` |
 | `Security` | `select` | `REJECT` | 隐藏 | 动态钓鱼与历史 Pegasus IOC 处置 |
 | `UDP` | `select` | `Proxy` | 隐藏 | STUN 与其他受策略控制的 UDP 出口 |
-| `Domestic` | `select` | `DIRECT` | 隐藏 | 已知国内服务、国内补充、China 集合与已解析 CN IP 的策略入口 |
+| `Domestic` | `select` | `DIRECT` | 隐藏 | 除 BiliBili 专用直连规则外的已知国内服务、国内补充、China 集合与已解析 CN IP 的策略入口 |
 
 `Final` 不提供 `DIRECT`。代理规则缺失、域名未收录或 DNS 失败时，默认结果仍是 `Proxy`，用户也可以手动收紧到 `REJECT`。
 
@@ -225,6 +225,8 @@ Smart 仍会产生测试连接，但不会使用 R13.1 的 `interval=1800` 和 `
 | `Games` | `Proxy` | `Game.list` |
 
 代理类服务组没有 `DIRECT`。`Apple` 以国内服务兼容为目标，默认保留 `DIRECT`，同时允许手动改用代理或地区组。
+
+国内版 BiliBili 不新增策略组。`BiliBiliIntl.list` 先进入 `Streaming`，随后 `BiliBili.list` 直接使用 Surge 内建 `DIRECT`；因此隐藏 `Domestic` 组即使曾被手动切到 `Proxy`，也不会拖慢国内版核心 API、图片和视频 CDN。
 
 ## 失败关闭设计
 
@@ -404,7 +406,7 @@ STUN 在公网 DNS 端口、公共域名和公网 IP 规则之前进入 `UDP`。
 | `TikTok.list` | `TikTok` | 86 |
 | `Bahamut.list` | `Bahamut` | 7 |
 | `BiliBiliIntl.list` | `Streaming` | 7 |
-| `BiliBili.list` | `Domestic` | 12 |
+| `BiliBili.list` | `DIRECT` | 12 |
 | `Spotify.list` | `Spotify` | 30 |
 | `ProxyMedia.list` | `Streaming` | 319 |
 | `Telegram.list` | `Telegram` | 51 |
@@ -506,7 +508,7 @@ volcengine.com
 | `tools/audit_config.py` | 检查配置结构、策略组、规则顺序和失败边界 |
 | `tools/audit_rules.py` | 检查规则库存、哈希、语义边界和可选动态源在线格式 |
 | `tools/audit_precise_domains.py` | 检查 China 与 Global 精确域名集合 |
-| `tools/test_audit_config.py` | 116 项配置故障注入测试 |
+| `tools/test_audit_config.py` | 117 项配置故障注入测试 |
 | `tools/test_stage_surge_zip.py` | 28 项候选 ZIP 和路径安全回归测试 |
 | `tools/release_inventory.py` | 打包、清单和校验和共用的发布白名单 |
 | `tools/test_release_inventory.py` | 15 项目录、文本和升级清理回归测试 |
@@ -587,7 +589,7 @@ PASS: verified upstream lock services=19
 PASS R13.4 groups=34 rules=130 runtime_resources=33 immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0
 PASS R13.4 runtime_sources=33 immutable_sources=30 dynamic_sources=3 local_rule_files=30 rules=130 embedded_rule_contents=0
 PASS precise domains Domestic=306 Proxy=116 conflicts=0
-PASS R13.4 mutations=116
+PASS R13.4 mutations=117
 PASS: strict release inventory regression cases=15
 PASS: ZIP allowlist regression cases=28
 ```
@@ -775,11 +777,11 @@ R13.2 把 `Proxy` 的第一项改为 `AllServer`，但 Surge 可能按策略组�
 - [ ] 原 30 个运行 URL 全部保留并固定到 `d1d714d575d5494ef1a7613238f4f301e1b293df`
 - [ ] 3 个动态运行 URL 与更新间隔精确匹配审阅清单
 - [ ] 28 个 `RULE-SET` 全部带 `no-resolve`
-- [ ] Bilibili 国际版、Viu、YouTube、Microsoft 和 Game 的专用顺序保持正确
+- [ ] Bilibili 国际版保持在国内版之前，国内版固定 `DIRECT`；Viu、YouTube、Microsoft 和 Game 的专用顺序保持正确
 - [ ] 12 个共享云后缀位于动态国内补充和 China 之前并进入 `Domestic`
 - [ ] Global、`GEOIP,CN,Domestic,no-resolve`、公网 IPv4/IPv6 与唯一 `FINAL` 顺序正确，CN GeoIP 保留 `no-resolve`
 - [ ] 33 个远程资源、30 个本地规则文件、34 个策略组和 130 条规则通过审计
-- [ ] 116 项配置测试、28 项 ZIP 测试和 15 项发布清单测试通过
+- [ ] 117 项配置测试、28 项 ZIP 测试和 15 项发布清单测试通过
 - [ ] `RELEASE_MANIFEST.txt` 与两份 SHA-256 清单已经刷新
 - [ ] 完整 ZIP 已重新生成两次并确认字节一致
 - [ ] 整包 SHA-256 已在 ZIP 外记录
