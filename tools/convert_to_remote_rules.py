@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate the R13.4 external runtime-rule inventory.
 
-The profile keeps the 30 reviewed repository snapshots pinned to one immutable
+The profile keeps 29 reviewed repository snapshots pinned to one immutable
 commit and adds exactly three reviewed, auto-updating Sukka runtime supplements.
 No rule snapshot may be embedded in the public profile.
 """
@@ -58,8 +58,8 @@ FOREIGN_DNS_RULES: tuple[str, ...] = (
 
 DOMESTIC_GEOIP_RULE = "GEOIP,CN,Domestic,no-resolve"
 
-# The original 30 reviewed runtime snapshots. Policies changed to Domestic are
-# routing changes only; filenames, immutable URLs and local bytes are preserved.
+# The reviewed runtime snapshots. BiliBiliIntl was retired after the full
+# domestic/international routing audit; all remaining URLs stay immutable.
 REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("DOMAIN-SET", "Pegasus.list", "Pegasus spyware IOC", "Security"),
     ("RULE-SET", "APNs.list", "APNs", "ApplePush"),
@@ -78,7 +78,6 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("RULE-SET", "Emby.list", "Emby", "Emby"),
     ("RULE-SET", "TikTok.list", "TikTok", "TikTok"),
     ("RULE-SET", "Bahamut.list", "Bahamut", "Bahamut"),
-    ("RULE-SET", "BiliBiliIntl.list", "BiliBili international edition", "Streaming"),
     ("RULE-SET", "BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
     ("RULE-SET", "Spotify.list", "Spotify", "Spotify"),
     ("RULE-SET", "ProxyMedia.list", "ProxyMedia · Streaming", "Streaming"),
@@ -200,7 +199,7 @@ def main() -> int:
     if embedded:
         raise SystemExit(f"embedded Security/AdBlock rules are forbidden: {embedded[:3]}")
     print(
-        "PASS: immutable_runtime_resources=30 dynamic_runtime_resources=3 "
+        "PASS: immutable_runtime_resources=29 dynamic_runtime_resources=3 "
         "embedded_rule_contents=0 reviewed_third_party_runtime_urls=3"
     )
     return 0

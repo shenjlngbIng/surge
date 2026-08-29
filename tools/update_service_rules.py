@@ -88,8 +88,8 @@ def load_lock() -> dict[str, object]:
         raise ValueError("unexpected imported rule-type filter")
 
     services = list(data["services"])
-    if len(services) != 19:
-        raise ValueError(f"expected 19 pinned services, found {len(services)}")
+    if len(services) != 18:
+        raise ValueError(f"expected 18 pinned services, found {len(services)}")
     seen_rulesets: set[str] = set()
     seen_files: set[str] = set()
     seen_paths: set[str] = set()
@@ -273,7 +273,7 @@ def parse_args() -> argparse.Namespace:
     source.add_argument(
         "--upstream-dir",
         type=Path,
-        help="directory containing the 19 pinned upstream files",
+        help="directory containing the 18 pinned upstream files",
     )
     source.add_argument(
         "--download",

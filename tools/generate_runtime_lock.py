@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerate the R13.4 no-embedded-content runtime lock.
 
-The lock records 30 immutable repository snapshots, three reviewed dynamic
+The lock records 29 immutable repository snapshots, three reviewed dynamic
 runtime supplements and the configuration invariants enforced by the auditors.
 """
 
@@ -104,10 +104,10 @@ lock = {
         "final": "FINAL,Final,dns-failed",
         "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
         "rule_snapshot_commit": RELEASE_REF,
-        "runtime_resource_count": 33,
-        "immutable_repository_resource_count": 30,
+        "runtime_resource_count": 32,
+        "immutable_repository_resource_count": 29,
         "dynamic_runtime_resource_count": 3,
-        "local_rule_file_count": 30,
+        "local_rule_file_count": 29,
         "embedded_rule_contents": 0,
         "hidden_function_groups": ["ApplePush", "AdBlock", "Security", "UDP", "Domestic"],
         "visible_control_groups": ["Final", "Proxy", "NodePool"],
@@ -193,8 +193,9 @@ lock = {
         },
         "bilibili": {
             "domestic": {"file": "BiliBili.list", "policy": "DIRECT"},
-            "international": {"file": "BiliBiliIntl.list", "policy": "Streaming"},
-            "international_precedes_domestic": True,
+            "domestic_httpdns_exception": "DOMAIN,httpdns.bilivideo.com,DIRECT",
+            "international_ruleset_retired": True,
+            "international_compatibility_policy": "Proxy",
             "domestic_bypasses_hidden_policy_selection": True,
         },
     },
