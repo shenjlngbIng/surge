@@ -4,7 +4,7 @@
 
 ## Blackmatrix7 规则来源
 
-19 份服务规则以 `blackmatrix7/ios_rule_script` 的固定提交为维护输入。具体仓库、提交、文件路径、Git Blob、上游 SHA-256、本地增删边界和本地 SHA-256 记录在 `Rules/upstreams.lock.json`。
+18 份服务规则以 `blackmatrix7/ios_rule_script` 的固定提交为维护输入。具体仓库、提交、文件路径、Git Blob、上游 SHA-256、本地增删边界和本地 SHA-256 记录在 `Rules/upstreams.lock.json`。
 
 相关上游内容采用 GPL-2.0。完整许可副本见 `THIRD_PARTY_LICENSES/blackmatrix7-GPL-2.0.txt`。运行时不会直接访问 Blackmatrix7 地址，设备只读取本仓库固定提交里的审阅副本。
 
@@ -34,7 +34,7 @@ R13.4 还直接引用 SukkaW/Surge 提供的三个动态运行资源：
 
 ## 运行时交付范围
 
-R13.4 共有 33 个远程运行资源。其中原有 30 个资源仍固定到本仓库提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`，设备不会为这些固定副本直接访问原第三方维护仓库；三个 SukkaW 资源使用上面列出的精确动态 URL，设备会直接访问 `ruleset.skk.moe` 获取它们。
+R13.4 共有 32 个远程运行资源。其中 29 个资源固定到本仓库提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`，设备不会为这些固定副本直接访问原第三方维护仓库；三个 SukkaW 资源使用上面列出的精确动态 URL，设备会直接访问 `ruleset.skk.moe` 获取它们。
 
 下面这些在线系统属于配置依赖或交付基础设施，不属于本地规则数据许可范围。
 

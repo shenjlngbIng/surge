@@ -3,7 +3,7 @@
 
 The package contains the complete repository layout, including ``Rules/`` as
 separate files and ``.github/`` workflows. The profile is checked for the exact
-30 immutable resources, three reviewed dynamic supplements and the absence of
+29 immutable resources, three reviewed dynamic supplements and the absence of
 embedded rule snapshots before the ZIP is written.
 """
 
@@ -50,7 +50,7 @@ def validate_profile_sources() -> None:
     ]
     if embedded:
         raise ValueError("Surge.conf contains embedded Security or AdBlock rule content")
-    if len(active) != 130 or active[-1] != "FINAL,Final,dns-failed":
+    if len(active) != 137 or active[-1] != "FINAL,Final,dns-failed":
         raise ValueError("Surge.conf reviewed rule count or FINAL invariant changed")
     if any(marker in profile for marker in ("raw.githubusercontent.com", "@main/Rules/")):
         raise ValueError("Surge.conf contains a mutable or unreviewed runtime rule URL")

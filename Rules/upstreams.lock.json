@@ -6,12 +6,12 @@
     "license": "GPL-2.0",
     "download_base": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/c00517ce10760a93728b241923a451dfa617be80/",
     "last_review": {
-      "date": "2026-08-25",
-      "compared_commit": "f42be99379fcd1a1dd03469e8b56dcb46888fcea",
-      "services_compared": 19,
+      "date": "2026-08-29",
+      "compared_commit": "65e8adff06ea66c81bc61ed64329dae4fbfa7438",
+      "services_compared": 18,
       "active_additions": 0,
       "active_deletions": 0,
-      "decision": "保留当前固定提交；19 个文件的活动规则一致，Game.list 仅有注释或元数据差异。"
+      "decision": "保留当前固定提交；其余 18 个服务文件经本地过滤后与最新上游活动规则完全一致。BiliBiliIntl 已按需求退役。"
     }
   },
   "merge": {
@@ -66,30 +66,6 @@
       },
       "local_active_entries": 7,
       "local_sha256": "f6978a55dd75430e7846739821ea5dae092a2b8b369219eff296094a525a6e4f"
-    },
-    {
-      "ruleset": "RS_BiliBiliIntl",
-      "local_file": "BiliBiliIntl.list",
-      "upstream_path": "rule/Surge/BiliBiliIntl/BiliBiliIntl.list",
-      "upstream_blob": "ff117d3008e90880597995ccc8b75354ca0932fe",
-      "upstream_sha256": "ccb061a3327eb9e49ff13a90a628577389c89d0c67e0a930be2e4f174434b0ad",
-      "exclude": [],
-      "add": [
-        "DOMAIN,apiintl.biliapi.net",
-        "DOMAIN,p-bstarstatic.akamaized.net",
-        "DOMAIN,p.bstarstatic.com",
-        "DOMAIN,upos-bstar-mirrorakam.akamaized.net",
-        "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
-        "DOMAIN-SUFFIX,biliintl.com"
-      ],
-      "add_source": {
-        "type": "repository-maintained-curation",
-        "baseline": "R12.17-20260825",
-        "provenance": "existing reviewed local snapshot; no unverified external URL asserted",
-        "license_status": "repository maintenance claim; historical third-party provenance requires owner review"
-      },
-      "local_active_entries": 7,
-      "local_sha256": "3a01449624c2e7b86fff2462860be58f4d38880a1859842cfa1d27620202ba25"
     },
     {
       "ruleset": "RS_ChatGPT",

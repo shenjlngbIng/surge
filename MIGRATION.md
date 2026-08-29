@@ -1,6 +1,6 @@
 # R13.3 到 R13.4 Strict DNS 迁移说明
 
-R13.4 是 R13.3 基础上的定向 DNS 隐私修正与界面精简。它不删除策略组、规则匹配条件、远程规则来源、本地规则文件、订阅入口或失败关闭逻辑。
+R13.4 是 R13.3 基础上的 DNS 隐私修正、界面精简与全量软件分流复核。策略组、订阅入口和失败关闭逻辑保留；国际版 BiliBili 专用资源已按需求退役，并新增七条通用代理兼容护栏和一条国内 HTTPDNS 功能例外。
 
 主配置、运行锁、审计器、故障注入、README、工作流、清单和哈希必须一起更新。只替换 `Surge.conf` 可以导入设备，但会让仓库中的运行锁和完整性清单停留在旧版本。
 
@@ -9,19 +9,21 @@ R13.4 是 R13.3 基础上的定向 DNS 隐私修正与界面精简。它不删�
 | 项目 | R13.3 | R13.4 |
 | --- | --- | --- |
 | 策略组 | 34 | 34 |
-| 活动规则 | 130 | 130 |
-| 远程运行资源 | 33 | 33 |
-| 固定规则文件 | 30 | 30，字节不变 |
+| 活动规则 | 130 | 137 |
+| 远程运行资源 | 33 | 32 |
+| 固定规则文件 | 30 | 29 |
 | 订阅入口 | `NodePool.policy-path` | 原样保留 |
 | 大陆应用 DNS | 16 条规则进入 `Domestic`，位于端口拒绝前 | 原样保留 |
 | 境外应用 DNS | 13 条规则进入 `Proxy` | 原样保留 |
 | 中国 GeoIP | `GEOIP,CN,Domestic` | `GEOIP,CN,Domestic,no-resolve` |
-| BiliBili 国内版 | `BiliBili.list → Domestic` | `BiliBili.list → DIRECT`；国际版仍先进入 `Streaming` |
+| BiliBili | 国内版进入 `Domestic`，国际版进入 `Streaming` | 国内版固定 `DIRECT`，HTTPDNS 精确优先；国际版专用规则退役，遗留域名仅走通用 `Proxy` |
+| AI 默认地区 | 通用 `Proxy`，可能继承香港出口 | 日本优先；新加坡、台湾、美国后备，通用 `Proxy` 仅作后备 |
+| TikTok / 动画疯 | 通用 `Proxy` 默认 | TikTok 日本默认且移除香港候选；动画疯台湾默认、香港后备 |
 | 隐藏辅助组 | `ApplePush` | `ApplePush`、`AdBlock`、`Security`、`UDP`、`Domestic` |
 | 运行锁 | schema 17 | schema 18 |
-| 配置故障注入 | 115 项 | 117 项（含 BiliBili 热修复退化检查） |
-| ZIP 安全回归 | 27 项 | 28 项 |
-| 完整发布文件 | 66 | 66 |
+| 配置故障注入 | 115 项 | 125 项 |
+| ZIP 安全回归 | 27 项 | 27 项 |
+| 完整发布文件 | 66 | 65 |
 | 完整包 | `Surge-R13.3-Complete-No-Embedded-20260828.zip` | `Surge-R13.4-Complete-No-Embedded-20260828.zip` |
 
 ## 为什么修改
@@ -30,7 +32,9 @@ R13.3 为了让未收录的国内服务按 IP 进入 `Domestic`，在末端 CN G
 
 R13.4 恢复 `no-resolve`。已知国内域名继续由 WeChat、Direct、BiliBili、Sukka domestic、China 精确集合、共享云后缀和服务规则匹配；仍未命中的域名不在 CN GeoIP 处解析，而是落入 `Final`，默认由 `Proxy` 以主机名交给代理侧解析。已经解析为中国 IP 的字面量连接仍可进入 `Domestic`。
 
-2026-08-29 热修复将国内 `BiliBili.list` 从 `Domestic` 改为 `DIRECT`。Surge 可能按策略组名称保留升级前的手动选择，而 R13.4 又隐藏了 `Domestic`；旧选择若是 `Proxy`，国内 BiliBili 就会绕海外节点并出现首屏或播放长时间加载。热修复只绕过这一个隐藏选择，国际版规则仍保持更高优先级并进入 `Streaming`。
+2026-08-29 分流复核将国内 `BiliBili.list` 从 `Domestic` 改为 `DIRECT`。Surge 可能按策略组名称保留升级前的手动选择，而 R13.4 又隐藏了 `Domestic`；旧选择若是 `Proxy`，国内 BiliBili 就会绕海外节点。动态广告源还与 `httpdns.bilivideo.com` 重叠，会让 CDN 选择等待失败回退。因此该主机在广告规则前精确直连，其他重叠的遥测与广告域名继续拦截。
+
+国际版专用 `BiliBiliIntl.list` 与 `Streaming` 引用已删除。由于国际 API 与国内 `biliapi.net` 共用父后缀，且旧固定 `ProxyMedia.list` 含四条国际媒体域名，主配置保留七条前置 `Proxy` 护栏；它们只防止错误直连或进入 `Streaming`，不再建立独立国际版策略。
 
 没有把检测网站单独加到代理规则来伪装结果，也没有把 `encrypted-dns-follow-outbound-mode` 改为 `true`。后者在代理服务器本身使用域名时可能形成启动解析依赖并回退直连，不能作为严格隔离的保证。
 
@@ -38,12 +42,12 @@ R13.4 恢复 `no-resolve`。已知国内域名继续由 WeChat、Direct、BiliBi
 
 ## 保留内容
 
-- 34 个策略组的名称、类型、成员结构和默认选择全部保留。
+- 34 个策略组的名称、类型和成员结构保留；受地区限制的服务默认成员顺序已校准。
 - `Proxy → AllServer → NodePool`、五个 Smart 地区组和 `Fail-Closed` 保留。
 - `Domestic` 成员顺序仍是 `DIRECT`、`Proxy`，只是从控制面板隐藏；国内 BiliBili 专用规则不再引用该组。
-- 30 个固定远程 URL 仍固定到提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
+- 其余 29 个固定远程 URL 仍固定到提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
 - 三个 Sukka 动态运行 URL、策略和 86,400 秒更新间隔保留。
-- 30 份 `.list`、四份来源锁、APNs、UDP、广告、钓鱼、Pegasus、AI、流媒体和服务分流保留。
+- 29 份 `.list`、四份来源锁、APNs、UDP、广告、钓鱼、Pegasus、AI、流媒体和其他服务分流保留。
 - `encrypted-dns-follow-outbound-mode=false`、两个 DoH、Host 引导、证书校验和 `hijack-dns=*:53` 保留。
 - 16 个大陆应用 DNS 主机位于端口拒绝前的 R13.3 性能修正保留。
 - 公开订阅占位符保留，真实订阅仍由用户在私人副本中填写。
@@ -52,11 +56,11 @@ R13.4 恢复 `no-resolve`。已知国内域名继续由 WeChat、Direct、BiliBi
 
 1. 备份私人副本中的真实 `NodePool.policy-path`，不要把含令牌的副本上传到公开仓库。
 2. Surge 可能按组名保留旧选择。覆盖升级前或在私人副本中临时取消隐藏后，确认 `AdBlock=REJECT`、`Security=REJECT`、`UDP=Proxy`、`Domestic=DIRECT`；再恢复四组的 `hidden=1`。
-3. 解压 R13.4 完整包，用全部 66 个文件替换旧发布文件并保留目录层级。
+3. 解压 R13.4 完整包，用全部 65 个文件替换旧发布文件并保留目录层级；确认旧 `Rules/BiliBiliIntl.list` 被清理。
 4. 在私人 `Surge.conf` 中只恢复自己的 `NodePool.policy-path`，不要覆盖 R13.4 的 `[Rule]` 顺序。
 5. 重新载入配置，刷新外部资源并清理 Surge DNS 缓存与检测网站数据。
 6. 在无额外模块的状态下，使用至少两个检测站点复核网页出口和 DNS；再切换一个已知节点对比。
-7. 测试常用国内软件首屏、登录、图片和视频 CDN。若某个未知国内域名因严格兜底改走代理，从最近请求提取精确域名，人工审阅后补到国内规则，而不要去掉全局 `no-resolve`。
+7. 测试常用国内软件首屏、登录、图片和视频 CDN，重点确认 BiliBili 首屏与播放不再长时间转圈。若某个未知国内域名因严格兜底改走代理，从最近请求提取精确域名，人工审阅后补到国内规则，而不要去掉全局 `no-resolve`。
 8. 需要检查广告、安全、UDP 或国内总开关时，只在私人副本中把对应组临时改为 `hidden=0`，完成后恢复隐藏。
 9. 分别在 Wi-Fi 和蜂窝网络检查 APNs、IPv4、IPv6、UDP、AI 与流媒体，不要删除 `Fail-Closed` 或把 `Final` 改成 `DIRECT` 来掩盖节点问题。
 

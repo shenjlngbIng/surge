@@ -29,7 +29,7 @@ TOP_LEVEL_FILES = {
 
 RULE_FILES = {
     "APNs.list", "Ads.list", "AppleCN.list", "Bahamut.list", "BiliBili.list",
-    "BiliBiliIntl.list", "ChatGPT.list", "China.list", "Claude.list",
+    "ChatGPT.list", "China.list", "Claude.list",
     "Direct.list", "Disney.list", "Emby.list", "Game.list", "Gemini.list",
     "Github.list", "Global.list", "Google.list", "HBO.list", "Microsoft.list",
     "Netflix.list", "OneDrive.list", "Pegasus.list", "PrimeVideo.list",

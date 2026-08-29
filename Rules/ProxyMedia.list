@@ -49,8 +49,6 @@ DOMAIN,prod-api.crackle.com
 DOMAIN,staticasiafox.akamaized.net
 DOMAIN,tubi.tv
 DOMAIN,tubitv.com
-DOMAIN,upos-bstar-mirrorakam.akamaized.net
-DOMAIN,upos-bstar1-mirrorakam.akamaized.net
 DOMAIN,uts-api.itunes.apple.com
 DOMAIN,video.friday.tw
 DOMAIN,vudu.com
@@ -83,8 +81,6 @@ DOMAIN-SUFFIX,bahamut.com.tw
 DOMAIN-SUFFIX,bamgrid.com
 DOMAIN-SUFFIX,bbc.co.uk
 DOMAIN-SUFFIX,bbci.co.uk
-DOMAIN-SUFFIX,bilibili.tv
-DOMAIN-SUFFIX,biliintl.com
 DOMAIN-SUFFIX,byspotify.com
 DOMAIN-SUFFIX,byteoversea.com
 DOMAIN-SUFFIX,c4assets.com

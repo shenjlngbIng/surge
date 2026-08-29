@@ -105,8 +105,8 @@ expected_header = [
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.08.29",
     "# > Surge iOS Privacy + Push R13.4 Strict DNS | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Privacy-hardening correction based on R13.3; no policy group, rule, remote resource, or subscription entry was removed.",
-    "# > Hotfix: BiliBili domestic traffic stays DIRECT and cannot inherit a stale hidden Domestic selection.",
+    "# > Routing review based on R13.4; domestic apps stay local and region-limited services use supported exits by default.",
+    "# > BiliBili domestic HTTPDNS is protected from ad-list false positives; the international-edition ruleset is retired.",
     "# > Static repository rules remain pinned to commit d1d714d575d5494ef1a7613238f4f301e1b293df (2026.08.25).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
@@ -244,11 +244,21 @@ service_groups = set(GROUP_ORDER) - {
     "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "Domestic",
     "NodePool", "AllServer", *REGIONS,
 }
+regional_service_members = {
+    "ChatGPT": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
+    "Claude": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
+    "Gemini": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
+    "TikTok": ["Japan", "Singapore", "TaiWan", "America", "Proxy", "AllServer"],
+    "Bahamut": ["TaiWan", "HongKong", "Proxy", "Japan", "AllServer"],
+}
 for name in service_groups:
     members = group_members(groups, name)
     if name == "Apple":
         if members[:2] != ["DIRECT", "Proxy"]:
             fail("Apple must retain the DIRECT default and Proxy fallback")
+    elif name in regional_service_members:
+        if members != regional_service_members[name] or "DIRECT" in members:
+            fail(f"{name} supported-region member order changed: {members}")
     elif not members or members[0] != "Proxy" or "DIRECT" in members:
         fail(f"{name} must default to Proxy and cannot expose DIRECT")
 
@@ -293,7 +303,7 @@ for marker in ("access-token=", "authorization=", "token=", "password="):
         fail(f"possible published secret marker: {marker}")
 
 rules = active(sections["Rule"])
-if len(rules) != 130:
+if len(rules) != 137:
     fail(f"active rule count changed: {len(rules)}")
 if rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("FINAL must appear exactly once as the last rule")
@@ -303,10 +313,10 @@ if len(rules) != len(set(rules)):
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
     fail("runtime resource inventory or relative order changed")
-if len(external) != 33:
-    fail("R13.4 must contain 30 pinned and 3 dynamic runtime resources")
-if sum(REMOTE_BASE in line for line in external) != 30:
-    fail("all 30 original immutable repository resources must remain present")
+if len(external) != 32:
+    fail("R13.4 must contain 29 pinned and 3 dynamic runtime resources")
+if sum(REMOTE_BASE in line for line in external) != 29:
+    fail("all 29 reviewed immutable repository resources must remain present")
 if sum(str(item["url"]) in line for item in DYNAMIC_RULES for line in external) != 3:
     fail("the exact three reviewed dynamic resources must remain present")
 if any(marker in text for marker in ("raw.githubusercontent.com", "@main/Rules/", "reject_extra.conf")):
@@ -315,6 +325,16 @@ if any(marker in text for marker in ("raw.githubusercontent.com", "@main/Rules/"
 phishing, dynamic_ads, dynamic_domestic = (dynamic_line(item) for item in DYNAMIC_RULES)
 pegasus = repository_line("DOMAIN-SET", "Pegasus.list", "Security")
 ads = repository_line("RULE-SET", "Ads.list", "AdBlock")
+bili_httpdns = "DOMAIN,httpdns.bilivideo.com,DIRECT"
+bili_international_guards = (
+    "DOMAIN,apiintl.biliapi.net,Proxy",
+    "DOMAIN,p-bstarstatic.akamaized.net,Proxy",
+    "DOMAIN,p.bstarstatic.com,Proxy",
+    "DOMAIN,upos-bstar-mirrorakam.akamaized.net,Proxy",
+    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net,Proxy",
+    "DOMAIN-SUFFIX,bilibili.tv,Proxy",
+    "DOMAIN-SUFFIX,biliintl.com,Proxy",
+)
 security_rules = [rule for rule in rules if len(rule.split(",")) > 2 and rule.split(",")[2].strip() == "Security"]
 adblock_rules = [rule for rule in rules if len(rule.split(",")) > 2 and rule.split(",")[2].strip() == "AdBlock"]
 if security_rules != [phishing, pegasus]:
@@ -387,12 +407,14 @@ ordered_pairs = (
     (pegasus, repository_line("RULE-SET", "APNs.list", "ApplePush")),
     ("DOMAIN,hls-amt.itunes.apple.com,Streaming", repository_line("RULE-SET", "AppleCN.list", "Apple")),
     (repository_line("RULE-SET", "AppleCN.list", "Apple"), repository_line("RULE-SET", "WeChat.list", "Domestic")),
-    (repository_line("RULE-SET", "Direct.list", "Domestic"), ads),
+    (repository_line("RULE-SET", "Direct.list", "Domestic"), bili_httpdns),
+    (bili_httpdns, bili_international_guards[0]),
+    (bili_international_guards[-1], ads),
     (ads, dynamic_ads),
     (dynamic_ads, repository_line("RULE-SET", "ChatGPT.list", "ChatGPT")),
     ("DOMAIN,yt3.ggpht.com,YouTube", repository_line("RULE-SET", "YouTube.list", "YouTube")),
     ("DOMAIN-SUFFIX,viu.now.com,Streaming", repository_line("RULE-SET", "HBO.list", "HBO")),
-    (repository_line("RULE-SET", "BiliBiliIntl.list", "Streaming"), repository_line("RULE-SET", "BiliBili.list", "DIRECT")),
+    (ads, repository_line("RULE-SET", "BiliBili.list", "DIRECT")),
     ("DOMAIN,login.live.com,Microsoft", repository_line("RULE-SET", "Game.list", "Games")),
     ("IP-CIDR,35.192.0.0/12,Proxy,no-resolve", repository_line("RULE-SET", "Game.list", "Games")),
     (repository_line("RULE-SET", "Game.list", "Games"), repository_line("RULE-SET", "OneDrive.list", "Microsoft")),
@@ -406,6 +428,10 @@ ordered_pairs = (
 for before, after in ordered_pairs:
     if position(before) >= position(after):
         fail(f"precedence regression: {before} must precede {after}")
+if rules[position(bili_international_guards[0]):position(bili_international_guards[-1]) + 1] != list(bili_international_guards):
+    fail("BiliBili international compatibility guards must remain contiguous and ordered")
+if any("BiliBiliIntl.list" in rule for rule in rules):
+    fail("retired BiliBili international ruleset returned")
 
 if "DOMAIN-SUFFIX,ls.apple.com,DIRECT" in rules:
     fail("broad ls.apple.com DIRECT bypass is forbidden")
@@ -436,6 +462,6 @@ if PROFILE == (ROOT / "Surge.conf").resolve():
 
 print(
     f"PASS R13.4 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
-    "immutable_resources=30 dynamic_resources=3 embedded_rule_contents=0 "
+    "immutable_resources=29 dynamic_resources=3 embedded_rule_contents=0 "
     f"sha256={hashlib.sha256(payload).hexdigest()}"
 )

@@ -46,7 +46,6 @@ def main() -> int:
         "Surge.conf": "Surge.conf",
         "CHANGELOG.md": "CHANGELOG.md",
         "Rules/Ads.list": "Rules/Ads.list",
-        "Rules/BiliBiliIntl.list": "Rules/BiliBiliIntl.list",
         "Rules/maintained_sources.lock.json": "Rules/maintained_sources.lock.json",
         "Rules/upstreams.lock.json": "Rules/upstreams.lock.json",
         "Rules/resources.lock.json": "Rules/resources.lock.json",

@@ -4,21 +4,21 @@
   "profile": "Surge iOS Privacy + Push R13.4 Strict DNS",
   "generated": "2026-08-29",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "889501d0b0b465bc4a63239ab6068510476b27046c7c8532f4cbcaf3152ffd92",
-  "profile_lines": 360,
-  "active_rules": 130,
-  "runtime_resources": 33,
-  "immutable_repository_resources": 30,
+  "profile_sha256": "73080afd4a5bcf16809270d69f9d4f62c10f6c4d5bb3bc03ad399454cbb5ef73",
+  "profile_lines": 373,
+  "active_rules": 137,
+  "runtime_resources": 32,
+  "immutable_repository_resources": 29,
   "dynamic_runtime_resources": 3,
-  "local_rule_files": 30,
+  "local_rule_files": 29,
   "required_invariants": {
     "final": "FINAL,Final,dns-failed",
     "rule_snapshot_tag": "r12.17-20260825",
     "rule_snapshot_commit": "d1d714d575d5494ef1a7613238f4f301e1b293df",
-    "runtime_resource_count": 33,
-    "immutable_repository_resource_count": 30,
+    "runtime_resource_count": 32,
+    "immutable_repository_resource_count": 29,
     "dynamic_runtime_resource_count": 3,
-    "local_rule_file_count": 30,
+    "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
       "ApplePush",
@@ -191,11 +191,9 @@
         "file": "BiliBili.list",
         "policy": "DIRECT"
       },
-      "international": {
-        "file": "BiliBiliIntl.list",
-        "policy": "Streaming"
-      },
-      "international_precedes_domestic": true,
+      "domestic_httpdns_exception": "DOMAIN,httpdns.bilivideo.com,DIRECT",
+      "international_ruleset_retired": true,
+      "international_compatibility_policy": "Proxy",
       "domestic_bypasses_hidden_policy_selection": true
     }
   },
@@ -219,7 +217,6 @@
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Emby.list,Emby,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/TikTok.list,TikTok,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Bahamut.list,Bahamut,no-resolve,update-interval=-1",
-    "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBiliIntl.list,Streaming,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list,DIRECT,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/Spotify.list,Spotify,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/ProxyMedia.list,Streaming,no-resolve,update-interval=-1",
@@ -409,22 +406,12 @@
     {
       "source_mode": "immutable-repository-snapshot",
       "kind": "RULE-SET",
-      "file": "BiliBiliIntl.list",
-      "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBiliIntl.list",
-      "policy": "Streaming",
-      "update_interval": -1,
-      "active_entries": 7,
-      "sha256": "3a01449624c2e7b86fff2462860be58f4d38880a1859842cfa1d27620202ba25"
-    },
-    {
-      "source_mode": "immutable-repository-snapshot",
-      "kind": "RULE-SET",
       "file": "BiliBili.list",
       "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/BiliBili.list",
       "policy": "DIRECT",
       "update_interval": -1,
       "active_entries": 12,
-      "sha256": "de1171b012a98e50fd7a85cbf477848a39bed83460d63ab3afc0315034e65f85"
+      "sha256": "650db8415c4a66b405f07ce32948d46628d7659cbef4b2c3996ed078615b0f04"
     },
     {
       "source_mode": "immutable-repository-snapshot",
@@ -443,8 +430,8 @@
       "url": "https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e1b293df/Rules/ProxyMedia.list",
       "policy": "Streaming",
       "update_interval": -1,
-      "active_entries": 319,
-      "sha256": "eab4bdf753b5566d1da22c9336d5bce0cb399838485e41cf3e5e1d8f07ebca03"
+      "active_entries": 315,
+      "sha256": "4a0455289756769f85c7ada0d31a86aead633dc25c94eba5e9ca14eae0396856"
     },
     {
       "source_mode": "immutable-repository-snapshot",

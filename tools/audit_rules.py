@@ -70,17 +70,17 @@ if lock.get("schema") != 18 or lock.get("mode") != "repository-plus-reviewed-dyn
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
-if (lock.get("active_rules"), lock.get("runtime_resources"), lock.get("immutable_repository_resources"), lock.get("dynamic_runtime_resources"), lock.get("local_rule_files")) != (130, 33, 30, 3, 30):
+if (lock.get("active_rules"), lock.get("runtime_resources"), lock.get("immutable_repository_resources"), lock.get("dynamic_runtime_resources"), lock.get("local_rule_files")) != (137, 32, 29, 3, 29):
     fail("runtime lock counts mismatch")
 
 invariants = dict(lock.get("required_invariants", {}))
 expected_invariants = {
     "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
     "rule_snapshot_commit": RELEASE_REF,
-    "runtime_resource_count": 33,
-    "immutable_repository_resource_count": 30,
+    "runtime_resource_count": 32,
+    "immutable_repository_resource_count": 29,
     "dynamic_runtime_resource_count": 3,
-    "local_rule_file_count": 30,
+    "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": ["ApplePush", "AdBlock", "Security", "UDP", "Domestic"],
     "visible_control_groups": ["Final", "Proxy", "NodePool"],
@@ -163,7 +163,7 @@ expected_sources = {
 }
 raw_sources = list(lock.get("remote_sources", []))
 if len(raw_sources) != len(expected_sources):
-    fail("expected 30 immutable repository runtime sources")
+    fail("expected 29 immutable repository runtime sources")
 seen_remote: set[str] = set()
 for raw in raw_sources:
     item = dict(raw)
@@ -198,7 +198,7 @@ if list(lock.get("embedded_sources", [])):
 
 expected_local = set(expected_sources)
 actual_local = {path.name for path in RULES.glob("*.list")}
-if actual_local != expected_local or len(actual_local) != 30:
+if actual_local != expected_local or len(actual_local) != 29:
     fail(f"local rule inventory mismatch: missing={sorted(expected_local-actual_local)}, unexpected={sorted(actual_local-expected_local)}")
 domain_set_files = {"Pegasus.list", "China.list", "Global.list"}
 errors: list[str] = []
@@ -270,7 +270,7 @@ if pegasus_meta.get("local_file") != "Pegasus.list" or pegasus_meta.get("active_
 
 service_lock = json.loads(SERVICE_LOCK.read_text(encoding="utf-8"))
 services = list(service_lock.get("services", []))
-if service_lock.get("schema") != 2 or len(services) != 19:
+if service_lock.get("schema") != 2 or len(services) != 18:
     fail("pinned service provenance inventory is invalid")
 if dict(service_lock.get("local_additions_policy", {})).get("undeclared_rows") != "forbidden":
     fail("service lock does not forbid undeclared local rows")
@@ -330,15 +330,10 @@ bilibili_domestic = {
     "DOMAIN-SUFFIX,bilicdn1.com", "DOMAIN-SUFFIX,bilicomics.com", "DOMAIN-SUFFIX,biligame.com",
     "DOMAIN-SUFFIX,biliimg.com", "DOMAIN-SUFFIX,bilivideo.com", "DOMAIN-SUFFIX,hdslb.com",
 }
-bilibili_international = {
-    "DOMAIN,apiintl.biliapi.net", "DOMAIN,p-bstarstatic.akamaized.net", "DOMAIN,p.bstarstatic.com",
-    "DOMAIN,upos-bstar-mirrorakam.akamaized.net", "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
-    "DOMAIN-SUFFIX,bilibili.tv", "DOMAIN-SUFFIX,biliintl.com",
-}
 if set(active_lines(RULES / "BiliBili.list")) != bilibili_domestic:
     fail("BiliBili domestic rules differ from the reviewed set")
-if set(active_lines(RULES / "BiliBiliIntl.list")) != bilibili_international:
-    fail("BiliBili international rules differ from the reviewed set")
+if (RULES / "BiliBiliIntl.list").exists():
+    fail("retired BiliBili international ruleset still exists")
 
 forbidden_rules = {
     "Bahamut.list": {"DOMAIN-SUFFIX,digicert.com", "DOMAIN-SUFFIX,gvt1.com", "DOMAIN-SUFFIX,hinet.net"},
@@ -347,7 +342,12 @@ forbidden_rules = {
     "HBO.list": {"DOMAIN-SUFFIX,manifest.prod.boltdns.net", "DOMAIN-SUFFIX,players.brightcove.net"},
     "Microsoft.list": {"DOMAIN-SUFFIX,azurefd.net", "DOMAIN-SUFFIX,azureedge.net", "DOMAIN-SUFFIX,azurewebsites.net", "DOMAIN-SUFFIX,edgesuite.net", "DOMAIN-SUFFIX,helpshift.com", "DOMAIN-SUFFIX,optimizely.com", "DOMAIN-SUFFIX,windows.net"},
     "TikTok.list": {"DOMAIN-SUFFIX,snssdk.com"},
-    "ProxyMedia.list": {"DOMAIN,apm-misaka.biliapi.net", "DOMAIN,cache.video.iqiyi.com"},
+    "ProxyMedia.list": {
+        "DOMAIN,apm-misaka.biliapi.net", "DOMAIN,cache.video.iqiyi.com",
+        "DOMAIN,upos-bstar-mirrorakam.akamaized.net",
+        "DOMAIN,upos-bstar1-mirrorakam.akamaized.net",
+        "DOMAIN-SUFFIX,bilibili.tv", "DOMAIN-SUFFIX,biliintl.com",
+    },
 }
 for filename, forbidden in forbidden_rules.items():
     leaked = forbidden & set(active_lines(RULES / filename))
@@ -387,6 +387,6 @@ if CHECK_DYNAMIC:
         print(f"PASS dynamic {source['name']} entries={entries} bytes={size} sha256={sha256}")
 
 print(
-    f"PASS R13.4 runtime_sources=33 immutable_sources=30 dynamic_sources=3 "
+    f"PASS R13.4 runtime_sources=32 immutable_sources=29 dynamic_sources=3 "
     f"local_rule_files={len(actual_local)} rules={lock.get('active_rules')} embedded_rule_contents=0"
 )
