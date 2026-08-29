@@ -123,7 +123,6 @@ jobs:
               "Rules/maintained_sources.lock.json",
               "Rules/resources.lock.json",
               "Rules/BiliBili.list",
-              "Rules/BiliBiliIntl.list",
               "Rules/Telegram.list",
               ".github/workflows/install.yml",
           }
