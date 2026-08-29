@@ -1,83 +1,71 @@
-# R13.3 到 R13.4 Strict DNS 迁移说明
+# R13.4 到 R13.5 Strict Fail-Closed 迁移说明
 
-R13.4 是 R13.3 基础上的 DNS 隐私修正、界面精简与全量软件分流复核。策略组、订阅入口和失败关闭逻辑保留；国际版 BiliBili 专用资源已按需求退役，并新增七条通用代理兼容护栏和一条国内 HTTPDNS 功能例外。
+R13.5 是行为边界升级。不要只替换单个 BiliBili 文件或沿用旧策略选择；应整体导入新配置、规则锁和审计工具。
 
-主配置、运行锁、审计器、故障注入、README、工作流、清单和哈希必须一起更新。只替换 `Surge.conf` 可以导入设备，但会让仓库中的运行锁和完整性清单停留在旧版本。
+## 关键差异
 
-## 变化摘要
-
-| 项目 | R13.3 | R13.4 |
+| 项目 | R13.4 | R13.5 |
 | --- | --- | --- |
-| 策略组 | 34 | 34 |
-| 活动规则 | 130 | 137 |
-| 远程运行资源 | 33 | 32 |
-| 固定规则文件 | 30 | 29 |
-| 订阅入口 | `NodePool.policy-path` | 原样保留 |
-| 大陆应用 DNS | 16 条规则进入 `Domestic`，位于端口拒绝前 | 原样保留 |
-| 境外应用 DNS | 13 条规则进入 `Proxy` | 原样保留 |
-| 中国 GeoIP | `GEOIP,CN,Domestic` | `GEOIP,CN,Domestic,no-resolve` |
-| BiliBili | 国内版进入 `Domestic`，国际版进入 `Streaming` | 国内版固定 `DIRECT`，HTTPDNS 精确优先；国际版专用规则退役，遗留域名仅走通用 `Proxy` |
-| AI 默认地区 | 通用 `Proxy`，可能继承香港出口 | 日本优先；新加坡、台湾、美国后备，通用 `Proxy` 仅作后备 |
-| TikTok / 动画疯 | 通用 `Proxy` 默认 | TikTok 日本默认且移除香港候选；动画疯台湾默认、香港后备 |
-| 隐藏辅助组 | `ApplePush` | `ApplePush`、`AdBlock`、`Security`、`UDP`、`Domestic` |
-| 运行锁 | schema 17 | schema 18 |
-| 配置故障注入 | 115 项 | 125 项 |
-| ZIP 安全回归 | 27 项 | 27 项 |
-| 完整发布文件 | 66 | 65 |
-| 完整包 | `Surge-R13.3-Complete-No-Embedded-20260828.zip` | `Surge-R13.4-Complete-No-Embedded-20260828.zip` |
+| 默认代理 | `AllServer` Smart | 手动 `NodePool` |
+| 地区入口 | Smart | 手动 `select`，首项 `Fail-Closed` |
+| 失败关闭 | Smart 内含伪失败节点，仍可能 `DIRECT/SUBSTITUTE` | 内建 `reject` 别名＋无自动组 |
+| 隐藏状态组 | AdBlock、Security、UDP、Domestic | 删除，规则固定策略 |
+| 动态运行资源 | 钓鱼、广告、国内，共 3 份 | 仅动态国内 1 份 |
+| BiliBili 国内集合 | 12 后缀 | 16 后缀＋两条前置功能护栏 |
+| 固定资源匹配 | 普通匹配 | 除 Ads 外启用 `extended-matching` |
+| 运行资源 | 29 固定＋3 动态 | 29 固定＋1 动态 |
+| 策略组/规则 | 34 / 137 | 29 / 142 |
+| 完整包 | `Surge-R13.4-Complete-No-Embedded-20260828.zip` | `Surge-R13.5-Complete-No-Embedded-20260829.zip` |
 
-## 为什么修改
+## 为什么删除 Smart
 
-R13.3 为了让未收录的国内服务按 IP 进入 `Domestic`，在末端 CN GeoIP 去掉了 `no-resolve`。这会让尚未匹配的域名先调用 Surge 本地 DNS。配置中的 AliDNS 与 DNSPod DoH 直连，因此代理网页可能出现境外出口与大陆解析器并存的检测结果。
+Surge 官方说明，自动组没有可用成员时会使用 `DIRECT`，日志显示 `SUBSTITUTE`。Smart 还会忽略内建策略和嵌套组。R13.4 把 `Fail-Closed` 写进 Smart 并不能证明无直连回退。
 
-R13.4 恢复 `no-resolve`。已知国内域名继续由 WeChat、Direct、BiliBili、Sukka domestic、China 精确集合、共享云后缀和服务规则匹配；仍未命中的域名不在 CN GeoIP 处解析，而是落入 `Final`，默认由 `Proxy` 以主机名交给代理侧解析。已经解析为中国 IP 的字面量连接仍可进入 `Domestic`。
+R13.5 将 `Fail-Closed` 定义为内建 `reject` 的别名，所有节点和地区入口使用手动 `select`。代价是不能无人值守自动择优；收益是无节点时的静态行为可证明。
 
-2026-08-29 分流复核将国内 `BiliBili.list` 从 `Domestic` 改为 `DIRECT`。Surge 可能按策略组名称保留升级前的手动选择，而 R13.4 又隐藏了 `Domestic`；旧选择若是 `Proxy`，国内 BiliBili 就会绕海外节点。动态广告源还与 `httpdns.bilivideo.com` 重叠，会让 CDN 选择等待失败回退。因此该主机在广告规则前精确直连，其他重叠的遥测与广告域名继续拦截。
+## 升级步骤
 
-国际版专用 `BiliBiliIntl.list` 与 `Streaming` 引用已删除。由于国际 API 与国内 `biliapi.net` 共用父后缀，且旧固定 `ProxyMedia.list` 含四条国际媒体域名，主配置保留七条前置 `Proxy` 护栏；它们只防止错误直连或进入 `Streaming`，不再建立独立国际版策略。
+1. 备份私人订阅地址和你当前选择的节点名称，不要把备份提交到仓库。
+2. 完整导入 R13.5，而不是把新规则复制到旧 R13.4 配置。
+3. 只替换 `NodePool.policy-path` 的占位 URL。
+4. 在 Surge 中重新下载并加载配置，清理旧规则缓存。
+5. 打开 `NodePool`，选择真实节点。若仍选择 `Fail-Closed`，代理请求被拒绝是预期结果。
+6. 为需要的地区组选择节点，尤其是 ChatGPT/Claude/Gemini/TikTok 使用的日本、新加坡、台湾、美国。
+7. 按 README 的 Wi-Fi 与蜂窝真机清单验收。
 
-没有把检测网站单独加到代理规则来伪装结果，也没有把 `encrypted-dns-follow-outbound-mode` 改为 `true`。后者在代理服务器本身使用域名时可能形成启动解析依赖并回退直连，不能作为严格隔离的保证。
+## 旧策略状态
 
-`AdBlock`、`Security`、`UDP` 和 `Domestic` 只把 `hidden=0` 改为 `hidden=1`。Surge 仍会执行这些组，所有成员、默认选择和规则引用都在。需要排错时，在私人副本中临时改回 `hidden=0` 即可。
+R13.5 删除 `AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic`。Surge 即使保留旧组名选择，也找不到这些组，因此不会继续沿用旧的隐藏 `DIRECT`、`Proxy` 或广告调试状态。
 
-## 保留内容
+不要自行恢复同名组。需要排错时查看最近请求中的首条命中和最终策略，修正规则或节点，不要通过可持久化的隐藏开关绕开边界。
 
-- 34 个策略组的名称、类型和成员结构保留；受地区限制的服务默认成员顺序已校准。
-- `Proxy → AllServer → NodePool`、五个 Smart 地区组和 `Fail-Closed` 保留。
-- `Domestic` 成员顺序仍是 `DIRECT`、`Proxy`，只是从控制面板隐藏；国内 BiliBili 专用规则不再引用该组。
-- 其余 29 个固定远程 URL 仍固定到提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。
-- 三个 Sukka 动态运行 URL、策略和 86,400 秒更新间隔保留。
-- 29 份 `.list`、四份来源锁、APNs、UDP、广告、钓鱼、Pegasus、AI、流媒体和其他服务分流保留。
-- `encrypted-dns-follow-outbound-mode=false`、两个 DoH、Host 引导、证书校验和 `hijack-dns=*:53` 保留。
-- 16 个大陆应用 DNS 主机位于端口拒绝前的 R13.3 性能修正保留。
-- 公开订阅占位符保留，真实订阅仍由用户在私人副本中填写。
+## BiliBili
 
-## 推荐迁移步骤
+国内版现在固定包含：
 
-1. 备份私人副本中的真实 `NodePool.policy-path`，不要把含令牌的副本上传到公开仓库。
-2. Surge 可能按组名保留旧选择。覆盖升级前或在私人副本中临时取消隐藏后，确认 `AdBlock=REJECT`、`Security=REJECT`、`UDP=Proxy`、`Domestic=DIRECT`；再恢复四组的 `hidden=1`。
-3. 解压 R13.4 完整包，用全部 65 个文件替换旧发布文件并保留目录层级；确认旧 `Rules/BiliBiliIntl.list` 被清理。
-4. 在私人 `Surge.conf` 中只恢复自己的 `NodePool.policy-path`，不要覆盖 R13.4 的 `[Rule]` 顺序。
-5. 重新载入配置，刷新外部资源并清理 Surge DNS 缓存与检测网站数据。
-6. 在无额外模块的状态下，使用至少两个检测站点复核网页出口和 DNS；再切换一个已知节点对比。
-7. 测试常用国内软件首屏、登录、图片和视频 CDN，重点确认 BiliBili 首屏与播放不再长时间转圈。若某个未知国内域名因严格兜底改走代理，从最近请求提取精确域名，人工审阅后补到国内规则，而不要去掉全局 `no-resolve`。
-8. 需要检查广告、安全、UDP 或国内总开关时，只在私人副本中把对应组临时改为 `hidden=0`，完成后恢复隐藏。
-9. 分别在 Wi-Fi 和蜂窝网络检查 APNs、IPv4、IPv6、UDP、AI 与流媒体，不要删除 `Fail-Closed` 或把 `Final` 改成 `DIRECT` 来掩盖节点问题。
+- 原 12 个 API、页面、图片和视频后缀；
+- 新增 `biligame.net`、`bilivideo.cn`、`bilicomic.com`、`bilivideo.net`；
+- Ads 前置 `httpdns.bilivideo.com`；
+- Ads 前置 `line3-h5-mobile-api.biligame.com`。
 
-## DNS 行为边界
+国际版专用规则继续保持删除。七条历史域名只走通用 `Proxy` 兼容护栏。不要恢复 `BiliBiliIntl.list` 或把这些域名并入国内 `DIRECT`。
 
-已审阅的大陆解析器主机可以在通用端口拒绝之前进入 `Domestic`。其余公网 53、853 和 8853 仍被拒绝。局域网私有地址在它们之前直连，本地路由器解析不受影响。
+## 广告与安全
 
-境外 DNS 域名规则位于端口拒绝之后，因此 HTTPS DoH 可以进入 `Proxy`，未审阅的 DoT 仍会先被 853 端口规则拒绝。Surge 自身的两个加密 DNS 继续由内部链路直连，不跟随普通应用规则，以避免域名型代理节点形成解析环。
+R13.5 不再加载 `reject.conf` 和 `reject_phishing.conf`。这是移动端性能与误杀边界调整，不代表关闭所有防护：
 
-严格边界只针对未命中且尚未解析的域名。明确的 `Domestic` 连接、本地网络、代理节点启动和 Surge 自身功能仍可能使用配置的本地 DNS。网页出口与解析器完全一致还取决于代理节点服务端的递归 DNS，客户端无法替远端节点决定该解析器。
+- 152 条固定审阅 Ads 继续 `REJECT`；
+- 1,438 条固定 Pegasus 历史 IOC 继续 `REJECT`；
+- 九条确认重叠的功能依赖在 Ads 前进入正确策略；
+- iOS 自身更新、Lockdown Mode 和专门内容拦截工具仍应按需要使用。
 
-## 性能取舍
+## 节点与服务地区
 
-恢复 `no-resolve` 会牺牲 R13.3 的“未知中国域名按解析 IP 直连”能力。现有国内域名规则覆盖常见服务，但不可能覆盖全部新域名，因此少量国内软件可能走代理并增加延迟。该代价换来更明确的代理域名 DNS 边界；若出现实例，应补充经过审阅的精确域名，不建议重新开启全局解析式 CN GeoIP。
+- ChatGPT、Claude、Gemini、TikTok 不再提供通用 Proxy 或香港作为组内候选。
+- Bahamut 只提供台湾、香港。
+- 其他国际服务默认 `Proxy`，仍可手动切换地区。
+- 地区组不会自动选择最快节点。节点不可用时应手动更换，不要改回 Smart 以换取表面可用性。
 
 ## 回退
 
-需要回退时，重新使用完整的 R13.3 包，并恢复当时的私人订阅地址。不要把 R13.4 的 `Rules/r10.lock.json`、清单、哈希或审计工具留在 R13.3 目录中。
-
-回退会重新让末端 CN GeoIP 为未命中域名触发本地 DNS，也会让四个辅助策略组重新显示。16 个大陆应用 DNS 主机仍保持 R13.3 的 `Domestic` 性能修正。
+确需回退时，恢复完整 R13.4 包和当时的私人订阅地址。不要混用 R13.5 的 `Surge.conf`、`Rules/r10.lock.json`、清单、哈希或审计脚本。R13.4 的自动组直连替代、隐藏组持久状态和动态大表风险会同时恢复。

@@ -82,7 +82,7 @@ def load_lock() -> tuple[dict[str, object], dict[str, object]]:
     expected = {
         "name": "Pegasus",
         "format": "DOMAIN-SET",
-        "policy": "Security",
+        "policy": "REJECT",
         "local_file": "Pegasus.list",
         "repository": "AmnestyTech/investigations",
         "commit": "3d8f248a0d015f183724ae7d096a5c46a8bb5fc7",

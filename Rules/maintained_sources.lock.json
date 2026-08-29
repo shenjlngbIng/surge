@@ -51,12 +51,12 @@
     },
     {
       "file": "BiliBili.list",
-      "active_entries": 12,
-      "sha256": "650db8415c4a66b405f07ce32948d46628d7659cbef4b2c3996ed078615b0f04",
+      "active_entries": 16,
+      "sha256": "dd865bf4c993b94ed07c5fae2801695990173a41772bf829038ca9f2f4ae5f14",
       "maintenance": "repository-maintained-reviewed-set",
       "sources": [],
       "license_status": "repository maintenance claim",
-      "notes": "Twelve explicit domestic Bilibili suffixes; exact set is enforced by audit_rules.py. International hosts are excluded and handled only by generic Proxy compatibility guards.",
+      "notes": "Sixteen explicit domestic Bilibili suffixes; exact set is enforced by audit_rules.py. International hosts are excluded and handled only by generic Proxy compatibility guards.",
       "last_review": "2026-08-29"
     },
     {

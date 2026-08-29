@@ -3,7 +3,7 @@
 
 The precise sets intentionally trade breadth for deterministic ownership. They
 must contain suffix domains only, must not contain public suffixes, keywords or
-shared infrastructure, and may never overlap across Domestic and Proxy policies.
+shared infrastructure, and may never overlap across DIRECT and Proxy policies.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SETS = {
-    "Domestic": ROOT / "Rules" / "China.list",
+    "DIRECT": ROOT / "Rules" / "China.list",
     "Proxy": ROOT / "Rules" / "Global.list",
 }
 LOCK = ROOT / "Rules" / "upstreams.lock.json"
@@ -80,12 +80,12 @@ for policy, path in SETS.items():
                 )
     parsed[policy] = lines
 
-for direct in parsed["Domestic"]:
+for direct in parsed["DIRECT"]:
     for proxy in parsed["Proxy"]:
         if suffix_overlap(direct, proxy):
             raise AssertionError(f"cross-policy domain conflict: {direct} <-> {proxy}")
 
-if not (200 <= len(parsed["Domestic"]) <= 500):
+if not (200 <= len(parsed["DIRECT"]) <= 500):
     raise AssertionError("China precise set must remain intentionally bounded")
 if not (75 <= len(parsed["Proxy"]) <= 250):
     raise AssertionError("Global precise set must remain intentionally bounded")

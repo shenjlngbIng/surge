@@ -1,54 +1,50 @@
-# 安全说明
+# 安全策略与运行边界
 
-## 报告问题
+R13.5 的目标是在 Surge iOS 上提供可审计的失败关闭分流。这里的“失败关闭”是指订阅为空、手动组未选到可用节点或旧策略状态失效时，代理流量不会因为自动策略组的替代行为静默回落到 `DIRECT`。它不代表节点服务本身、上游 DNS、操作系统或第三方规则绝对可信。
 
-请不要在公开问题中粘贴真实订阅地址、访问令牌、设备标识、完整日志或包含私有信息的配置。报告配置漏洞时，先把敏感值换成无效占位符，并提供最小复现条件、受影响版本和预期行为。
+## 私密信息
 
-如果问题会导致订阅泄露、规则绕过、意外直连、供应链内容替换、ZIP 路径逃逸或安装工作流执行未审阅内容，请按高优先级处理。在修复和发布前避免公开可直接利用的细节。
-
-## 公开配置边界
-
-R13.4 的 `NodePool.policy-path` 必须保持下面的无效地址。
+公开配置只允许保留下面的无效占位地址：
 
 ```text
 https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 ```
 
-真实地址只能保存在用户自己的设备上。配置用 `Fail-Closed` 防止订阅为空时静默直连。若使用 `sub.store` 合成地址，必须由对应 Surge 模块接管。未接管时 `[Host]` 会把该主机指向本机并主动失败。
+不要提交真实订阅、Sub-Store 地址、令牌、设备日志、节点名称或个人域名。私人副本应放在仓库之外；凭据泄露后应立即在服务端撤销和轮换。
+
+## 失败关闭模型
+
+- `[Proxy]` 中的 `Fail-Closed = reject` 是 Surge 内建 `REJECT` 的别名。
+- `NodePool` 与香港、台湾、日本、新加坡、美国五个地区入口均为手动 `select`，首项是 `Fail-Closed`。
+- `Proxy` 默认进入 `NodePool`；AI、TikTok 和流媒体策略只引用经过地区限制复核的手动组。
+- 不使用 Smart、`url-test` 或其他自动组承诺严格失败关闭。Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代。
+- `ApplePush` 是明确例外：其后备顺序允许 `DIRECT`，用于保留 APNs 可达性。这不是通用代理流量的回退路径。
+
+手动组不会自动替你寻找最快节点。导入后必须选择真实可用节点；如果选中 `Fail-Closed`，相关连接被拒绝是预期行为。
 
 ## 规则供应链
 
-现有 29 个固定运行资源只能来自本仓库完整提交 `d1d714d575d5494ef1a7613238f4f301e1b293df`。`main`、可移动标签或其他提交都属于拒绝条件。新增运行资源只允许以下三个经过审阅的精确动态 URL，不能替换为镜像、重定向地址或猜测路径。
+- 29 份运行规则固定到完整提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1`，由 jsDelivr 按不可变提交分发。
+- 唯一动态资源是 SukkaW 的 `https://ruleset.skk.moe/List/non_ip/domestic.conf`，仅用于国内域名补充。
+- 移动配置禁止加载 `reject.conf` 和 `reject_phishing.conf`。这些大表既不固定，也可能在 iOS 上带来内存、更新时间与误杀风险。
+- 固定资源除 Ads 外启用 `extended-matching`，让域名规则能够按 SNI/Host 匹配，降低仅依赖本地 DNS 解析的遗漏；Ads 保持普通匹配以控制移动端成本。
+- `Rules/r10.lock.json` 记录配置哈希、资源清单、活动条目和关键不变量。审计器会核对本地内容、固定提交 URL、在线固定副本与动态资源格式。
 
-- `https://ruleset.skk.moe/List/domainset/reject_phishing.conf`
-- `https://ruleset.skk.moe/List/domainset/reject.conf`
-- `https://ruleset.skk.moe/List/non_ip/domestic.conf`
-
-Pegasus 的 1,438 个域名通过本仓库固定 `DOMAIN-SET` 加载，来源与本地哈希由 `Rules/resources.lock.json` 固定。152 条固定广告规则通过仓库 `RULE-SET` 加载。18 份服务规则由 `Rules/upstreams.lock.json` 管理，其余仓库维护列表由 `Rules/maintained_sources.lock.json` 披露。三份动态资源的发布观察值由 `Rules/r10.lock.json` 记录，但预期会变化，因此在线审计验证 HTTP、UTF-8、规则格式、重复行和大小边界，不把发布时 SHA-256 当作永久固定值。主配置不得保存这些资源的逐条内容。
-
-发现下面任一情况时应停止发布。
-
-- 29 个仓库 URL 没有固定到指定完整提交。
-- 动态 URL、类型、策略、更新间隔或先后顺序偏离审阅清单。
-- 锁文件中的 Git Blob、SHA-256、条目数或来源身份不一致。
-- Pegasus、固定 Ads 或本地规则内容发生未记录变化。
-- 动态源在线检查出现 HTTP、编码、格式、重复或大小异常。
-- 发布目录包含白名单外文件、链接或特殊文件。
+更新第三方规则前应固定来源提交、复核许可和差异，并同步更新对应锁文件。不要把分支名、标签或 `main` 用作运行时固定地址。
 
 ## 网络边界
 
-Wi-Fi 访问、热点访问和 Web 控制面板默认关闭。局域网和 16 个经审阅的大陆应用 DNS 主机先处理，其余公网 DNS 端口 53、853 和 8853 随后拒绝。大陆主机进入隐藏的 `Domestic`，13 个境外 HTTPS DNS 主机进入 `Proxy`；Surge 自身 DoH 使用固定引导地址并保持证书校验。
+- Surge 的远程访问保持关闭；本配置不开放控制端口。
+- AliDNS 与 DNSPod DoH 使用固定引导地址并开启证书校验；`encrypted-dns-follow-outbound-mode=false` 用于避免域名型代理节点的启动解析环。
+- 局域网流量先行放行，随后拒绝未经审阅的公网 53、853 和 8853；已审阅的大陆应用 DNS 可直连，境外应用 DNS 进入代理。
+- STUN 固定进入 `Proxy`，`udp-policy-not-supported-behaviour=REJECT`，避免不支持 UDP 的节点静默直连。
+- IPv4、IPv6 公网字面量在末尾进入 `Proxy`，唯一 `FINAL` 仍指向 `Final`。
+- Captive Portal 和 APNs 属于可用性例外，必须与一般业务代理规则分开评估。
 
-当前两个加密 DNS 会并发查询，而且 `encrypted-dns-follow-outbound-mode=false` 使 Surge 自身 DoH 直连。这避免域名型代理节点形成启动解析环，但不是全局匿名 DNS 方案；明确的本地解析仍可能被 AliDNS 与 DNSPod 看到。不要把这一设计描述为零泄漏或单一信任方。
+## 已知限制与真机验证
 
-末端 `GEOIP,CN,Domestic,no-resolve` 不为尚未命中的域名触发本地解析；这些域名落入默认 `Final/Proxy`，由代理侧解析。其后的公网 IPv4 与 IPv6 字面量在 `FINAL` 前统一走 `Proxy`。`Proxy` 默认选择 `AllServer`，`AllServer` 和五个地区组使用 Surge Smart；`NodePool` 仍提供可见手动选择和 `Fail-Closed`。`UDP`、`Security`、`AdBlock` 与 `Domestic` 只在界面隐藏，定义、默认值和规则引用保留；需要人工切换时先在私人副本中临时改为 `hidden=0`。用户仍需在真机上检查节点的 UDP、APNs、DNS 和双栈能力。
+静态审计不能证明订阅节点在线、节点没有 DNS 泄漏、运营商没有劫持，也不能看到未随仓库提供的模块改写。升级后至少在 Wi-Fi 和蜂窝各验证一次：国内 BiliBili 首页、搜索、视频与弹幕，ChatGPT 登录和对话，APNs 推送，IPv4/IPv6 出口，DNS 检测，以及 UDP 应用。出现异常时先停用外部模块，再查看 Surge 最近请求中首条命中规则和最终策略。
 
-Surge 可能在升级时按策略组名称保留旧选择。隐藏组之前应明确核对 `AdBlock=REJECT`、`Security=REJECT`、`UDP=Proxy` 与 `Domestic=DIRECT`，避免旧的 `DIRECT` 或调试选择在界面隐藏后继续生效。
+## 报告问题
 
-历史 Pegasus IOC 和动态钓鱼列表不能替代 iOS 更新、Lockdown Mode、账户保护或专业取证。报告中不要把 IOC 命中直接当作感染结论。
-
-## 发布安全
-
-打包器使用 65 文件严格白名单，拒绝未知路径、符号链接、特殊文件、BOM、CRLF、NUL 和缺失结尾换行。候选 ZIP 导入器还会检查路径穿越、大小上限、加密条目、CRC、大小写碰撞和 Unicode 归一化碰撞。
-
-GitHub Actions 手动安装要求包外取得的整包 SHA-256。工作流在复制文件前验证 ZIP、双份文件哈希、运行锁、来源锁、配置审计、规则审计、动态源在线格式和故障注入。快照标签还会解析到固定提交，避免标签被移动后继续安装。
+公开报告应包含版本、最小复现步骤、命中规则、策略名和已脱敏日志。不要附带订阅 URL、认证头、设备标识或完整节点信息。疑似凭据泄露应先撤销凭据，再通过仓库维护者提供的私密渠道联系。

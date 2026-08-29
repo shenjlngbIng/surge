@@ -1,6 +1,6 @@
 # NAME: Pegasus
 # FORMAT: Surge DOMAIN-SET
-# POLICY: Security
+# POLICY: REJECT
 # ENTRIES: 1438
 # PINNED SOURCE: AmnestyTech/investigations@3d8f248a0d015f183724ae7d096a5c46a8bb5fc7
 # SOURCE FILE: 2021-07-18_nso/domains.txt

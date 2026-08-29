@@ -11,7 +11,7 @@
       "services_compared": 18,
       "active_additions": 0,
       "active_deletions": 0,
-      "decision": "保留当前固定提交；其余 18 个服务文件经本地过滤后与最新上游活动规则完全一致。BiliBiliIntl 已按需求退役。"
+      "decision": "保留当前固定提交；18 个服务文件经本地过滤后与最新上游活动规则完全一致。ChatGPT 另补充 OpenAI 官方当前网络依赖；BiliBiliIntl 已按需求退役。"
     }
   },
   "merge": {
@@ -29,7 +29,7 @@
       {
         "kind": "DOMAIN-SET",
         "path": "Rules/China.list",
-        "policy": "Domestic",
+        "policy": "DIRECT",
         "active_entries": 306,
         "sha256": "41bcedfa2bd322cfc2da82359a5eb6ca27d7868bd74a11fa1e88d29658e1f6ec"
       },
@@ -89,9 +89,20 @@
       ],
       "add": [
         "DOMAIN,client-api.arkoselabs.com",
+        "DOMAIN,cdn.workos.com",
+        "DOMAIN,challenges.cloudflare.com",
+        "DOMAIN,forwarder.workos.com",
+        "DOMAIN,images.workoscdn.com",
         "DOMAIN,js.intercomcdn.com",
+        "DOMAIN,js.stripe.com",
+        "DOMAIN,o207216.ingest.sentry.io",
+        "DOMAIN,o33249.ingest.sentry.io",
         "DOMAIN,openaiapi-site.azureedge.net",
+        "DOMAIN,rum.browser-intake-datadoghq.com",
+        "DOMAIN,setup.workos.com",
+        "DOMAIN,workos.imgix.net",
         "DOMAIN-SUFFIX,chat.com",
+        "DOMAIN-SUFFIX,ct.sendgrid.net",
         "DOMAIN-SUFFIX,oaistatsig.com",
         "DOMAIN-SUFFIX,openaimerge.com",
         "DOMAIN-SUFFIX,sora.com",
@@ -122,11 +133,11 @@
       "add_source": {
         "type": "repository-maintained-curation",
         "baseline": "R12.17-20260825",
-        "provenance": "existing reviewed local snapshot; no unverified external URL asserted",
-        "license_status": "repository maintenance claim; historical third-party provenance requires owner review"
+        "provenance": "OpenAI Help Center current network recommendations reviewed 2026-08-29: https://help.openai.com/en/articles/9247338-network-recommendations-for-chatgpt-errors-on-web-and-apps; other retained additions follow the existing reviewed local snapshot",
+        "license_status": "official endpoint documentation plus repository-maintained historical curation; no third-party content is copied"
       },
-      "local_active_entries": 52,
-      "local_sha256": "5eb06508c5fc5d3efe02539270f59bd5c743df5b3bc34873beb917ae7e8590c5"
+      "local_active_entries": 63,
+      "local_sha256": "1fe18893a8b925e21d17ada29d6010c642ce93ece69b6f6926e26a815894a271"
     },
     {
       "ruleset": "RS_Claude",

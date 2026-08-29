@@ -1,5 +1,5 @@
 # 规则名称: ChatGPT
-# 规则统计: 52
+# 规则统计: 63
 # 固定上游: blackmatrix7/ios_rule_script@c00517ce10760a93728b241923a451dfa617be80
 # 上游文件: rule/Surge/OpenAI/OpenAI.list
 # 上游 SHA-256: 6f4047cdbf6953cf5d9b38c4ccd6da7bc6f1acb91b7a87134f25d5b8f5d2408b
@@ -8,20 +8,31 @@
 # 上游声明 REPO: https://github.com/blackmatrix7/ios_rule_script
 # 本地处理: 过滤不适用于 iOS 的规则、共享平台排除项和按服务禁用的宽泛类型；保留经过审核的本地补充。
 
+DOMAIN,cdn.workos.com
+DOMAIN,challenges.cloudflare.com
 DOMAIN,chat.openai.com.cdn.cloudflare.net
 DOMAIN,client-api.arkoselabs.com
+DOMAIN,forwarder.workos.com
+DOMAIN,images.workoscdn.com
 DOMAIN,js.intercomcdn.com
+DOMAIN,js.stripe.com
+DOMAIN,o207216.ingest.sentry.io
+DOMAIN,o33249.ingest.sentry.io
 DOMAIN,openai-api.arkoselabs.com
 DOMAIN,openaiapi-site.azureedge.net
 DOMAIN,openaicom-api-bdcpf8c6d2e9atf6.z01.azurefd.net
 DOMAIN,openaicomproductionae4b.blob.core.windows.net
 DOMAIN,production-openaicom-storage.azureedge.net
+DOMAIN,rum.browser-intake-datadoghq.com
+DOMAIN,setup.workos.com
+DOMAIN,workos.imgix.net
 DOMAIN-SUFFIX,ai.com
 DOMAIN-SUFFIX,api.statsig.com
 DOMAIN-SUFFIX,chat.com
 DOMAIN-SUFFIX,chatgpt.com
 DOMAIN-SUFFIX,chatgpt.livekit.cloud
 DOMAIN-SUFFIX,client-api.arkoselabs.com
+DOMAIN-SUFFIX,ct.sendgrid.net
 DOMAIN-SUFFIX,events.statsigapi.net
 DOMAIN-SUFFIX,featuregates.org
 DOMAIN-SUFFIX,host.livekit.cloud

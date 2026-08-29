@@ -1,5 +1,18 @@
 # 更新日志
 
+## 2026-08-29 R13.5 全盘分流与严格失败关闭
+
+- 逐项复核国内外软件、策略组、首条命中、DNS、UDP、APNs、双栈兜底、远程资源和发布链；当前基线为 29 个策略组、142 条活动规则、29 个固定资源、1 个动态国内资源和 29 份本地规则文件。
+- 根据 Surge 官方的替代行为说明删除 `AllServer` Smart；`NodePool` 与五个地区入口改为手动 `select`，首项为内建 `reject` 的别名 `Fail-Closed`，避免无可用节点时自动组静默回落 `DIRECT`。
+- 删除 `AdBlock`、`Security`、`UDP`、`Domestic` 等可继承旧选择的隐藏状态组。Pegasus 与 Ads 固定 `REJECT`，STUN 固定 `Proxy`，国内规则固定 `DIRECT`。
+- 国内 BiliBili 集合由 12 个补全为 16 个精确后缀并保持直连；增加 BiliBili HTTPDNS/H5 功能护栏。国际版专用文件与策略维持删除，七条历史域名只走通用 `Proxy` 防串线。
+- 为 Spotify 音视频与电视、Google `gvt2` 更新和 OpenAI RUM 增加 Ads 前置功能护栏；ChatGPT 列表根据 OpenAI 官方网络建议补充 11 个运行依赖。
+- 从 iOS 运行配置删除动态 `reject.conf` 和 `reject_phishing.conf`，避免十万级列表的移动端资源压力和已确认误杀；保留 152 条固定审阅 Ads 与 1,438 条固定 Pegasus 域名。
+- 除 Ads 外的固定资源和动态国内补充启用 `extended-matching`，让规则可按 SNI/Host 匹配，降低 DNS 路径差异导致的漏分流。
+- 29 份固定运行规则统一钉住完整提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1`；运行锁升级为 schema 19，并新增在线固定副本逐文件哈希校验。
+- 故障注入重写为 82 项，覆盖自动组回归、隐藏状态组回归、BiliBili/功能护栏、动态大表、地区限制、规则顺序、DNS、UDP、双栈与供应链退化。
+- 完整包更新为 `Surge-R13.5-Complete-No-Embedded-20260829.zip`，README、迁移、安全、贡献、审计、工作流、发布清单与双份哈希同步更新。
+
 ## 2026-08-29 R13.4 全量软件分流复核
 
 - 移除 `BiliBiliIntl.list`、运行引用与来源锁条目；七个历史国际域名只以前置通用 `Proxy` 护栏避免误入国内父后缀或旧 `ProxyMedia` 快照，不再进入 `Streaming`。

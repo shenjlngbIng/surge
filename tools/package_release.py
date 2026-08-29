@@ -3,7 +3,7 @@
 
 The package contains the complete repository layout, including ``Rules/`` as
 separate files and ``.github/`` workflows. The profile is checked for the exact
-29 immutable resources, three reviewed dynamic supplements and the absence of
+29 immutable resources, one reviewed dynamic supplement and the absence of
 embedded rule snapshots before the ZIP is written.
 """
 
@@ -20,7 +20,7 @@ from release_inventory import validate_release_tree
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.4-Complete-No-Embedded-20260828.zip"
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.5-Complete-No-Embedded-20260829.zip"
 
 
 def active_rule_lines(text: str) -> list[str]:
@@ -43,14 +43,13 @@ def validate_profile_sources() -> None:
     if external != expected:
         raise ValueError("Surge.conf external rule inventory is incomplete or unexpected")
 
-    embedded = [
-        rule for rule in active
-        if rule.endswith((",Security", ",AdBlock"))
-        and not rule.startswith(("RULE-SET,", "DOMAIN-SET,"))
-    ]
-    if embedded:
-        raise ValueError("Surge.conf contains embedded Security or AdBlock rule content")
-    if len(active) != 137 or active[-1] != "FINAL,Final,dns-failed":
+    forbidden_mobile_sources = (
+        "ruleset.skk.moe/List/domainset/reject.conf",
+        "ruleset.skk.moe/List/domainset/reject_phishing.conf",
+    )
+    if any(source in profile for source in forbidden_mobile_sources):
+        raise ValueError("Surge.conf contains a forbidden mobile reject source")
+    if len(active) != 142 or active[-1] != "FINAL,Final,dns-failed":
         raise ValueError("Surge.conf reviewed rule count or FINAL invariant changed")
     if any(marker in profile for marker in ("raw.githubusercontent.com", "@main/Rules/")):
         raise ValueError("Surge.conf contains a mutable or unreviewed runtime rule URL")
