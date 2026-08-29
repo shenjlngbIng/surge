@@ -1,10 +1,10 @@
 # Surge R13.4 Strict DNS 全量审计报告
 
-审计日期：2026-08-28
+审计日期：2026-08-29
 
 ## 结论
 
-R13.4 的静态结构、策略引用、循环依赖、规则顺序、R13.3 保留性、本地规则库存、来源锁、动态端点格式、故障注入、发布白名单、ZIP 路径安全、清单和双份 SHA-256 检查通过。
+R13.4 的静态结构、策略引用、循环依赖、规则顺序、R13.3 保留性、本地规则库存、来源锁、动态端点格式、故障注入、发布白名单、ZIP 路径安全、清单和双份 SHA-256 检查通过。2026-08-29 热修复已将国内 `BiliBili.list` 固定为 `DIRECT`，国际版优先级与策略保持不变。
 
 本版解决的是代理域名在末端 CN GeoIP 处被强制交给本地 DoH 的问题。它没有通过给检测网站增加特例来伪装结果，也没有删除策略组、规则、规则文件或订阅入口。节点服务端 DNS、运营商路径、APNs、UDP 和 iOS 后台行为仍需 Surge iOS 真机验证。
 
@@ -22,12 +22,13 @@ R13.4 的静态结构、策略引用、循环依赖、规则顺序、R13.3 保�
 | `Fail-Closed` | `127.0.0.1:1` | 相同 | 保留 |
 | APNs、AI、流媒体、游戏等服务组 | 存在 | 存在 | 保留 |
 
-主配置只有五项功能行为变化。
+当前主配置相对 R13.3 的功能行为变化如下。
 
 - `GEOIP,CN,Domestic` 改为 `GEOIP,CN,Domestic,no-resolve`。
 - `AdBlock`、`Security`、`UDP` 和 `Domestic` 的 `hidden=0` 改为 `hidden=1`。
+- 国内 `BiliBili.list` 从 `Domestic` 改为内建 `DIRECT`，避免沿用隐藏组的历史 `Proxy` 选择。
 
-四个隐藏组的类型、成员顺序、默认选择和规则引用保持不变。隐藏只影响策略控制面板显示，不改变规则执行。
+四个隐藏组的类型、成员顺序和默认选择保持不变。除国内 BiliBili 专用规则固定直连外，其他既有引用保持不变；隐藏只影响策略控制面板显示，不改变规则执行。
 
 ## 配置结构
 
@@ -48,7 +49,7 @@ R13.4 的静态结构、策略引用、循环依赖、规则顺序、R13.3 保�
 | 订阅占位符 | 恰好 1 处 |
 | 主配置内嵌规则快照 | 0 |
 
-`Surge.conf` 为 UTF-8、LF、无 BOM、无 NUL，并以换行结束。主配置 SHA-256 为 `ddca552fcce4b4d04f2b8f254fefd152423d042200d8b0bec93215effb64069b`。
+`Surge.conf` 为 UTF-8、LF、无 BOM、无 NUL，并以换行结束。主配置 SHA-256 为 `889501d0b0b465bc4a63239ab6068510476b27046c7c8532f4cbcaf3152ffd92`。
 
 ## 严格 DNS 修正
 
@@ -74,9 +75,13 @@ R13.3 的国内性能修正仍保留。16 个已审阅大陆应用 DNS 主机完
 | `AdBlock` | `REJECT` | 隐藏 | 固定 Ads 与动态 reject 保留 |
 | `Security` | `REJECT` | 隐藏 | 动态钓鱼与固定 Pegasus 保留 |
 | `UDP` | `Proxy` | 隐藏 | STUN 与 UDP 策略保留 |
-| `Domestic` | `DIRECT` | 隐藏 | 国内规则、共享云、China 与已解析 CN IP 保留 |
+| `Domestic` | `DIRECT` | 隐藏 | 除 BiliBili 专用直连外的国内规则、共享云、China 与已解析 CN IP 保留 |
 
 审计器要求这五个组精确为 `hidden=1`。`Final`、`Proxy`、`NodePool`、Smart 地区组和服务组保持可见。需要人工覆盖辅助组时，只在私人副本中临时改为 `hidden=0`。
+
+## BiliBili 国内版热修复
+
+`BiliBiliIntl.list → Streaming` 继续位于 `BiliBili.list → DIRECT` 之前，国际版精确主机和后缀不会被国内规则覆盖。国内规则文件、12 条活动内容、固定提交 URL 和 `no-resolve` 均未改变；只改变最终策略，消除隐藏 `Domestic` 组历史选择对国内版首屏、图片和视频 CDN 的影响。
 
 ## 规则来源
 
@@ -102,7 +107,7 @@ https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e
 
 | 测试 | 结果 |
 | --- | ---: |
-| 配置故障注入 | 116/116 被拒绝 |
+| 配置故障注入 | 117/117 被拒绝 |
 | ZIP 安全回归 | 28/28 通过 |
 | 发布清单回归 | 15/15 通过 |
 | Python 编译 | 15/15 工具通过 |
@@ -115,7 +120,7 @@ https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@d1d714d575d5494ef1a7613238f4f301e
 | 双份 SHA-256 | 一致并全部校验通过 |
 | 确定性打包 | 相同输入两次 ZIP 字节一致 |
 
-运行锁升级为 schema 18，记录严格 CN GeoIP、未命中域名 `Final/Proxy` 兜底、代理侧解析意图和隐藏辅助组。故障注入会拒绝 CN GeoIP 去掉 `no-resolve`、四个辅助组重新显示、DNS 规则块错位、策略回退、远程源变化和失败关闭退化。
+运行锁保持 schema 18，并记录严格 CN GeoIP、未命中域名 `Final/Proxy` 兜底、代理侧解析意图、隐藏辅助组以及国内 BiliBili 绕过隐藏策略选择。故障注入会拒绝 BiliBili 国内规则恢复到 `Domestic` 或改走 `Streaming`，也会拒绝 CN GeoIP 去掉 `no-resolve`、四个辅助组重新显示、DNS 规则块错位、远程源变化和失败关闭退化。
 
 ## 剩余风险与真机项目
 

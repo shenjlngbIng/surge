@@ -1,5 +1,12 @@
 # 更新日志
 
+## 2026-08-29 R13.4 BiliBili 国内版直连热修复
+
+- 将固定 `BiliBili.list` 的策略从隐藏的 `Domestic` 改为内建 `DIRECT`，避免 Surge 按同名策略组沿用旧的 `Proxy` 选择后，把国内 API、图片和视频 CDN 送往海外节点。
+- 保持 `BiliBiliIntl.list → Streaming` 位于国内规则之前；`apiintl.biliapi.net`、`bilibili.tv`、`biliintl.com` 和国际版 CDN 的分流不变，不会被国内直连覆盖。
+- 没有增加宽泛 `DOMAIN-KEYWORD`、进程名或 User-Agent 规则，也没有改变 DNS、QUIC、节点、订阅、规则文件内容、远程 URL、策略组数量和活动规则数量。
+- 运行锁新增“国内 BiliBili 绕过隐藏策略选择”不变量，配置故障注入增至 117 项；README、迁移说明、审计报告、清单和双份哈希同步更新。
+
 ## 2026-08-28 R13.4 Strict DNS 严格解析边界与界面精简
 
 - 以 R13.3 为基线保留全部 34 个策略组、130 个规则匹配条件、33 个远程运行资源、30 份本地规则文件和唯一订阅入口，没有删除原功能。
