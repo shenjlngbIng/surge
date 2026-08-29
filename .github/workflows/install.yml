@@ -1,4 +1,4 @@
-name: Install and audit Surge R13.4
+name: Install and audit Surge R13.5
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       archive_sha256:
-        description: "Out-of-band SHA-256 of Surge-R13.4-Complete-No-Embedded-20260828.zip"
+        description: "Out-of-band SHA-256 of Surge-R13.5-Complete-No-Embedded-20260829.zip"
         required: true
         type: string
 
@@ -16,8 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RULE_SNAPSHOT_TAG: r12.17-20260825
-  RULE_SNAPSHOT_COMMIT: d1d714d575d5494ef1a7613238f4f301e1b293df
+  RULE_SNAPSHOT_COMMIT: 2b8fa93901061cf0482b079203630bcd11bfe0b1
 
 jobs:
   install:
@@ -36,7 +35,7 @@ jobs:
           EXPECTED_ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
         run: |
           set -euo pipefail
-          archive="Surge-R13.4-Complete-No-Embedded-20260828.zip"
+          archive="Surge-R13.5-Complete-No-Embedded-20260829.zip"
           if [[ ! "${EXPECTED_ARCHIVE_SHA256}" =~ ^[0-9A-Fa-f]{64}$ ]]; then
             echo "::error::archive_sha256 must be exactly 64 hexadecimal characters"
             exit 1
@@ -52,10 +51,10 @@ jobs:
           import stat
           import zipfile
 
-          archive = Path("Surge-R13.4-Complete-No-Embedded-20260828.zip")
+          archive = Path("Surge-R13.5-Complete-No-Embedded-20260829.zip")
           stage = Path(".surge-install")
           if not archive.is_file():
-              raise SystemExit("Surge-R13.4-Complete-No-Embedded-20260828.zip was not found in the repository root")
+              raise SystemExit("Surge-R13.5-Complete-No-Embedded-20260829.zip was not found in the repository root")
           if stage.exists():
               shutil.rmtree(stage)
           stage.mkdir()
@@ -146,6 +145,7 @@ jobs:
             python3 tools/audit_config.py
             python3 tools/audit_rules.py
             python3 tools/audit_rules.py --check-dynamic
+            python3 tools/audit_rules.py --check-runtime-remote
             python3 tools/audit_precise_domains.py
             python3 tools/test_audit_config.py
             python3 tools/test_release_inventory.py
@@ -169,27 +169,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          refs="$(git ls-remote --tags origin "refs/tags/${RULE_SNAPSHOT_TAG}" "refs/tags/${RULE_SNAPSHOT_TAG}^{}")"
-          direct="$(awk -v ref="refs/tags/${RULE_SNAPSHOT_TAG}" '$2 == ref {print $1; exit}' <<<"${refs}")"
-          peeled="$(awk -v ref="refs/tags/${RULE_SNAPSHOT_TAG}^{}" '$2 == ref {print $1; exit}' <<<"${refs}")"
-          resolved="${peeled:-${direct}}"
-          if [[ -z "${resolved}" ]]; then
-            echo "::error::${RULE_SNAPSHOT_TAG} does not exist"
+          git cat-file -e "${RULE_SNAPSHOT_COMMIT}^{commit}" || {
+            echo "::error::immutable rule snapshot commit is missing from repository history"
             exit 1
-          fi
-          if [[ "${resolved}" != "${RULE_SNAPSHOT_COMMIT}" ]]; then
-            echo "::error::${RULE_SNAPSHOT_TAG} no longer points to the audited rule snapshot"
-            exit 1
-          fi
+          }
 
       - name: Commit installed files
         shell: bash
         run: |
-          rm -f Surge-R13.4-Complete-No-Embedded-20260828.zip
+          rm -f Surge-R13.5-Complete-No-Embedded-20260829.zip
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.4 Strict DNS"
+          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.5 Strict Fail-Closed"
           git push origin HEAD:main
 
   audit:
@@ -244,6 +236,10 @@ jobs:
       - name: Audit dynamic runtime sources
         if: steps.release.outputs.ready == 'true' && matrix.python-version == '3.12'
         run: python tools/audit_rules.py --check-dynamic
+
+      - name: Verify immutable CDN copies
+        if: steps.release.outputs.ready == 'true' && matrix.python-version == '3.12'
+        run: python tools/audit_rules.py --check-runtime-remote
 
       - name: Verify pinned third-party maintenance resources
         if: steps.release.outputs.ready == 'true'
