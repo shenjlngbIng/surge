@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "scope": "repository-maintained runtime lists outside the 19 pinned service snapshots and Pegasus resource lock",
+  "scope": "repository-maintained runtime lists outside the 18 pinned service snapshots and Pegasus resource lock",
   "policy": {
     "automatic_refresh": "forbidden unless a fixed source and reviewed diff are recorded",
     "unknown_provenance": "disclosed rather than attributed to an unverified project",
@@ -52,12 +52,12 @@
     {
       "file": "BiliBili.list",
       "active_entries": 12,
-      "sha256": "de1171b012a98e50fd7a85cbf477848a39bed83460d63ab3afc0315034e65f85",
+      "sha256": "650db8415c4a66b405f07ce32948d46628d7659cbef4b2c3996ed078615b0f04",
       "maintenance": "repository-maintained-reviewed-set",
       "sources": [],
       "license_status": "repository maintenance claim",
-      "notes": "Twelve explicit domestic Bilibili suffixes; exact set is enforced by audit_rules.py.",
-      "last_review": "2026-08-25"
+      "notes": "Twelve explicit domestic Bilibili suffixes; exact set is enforced by audit_rules.py. International hosts are excluded and handled only by generic Proxy compatibility guards.",
+      "last_review": "2026-08-29"
     },
     {
       "file": "China.list",
@@ -91,13 +91,13 @@
     },
     {
       "file": "ProxyMedia.list",
-      "active_entries": 319,
-      "sha256": "eab4bdf753b5566d1da22c9336d5bce0cb399838485e41cf3e5e1d8f07ebca03",
+      "active_entries": 315,
+      "sha256": "4a0455289756769f85c7ada0d31a86aead633dc25c94eba5e9ca14eae0396856",
       "maintenance": "repository-maintained-curation",
       "sources": [],
       "license_status": "repository maintenance claim; historical third-party provenance unresolved",
-      "notes": "Shared domestic media exceptions are explicitly removed by audit_rules.py.",
-      "last_review": "2026-08-25"
+      "notes": "Shared domestic media exceptions and retired BiliBili international rows are explicitly removed by audit_rules.py.",
+      "last_review": "2026-08-29"
     },
     {
       "file": "Telegram.list",

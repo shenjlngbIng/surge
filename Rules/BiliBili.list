@@ -2,7 +2,7 @@
 # 规则统计: 12
 # 维护方式: 仓库审阅
 # 分流策略: DIRECT
-# 用途说明: 国内版 API、页面、图片与视频 CDN；国际版由 BiliBiliIntl.list 提前接管。
+# 用途说明: 国内版 API、页面、图片与视频 CDN；国际域名由主配置的通用 Proxy 兼容护栏接管。
 
 DOMAIN-SUFFIX,acgvideo.com
 DOMAIN-SUFFIX,b23.tv
