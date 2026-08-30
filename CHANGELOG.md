@@ -1,5 +1,17 @@
 # 更新日志
 
+## 2026-08-30 R13.7 Smart 真实流量选路
+
+- 将可见的 `Auto = url-test` 升级并重命名为可见的 `Smart = smart`。它只从 `NodePool` 递归导入真实代理，并用精确过滤排除 `Fail-Closed`。
+- `Proxy` 首项改为 `Smart`，第二项继续保留手动 `NodePool`。用户只需在升级后确认一次当前选择，日常流量随后由 Smart 自动处理。
+- 香港、台湾、日本、新加坡、美国五个地区入口全部改为可见 Smart，沿用完整审计过的地区名称正则和临时手动覆盖能力。
+- Smart 根据真实首包时间、TCP 重传、失败记录、测速与站点记忆选路并尝试其他候选；iOS 5.21.0 及以上还可评估 UDP 响应和静默中继失败。
+- 删除对 Smart 无效的 `interval=600` 和 `tolerance=100`。六个 Smart 组保留 `evaluate-before-use=true`；运行锁记录 Surge 固定五分钟测试调度。
+- Smart 中不显式加入 `DIRECT`、`REJECT` 或 `Fail-Closed`。严格拒绝能力仍只由独立的手动 `NodePool → Fail-Closed` 提供；自动空组的 `DIRECT/SUBSTITUTE` 风险继续明确披露。
+- `Auto`、`AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 保持删除。DNS、Telegram、ApplePush、BiliBili、Ads/Pegasus、STUN、UDP/QUIC、双栈兜底、29 份规则文件和 30 个运行资源均未改变。
+- 策略组和活动规则维持 30 / 142。运行锁升级到 schema 21，Smart 参数、导入来源、可见状态和 102 项故障注入均被审计锁定。
+- 完整包更新为 `Surge-R13.7-Complete-No-Embedded-20260830.zip`，README、迁移、安全、贡献、审计、工作流、发布清单与双份哈希同步更新。
+
 ## 2026-08-30 R13.6 混合自动节点优化
 
 - 新增可见的 `Auto = url-test` 日常入口。它只从 `NodePool` 导入真实订阅节点，并用精确过滤排除 `Fail-Closed`。
