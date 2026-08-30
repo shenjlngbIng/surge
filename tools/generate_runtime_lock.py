@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.6 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.7 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.6 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.7 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,7 +83,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 20,
+    "schema": 21,
     "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -105,29 +105,32 @@ lock = {
         "local_rule_file_count": 29,
         "embedded_rule_contents": 0,
         "hidden_function_groups": ["ApplePush"],
-        "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer"],
-        "visible_control_groups": ["Final", "Proxy", "Auto", "NodePool"],
+        "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer", "Auto"],
+        "visible_control_groups": ["Final", "Proxy", "Smart", "NodePool"],
         "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
         "loglevel": "notify",
         "fail_closed_alias": "reject",
         "policy_architecture": {
             "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
-            "auto": {
-                "mode": "url-test", "hidden": False, "source": "NodePool",
-                "excluded_policy": "Fail-Closed", "interval": 600,
-                "tolerance": 100, "evaluate_before_use": True,
+            "smart": {
+                "mode": "smart", "hidden": False, "source": "NodePool",
+                "excluded_policy": "Fail-Closed", "evaluate_before_use": True,
+                "fixed_test_schedule_seconds": 300,
+                "uses_real_connection_quality": True, "per_site_memory": True,
             },
             "node_pool": {
                 "mode": "select", "hidden": False, "source": "policy-path",
                 "first_member": "Fail-Closed", "automatic_fallback": False,
             },
             "proxy": {
-                "mode": "select", "default": "Auto",
+                "mode": "select", "default": "Smart",
                 "manual_fail_closed_entry": "NodePool",
             },
             "regions": {
-                "mode": "url-test", "source": "NodePool", "interval": 600,
-                "tolerance": 100, "evaluate_before_use": True,
+                "mode": "smart", "source": "NodePool",
+                "fixed_test_schedule_seconds": 300,
+                "uses_real_connection_quality": True,
+                "evaluate_before_use": True,
                 "empty_group_behavior": "DIRECT/SUBSTITUTE", "names": REGIONS,
             },
             "restricted_services": {
