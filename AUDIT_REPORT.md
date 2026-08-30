@@ -1,4 +1,4 @@
-# R13.6 全盘分流审计报告
+# R13.7 全盘分流审计报告
 
 审计日期为 2026-08-30。
 
@@ -15,7 +15,7 @@
 | 严重度 | 发现 | 修复 |
 | --- | --- | --- |
 | 高 | 自动组无可用成员时可能 `DIRECT/SUBSTITUTE` | 明示风险，保留手动 `NodePool → Fail-Closed` 入口，不再声称全局严格失败关闭 |
-| 中 | 全手动节点和地区选择增加日常维护负担 | 新增 `Auto`，五个地区组改用 `url-test`，统一使用 600 秒结果有效期、100 毫秒容差和首次使用前评估 |
+| 中 | `url-test` 只反映固定测速地址，可能出现测速快但真实访问质量差 | 总入口和五个地区组升级为 Smart，综合真实首包、重传、失败重试、测速与站点记忆 |
 | 高 | `AdBlock`、`Security`、`UDP`、`Domestic` 会继承旧选择，实际行为可能偏离文档默认 | 删除四个状态组，规则固定为 `REJECT`、`Proxy` 或 `DIRECT` |
 | 高 | 十万级动态广告/钓鱼表不适合 iOS，并已误杀功能域名 | 删除两份移动端动态表，保留 152 条固定 Ads 与固定 Pegasus |
 | 高 | 国内 BiliBili 固定集合缺四个后缀，HTTPDNS/H5 与广告表重叠 | 补为 16 后缀，增加两条 Ads 前置直连护栏并启用扩展匹配 |
@@ -28,19 +28,19 @@
 
 ## 策略组审计
 
-Surge 官方文档说明，自动组没有可用策略时会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。Smart 还会忽略内建策略和嵌套组。R13.6 使用可审计的 `url-test` 做日常选优，同时保留独立的手动安全入口。
+Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.7 因此只让 Smart 导入 `NodePool` 中的真实代理，并保留独立的手动安全入口。
 
-R13.6 采用以下边界。
+R13.7 采用以下边界。
 
 - `[Proxy] Fail-Closed = reject` 使用内建策略别名，不再伪造本地端口失败节点。
 - `NodePool` 是手动 `select`，首项 `Fail-Closed`，其余成员由私人 `policy-path` 提供。
-- `Auto` 是 `url-test`，只导入 `NodePool` 的真实订阅节点，并用精确过滤排除 `Fail-Closed`。
-- 香港、台湾、日本、新加坡、美国均为 `url-test`，只导入名称匹配的 `NodePool` 节点。
-- 六个自动组统一锁定 `interval=600`、`tolerance=100`、`evaluate-before-use=true` 和可见状态。
-- `Proxy` 首项为 `Auto`，第二项保留手动 `NodePool`，之后是五个地区入口。
+- `Smart` 只导入 `NodePool` 的真实订阅代理，并用精确过滤排除 `Fail-Closed`。
+- 香港、台湾、日本、新加坡、美国均为 Smart，只导入名称匹配的 `NodePool` 节点。
+- 六个 Smart 组统一锁定 `evaluate-before-use=true` 和可见状态；不写对 Smart 无效的 `interval` 或 `tolerance`。Surge 自身按固定五分钟周期安排测试。
+- `Proxy` 首项为 `Smart`，第二项保留手动 `NodePool`，之后是五个地区入口。
 - `ApplePush` 保留 `Proxy → DIRECT` fallback，这是通知可达性的明确例外。
-- 配置没有 Smart 或 load-balance 节点组，没有策略引用循环或未知成员。
-- `Auto` 或地区组为空时仍可能发生 `DIRECT/SUBSTITUTE`。需要严格失败关闭时，用户应选择 `Proxy → NodePool`，再在 `NodePool` 选择 `Fail-Closed` 或已知节点。
+- 配置没有 `url-test` 或 load-balance 节点组，没有策略引用循环、未知成员或 Smart 中的显式内建成员。
+- `Smart` 或地区组为空时仍可能发生 `DIRECT/SUBSTITUTE`。需要严格失败关闭时，用户应选择 `Proxy → NodePool`，再在 `NodePool` 选择 `Fail-Closed` 或已知节点。
 
 ## 软件与地区审计
 
