@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.5 configuration auditor."""
+"""Fault-injection regression tests for the R13.6 configuration auditor."""
 
 from __future__ import annotations
 
@@ -23,17 +23,30 @@ def replace_once(name: str, old: str, new: str) -> None:
     MUTATIONS.append((name, SOURCE.replace(old, new, 1)))
 
 
-# Header, snapshot and public-source boundary (1-8).
-replace_once("version", "R13.5 Strict Fail-Closed", "R13.4 Strict DNS")
-replace_once("date", "# > Update Date: 2026.08.29", "# > Update Date: 2026.08.28")
-replace_once("header_claim", "Manual proxy and region groups prevent", "Automatic groups allegedly prevent")
+def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
+    lines = SOURCE.splitlines(keepends=True)
+    indexes = [index for index, line in enumerate(lines) if line.startswith(f"{group} = ")]
+    if len(indexes) != 1:
+        raise RuntimeError(f"group mutation anchor {group!r} is missing or duplicated")
+    index = indexes[0]
+    if lines[index].count(old) != 1:
+        raise RuntimeError(f"group mutation fragment {name!r} is missing or duplicated")
+    lines[index] = lines[index].replace(old, new, 1)
+    MUTATIONS.append((name, "".join(lines)))
+
+
+# Header, snapshot and public-source boundary (1-9).
+replace_once("version", "R13.6 Hybrid Auto", "R13.5 Strict Fail-Closed")
+replace_once("date", "# > Update Date: 2026.08.30", "# > Update Date: 2026.08.29")
+replace_once("header_claim", "Auto and region url-test groups optimize", "Manual groups allegedly optimize")
+replace_once("auto_risk_warning", "# > Automatic groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Auto.\n", "")
 replace_once("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4")
 replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
 replace_once("subscription_placeholder", "https://example.invalid/REPLACE_WITH_SUB_STORE_URL", "https://example.com/private-subscription")
 replace_once("mutable_main", "# Repository-hosted remote rule sets\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Ads.list,REJECT,no-resolve\n# Repository-hosted remote rule sets\n")
 replace_once("mobile_dynamic_ads", "# Artificial intelligence\n", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n# Artificial intelligence\n")
 
-# General and access invariants (9-31).
+# General and access invariants (10-32).
 replace_once("loglevel", "loglevel = notify", "loglevel = debug")
 replace_once("auto_suspend", "auto-suspend = true", "auto-suspend = false")
 replace_once("ipv6", "ipv6 = true", "ipv6 = false")
@@ -58,25 +71,41 @@ replace_once("udp_unsupported", "udp-policy-not-supported-behaviour = REJECT", "
 replace_once("quic", "block-quic = per-policy", "block-quic = off")
 replace_once("udp_probe", "proxy-test-udp = apple.com@9.9.9.9", "proxy-test-udp = apple.com@8.8.8.8")
 
-# Host, built-in alias and group architecture (32-60).
+# Host, built-in alias and group architecture (33-80).
 replace_once("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1")
 replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1", "dns.alidns.com = 8.8.8.8")
 replace_once("dnspod_bootstrap", "doh.pub = 1.12.12.12, 120.53.53.53", "doh.pub = 8.8.4.4")
 replace_once("fail_closed_proxy", "Fail-Closed = reject", "Fail-Closed = direct")
 replace_once("extra_proxy", "Fail-Closed = reject\n\n[Proxy Group]", "Fail-Closed = reject\nUnexpected = direct\n\n[Proxy Group]")
 replace_once("final_members", "Final = select, Proxy, REJECT,", "Final = select, DIRECT, Proxy,")
-replace_once("proxy_default", "Proxy = select, NodePool, HongKong", "Proxy = select, HongKong, NodePool")
+replace_once("proxy_default", "Proxy = select, Auto, NodePool, HongKong", "Proxy = select, NodePool, Auto, HongKong")
 replace_once("allserver_returned", "# Services\n", "AllServer = smart, Fail-Closed, include-other-group=NodePool\n# Services\n")
 replace_once("applepush_direct_first", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy")
 replace_once("applepush_visible", "hidden=1\n# Services", "hidden=0\n# Services")
+replace_group_fragment("auto_smart", "Auto", "url-test", "smart")
+replace_group_fragment("auto_filter", "Auto", "policy-regex-filter=^(?!Fail-Closed$).+", "policy-regex-filter=.+")
+replace_group_fragment("auto_interval", "Auto", "interval=600", "interval=900")
+replace_group_fragment("auto_tolerance", "Auto", "tolerance=100", "tolerance=0")
+replace_group_fragment("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false")
+replace_group_fragment("auto_alerts_disabled", "Auto", "no-alert=0", "no-alert=1")
+replace_group_fragment("auto_hidden", "Auto", "hidden=0", "hidden=1")
+replace_group_fragment("auto_include_all", "Auto", "include-all-proxies=0", "include-all-proxies=1")
+replace_group_fragment("auto_source", "Auto", "include-other-group=NodePool", "include-other-group=HongKong")
+replace_group_fragment("auto_explicit_fail_closed", "Auto", "url-test,", "url-test, Fail-Closed,")
 replace_once("nodepool_automatic", "NodePool = select, Fail-Closed", "NodePool = url-test, Fail-Closed")
 replace_once("nodepool_no_fail", "NodePool = select, Fail-Closed, policy-path", "NodePool = select, policy-path")
 replace_once("nodepool_hidden", "update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0\n\n# Regions", "update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0\n\n# Regions")
-replace_once("hongkong_smart", "HongKong = select, Fail-Closed", "HongKong = smart, Fail-Closed")
-replace_once("taiwan_no_fail", "TaiWan = select, Fail-Closed,", "TaiWan = select,")
-replace_once("japan_source", "Japan = select, Fail-Closed,", "Japan = select, Fail-Closed, NodePool,")
-replace_once("singapore_filter", "Singapore = select, Fail-Closed, policy-regex-filter=", "Singapore = select, Fail-Closed, removed-filter=")
-replace_once("america_hidden", "America = select, Fail-Closed,", "America = select, Fail-Closed, hidden=1,")
+replace_group_fragment("nodepool_update_interval", "NodePool", "update-interval=3600", "update-interval=7200")
+replace_group_fragment("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1")
+replace_group_fragment("hongkong_smart", "HongKong", "url-test", "smart")
+replace_group_fragment("hongkong_interval", "HongKong", "interval=600", "interval=900")
+replace_group_fragment("taiwan_select", "TaiWan", "url-test", "select")
+replace_group_fragment("taiwan_tolerance", "TaiWan", "tolerance=100", "tolerance=0")
+replace_group_fragment("japan_explicit_member", "Japan", "url-test,", "url-test, NodePool,")
+replace_group_fragment("singapore_filter", "Singapore", "policy-regex-filter=", "removed-filter=")
+replace_group_fragment("america_hidden", "America", "hidden=0", "hidden=1")
+replace_group_fragment("america_no_evaluate", "America", "evaluate-before-use=true", "evaluate-before-use=false")
+replace_group_fragment("america_filter_case", "America", "policy-regex-filter=(?i).*", "policy-regex-filter=.*")
 replace_once("chatgpt_proxy", "ChatGPT = select, Japan, Singapore, TaiWan, America,", "ChatGPT = select, Japan, Singapore, TaiWan, America, Proxy,")
 replace_once("claude_hongkong", "Claude = select, Japan, Singapore, TaiWan, America,", "Claude = select, Japan, Singapore, TaiWan, America, HongKong,")
 replace_once("gemini_hongkong", "Gemini = select, Japan, Singapore, TaiWan, America,", "Gemini = select, HongKong, Japan, Singapore, TaiWan, America,")
@@ -84,12 +113,15 @@ replace_once("tiktok_hongkong", "TikTok = select, Japan, Singapore, TaiWan, Amer
 replace_once("bahamut_japan", "Bahamut = select, TaiWan, HongKong,", "Bahamut = select, TaiWan, HongKong, Japan,")
 replace_once("apple_proxy_default", "Apple = select, DIRECT, Proxy,", "Apple = select, Proxy, DIRECT,")
 replace_once("github_allserver", "GitHub = select, Proxy, HongKong, Japan, Singapore, America,", "GitHub = select, Proxy, HongKong, Japan, Singapore, America, AllServer,")
+replace_group_fragment("telegram_hidden", "Telegram", "hidden=0", "hidden=1")
 replace_once("domestic_group_returned", "# Services\n", "Domestic = select, DIRECT, Proxy\n# Services\n")
 replace_once("adblock_group_returned", "# Services\n", "AdBlock = select, REJECT, DIRECT\n# Services\n")
+replace_once("security_group_returned", "# Services\n", "Security = select, REJECT, DIRECT\n# Services\n")
+replace_once("udp_group_returned", "# Services\n", "UDP = select, Proxy, REJECT, DIRECT\n# Services\n")
 replace_once("unknown_member", "Games = select, Proxy, HongKong", "Games = select, UnknownPolicy, Proxy, HongKong")
-replace_once("policy_cycle", "Proxy = select, NodePool, HongKong", "Proxy = select, Final, NodePool, HongKong")
+replace_once("policy_cycle", "Proxy = select, Auto, NodePool, HongKong", "Proxy = select, Final, Auto, NodePool, HongKong")
 
-# Rule order, fixed policies and mobile source boundary (61-82).
+# Rule order, fixed policies and mobile source boundary (81-102).
 replace_once("final_deleted", "FINAL,Final,dns-failed\n", "")
 replace_once("final_duplicated", "FINAL,Final,dns-failed\n", "FINAL,Final,dns-failed\nFINAL,Final,dns-failed\n")
 replace_once("stun_direct", "PROTOCOL,STUN,Proxy", "PROTOCOL,STUN,DIRECT")
@@ -113,8 +145,8 @@ replace_once("china_policy", "/Rules/China.list,DIRECT,extended-matching", "/Rul
 replace_once("geoip_policy", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Domestic,no-resolve")
 replace_once("ipv6_direct", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 
-if len(MUTATIONS) != 82:
-    raise RuntimeError(f"expected 82 mutations, built {len(MUTATIONS)}")
+if len(MUTATIONS) != 102:
+    raise RuntimeError(f"expected 102 mutations, built {len(MUTATIONS)}")
 
 environment = dict(os.environ)
 environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -135,4 +167,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.5 mutations={len(MUTATIONS)}")
+print(f"PASS R13.6 mutations={len(MUTATIONS)}")
