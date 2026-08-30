@@ -1,5 +1,16 @@
 # 更新日志
 
+## 2026-08-30 R13.8 Smart 跨区选优、DNS 双栈引导与全盘复核
+
+- 从主配置 `[Host]` 删除 `doh.pub = 1.12.12.12, 120.53.53.53`。DoH URL 继续使用 `https://doh.pub/dns-query`，但主机名改由 Surge 的传统引导 DNS 动态解析，遵循 DNSPod 的域名接入建议并保留后端调度能力。
+- `dns-server` 从 AliDNS 双 IPv4 扩展为官方双 IPv4＋双 IPv6；`dns.alidns.com` 静态引导同步补齐 `2400:3200:baba::1`。
+- ChatGPT、Claude、Gemini 与 TikTok 从“手动 `select`，默认日本 Smart”改为服务自身 Smart；通过 `include-other-group="Japan,Singapore,TaiWan,America"` 递归汇总真实节点，在四个允许地区内自动选优和重试，不新增隐藏策略组。
+- 双 DoH、证书校验、`encrypted-dns-follow-outbound-mode=false`、应用 DNS 分流、53/853/8853 边界、代理侧域名解析和未知域名 `no-resolve` 行为均不变。
+- 重新扫描 5,411 条域名类规则与 145 条 IP/CIDR 规则的首条命中关系；跨策略重叠均为专用服务优先、通用集合后置或已有精确护栏。固定 Ads 与当前动态国内表冲突为 0。
+- 在线核对 29 份 jsDelivr 固定副本、18 份固定服务上游、Pegasus 固定上游和动态国内规则，全部零漂移；Telegram 官方 14 个 CIDR 与 Apple APNs 官方 5 个 IPv4、4 个 IPv6 网段全部覆盖。
+- 总入口 Smart、五个地区组、`NodePool → Fail-Closed`、国内 BiliBili、Telegram、ApplePush、Ads/Pegasus、STUN、UDP/QUIC、双栈公网兜底、四个已删除的隐藏开关、30 个策略组、142 条活动规则和 30 个运行资源均不变。
+- 运行锁升级到 schema 22；审计器锁定全部 36 项 `[General]` 设置，故障注入扩展为 118 项，并覆盖“禁止重新静态钉住 DNSPod 旧 IP”与 Smart 递归导入语法。完整包更新为 `Surge-R13.8-Complete-No-Embedded-20260830.zip`。
+
 ## 2026-08-30 R13.7 Smart 真实流量选路
 
 - 将可见的 `Auto = url-test` 升级并重命名为可见的 `Smart = smart`。它只从 `NodePool` 递归导入真实代理，并用精确过滤排除 `Fail-Closed`。
