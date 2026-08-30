@@ -1,10 +1,10 @@
 {
-  "schema": 20,
+  "schema": 21,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.6 Hybrid Auto",
+  "profile": "Surge iOS Privacy + Push R13.7 Smart Hybrid",
   "generated": "2026-08-30",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "916508791e083e81cf2768aaf0d13ae60ca2c685f982fe84607646bd1b7b7aab",
+  "profile_sha256": "66a9d39a23062ccea7af643df1cc9358f91e1a78ccaa44f7403accb4abbfd88e",
   "profile_lines": 367,
   "active_rules": 142,
   "runtime_resources": 30,
@@ -28,12 +28,13 @@
       "Security",
       "UDP",
       "Domestic",
-      "AllServer"
+      "AllServer",
+      "Auto"
     ],
     "visible_control_groups": [
       "Final",
       "Proxy",
-      "Auto",
+      "Smart",
       "NodePool"
     ],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
@@ -41,14 +42,15 @@
     "fail_closed_alias": "reject",
     "policy_architecture": {
       "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
-      "auto": {
-        "mode": "url-test",
+      "smart": {
+        "mode": "smart",
         "hidden": false,
         "source": "NodePool",
         "excluded_policy": "Fail-Closed",
-        "interval": 600,
-        "tolerance": 100,
-        "evaluate_before_use": true
+        "evaluate_before_use": true,
+        "fixed_test_schedule_seconds": 300,
+        "uses_real_connection_quality": true,
+        "per_site_memory": true
       },
       "node_pool": {
         "mode": "select",
@@ -59,14 +61,14 @@
       },
       "proxy": {
         "mode": "select",
-        "default": "Auto",
+        "default": "Smart",
         "manual_fail_closed_entry": "NodePool"
       },
       "regions": {
-        "mode": "url-test",
+        "mode": "smart",
         "source": "NodePool",
-        "interval": 600,
-        "tolerance": 100,
+        "fixed_test_schedule_seconds": 300,
+        "uses_real_connection_quality": true,
         "evaluate_before_use": true,
         "empty_group_behavior": "DIRECT/SUBSTITUTE",
         "names": [
