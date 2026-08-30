@@ -1,6 +1,6 @@
 # 贡献与维护
 
-R13.6 把主配置、固定快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何行为变化都要同步更新这些边界，并完成本页的全套验证。
+R13.7 把主配置、固定快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何行为变化都要同步更新这些边界，并完成本页的全套验证。
 
 ## 必须保持的边界
 
@@ -10,12 +10,12 @@ R13.6 把主配置、固定快照、来源锁、运行锁、审计器、故障�
 - 运行时资源固定为 29 个不可变资源加 1 个动态国内补充；本地 `.list` 文件固定为 29 个，主配置不得嵌入规则快照。
 - `Pegasus.list` 与 `Ads.list` 固定指向内建 `REJECT`；STUN 固定指向 `Proxy`；WeChat、Direct、BiliBili、China、动态国内补充与 `GEOIP,CN` 固定指向内建 `DIRECT`。
 - `NodePool` 必须保持手动 `select`，首项为 `Fail-Closed`，私人订阅只允许从这一组的 `policy-path` 导入。
-- `Auto` 必须为可见 `url-test`，只通过 `include-other-group=NodePool` 导入节点，并用精确过滤排除 `Fail-Closed`。
-- 五个地区组必须为可见 `url-test`，只导入名称匹配的 `NodePool` 节点。
-- `Auto` 与五个地区组必须保持 `interval=600`、`tolerance=100`、`evaluate-before-use=true` 和 `include-all-proxies=0`。
-- `Proxy` 默认 `Auto`，第二项必须为手动 `NodePool`。AI 与 TikTok 只允许日本、新加坡、台湾、美国，Bahamut 只允许台湾、香港。
-- 禁止恢复 Smart 或 load-balance。文档必须说明自动空组可能发生 `DIRECT/SUBSTITUTE`，不得把混合自动模式描述为全局严格失败关闭。
-- `AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 必须保持删除。
+- `Smart` 必须为可见 `smart`，只通过 `include-other-group=NodePool` 导入真实代理，并用精确过滤排除 `Fail-Closed`。
+- 五个地区组必须为可见 Smart，只导入名称匹配的 `NodePool` 节点。
+- `Smart` 与五个地区组必须保持 `evaluate-before-use=true`、`hidden=0`、`include-all-proxies=0` 和唯一 `NodePool` 来源；禁止添加对 Smart 无效的 `interval`、`tolerance` 或显式内建成员。
+- `Proxy` 默认 `Smart`，第二项必须为手动 `NodePool`。AI 与 TikTok 只允许日本、新加坡、台湾、美国，Bahamut 只允许台湾、香港。
+- 禁止恢复 `url-test`、load-balance 或第二套自动总入口。文档必须说明自动空组可能发生 `DIRECT/SUBSTITUTE`，不得把 Smart 混合模式描述为全局严格失败关闭。
+- `Auto`、`AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 必须保持删除。
 - 国内 BiliBili 固定规则必须使用 `DIRECT`；退役国际版不得恢复专用策略组或规则文件，七条历史兼容域名只走通用 `Proxy`。
 - 九条已审阅的功能域名护栏必须位于 Ads 前，防止 BiliBili、Spotify、Google 更新与 OpenAI 遥测依赖被固定广告表误杀。
 - 除 Ads 外的固定运行资源必须启用 `extended-matching`；动态国内补充也必须启用。
@@ -65,7 +65,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.6-Complete-No-Embedded-20260830.zip
+python3 tools/package_release.py --output ../Surge-R13.7-Complete-No-Embedded-20260830.zip
 ```
 
 固定远程校验要求快照提交已推送并可从 jsDelivr 读取。生成清单和哈希后再次运行本地审计，确保生成物没有掩盖未同步变化。
