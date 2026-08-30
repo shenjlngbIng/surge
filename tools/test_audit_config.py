@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.6 configuration auditor."""
+"""Fault-injection regression tests for the R13.7 configuration auditor."""
 
 from __future__ import annotations
 
@@ -36,10 +36,10 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 
 # Header, snapshot and public-source boundary (1-9).
-replace_once("version", "R13.6 Hybrid Auto", "R13.5 Strict Fail-Closed")
+replace_once("version", "R13.7 Smart Hybrid", "R13.6 Hybrid Auto")
 replace_once("date", "# > Update Date: 2026.08.30", "# > Update Date: 2026.08.29")
-replace_once("header_claim", "Auto and region url-test groups optimize", "Manual groups allegedly optimize")
-replace_once("auto_risk_warning", "# > Automatic groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Auto.\n", "")
+replace_once("header_claim", "Smart and region groups learn from real traffic", "Manual groups allegedly optimize")
+replace_once("smart_risk_warning", "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.\n", "")
 replace_once("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4")
 replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
 replace_once("subscription_placeholder", "https://example.invalid/REPLACE_WITH_SUB_STORE_URL", "https://example.com/private-subscription")
@@ -78,30 +78,30 @@ replace_once("dnspod_bootstrap", "doh.pub = 1.12.12.12, 120.53.53.53", "doh.pub 
 replace_once("fail_closed_proxy", "Fail-Closed = reject", "Fail-Closed = direct")
 replace_once("extra_proxy", "Fail-Closed = reject\n\n[Proxy Group]", "Fail-Closed = reject\nUnexpected = direct\n\n[Proxy Group]")
 replace_once("final_members", "Final = select, Proxy, REJECT,", "Final = select, DIRECT, Proxy,")
-replace_once("proxy_default", "Proxy = select, Auto, NodePool, HongKong", "Proxy = select, NodePool, Auto, HongKong")
+replace_once("proxy_default", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, NodePool, Smart, HongKong")
 replace_once("allserver_returned", "# Services\n", "AllServer = smart, Fail-Closed, include-other-group=NodePool\n# Services\n")
 replace_once("applepush_direct_first", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy")
 replace_once("applepush_visible", "hidden=1\n# Services", "hidden=0\n# Services")
-replace_group_fragment("auto_smart", "Auto", "url-test", "smart")
-replace_group_fragment("auto_filter", "Auto", "policy-regex-filter=^(?!Fail-Closed$).+", "policy-regex-filter=.+")
-replace_group_fragment("auto_interval", "Auto", "interval=600", "interval=900")
-replace_group_fragment("auto_tolerance", "Auto", "tolerance=100", "tolerance=0")
-replace_group_fragment("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false")
-replace_group_fragment("auto_alerts_disabled", "Auto", "no-alert=0", "no-alert=1")
-replace_group_fragment("auto_hidden", "Auto", "hidden=0", "hidden=1")
-replace_group_fragment("auto_include_all", "Auto", "include-all-proxies=0", "include-all-proxies=1")
-replace_group_fragment("auto_source", "Auto", "include-other-group=NodePool", "include-other-group=HongKong")
-replace_group_fragment("auto_explicit_fail_closed", "Auto", "url-test,", "url-test, Fail-Closed,")
-replace_once("nodepool_automatic", "NodePool = select, Fail-Closed", "NodePool = url-test, Fail-Closed")
+replace_group_fragment("smart_url_test", "Smart", "smart", "url-test")
+replace_group_fragment("smart_filter", "Smart", "policy-regex-filter=^(?!Fail-Closed$).+", "policy-regex-filter=.+")
+replace_group_fragment("smart_interval_added", "Smart", "Smart = smart,", "Smart = smart, interval=600,")
+replace_group_fragment("smart_tolerance_added", "Smart", "Smart = smart,", "Smart = smart, tolerance=100,")
+replace_group_fragment("smart_no_evaluate", "Smart", "evaluate-before-use=true", "evaluate-before-use=false")
+replace_group_fragment("smart_alerts_disabled", "Smart", "no-alert=0", "no-alert=1")
+replace_group_fragment("smart_hidden", "Smart", "hidden=0", "hidden=1")
+replace_group_fragment("smart_include_all", "Smart", "include-all-proxies=0", "include-all-proxies=1")
+replace_group_fragment("smart_source", "Smart", "include-other-group=NodePool", "include-other-group=HongKong")
+replace_group_fragment("smart_explicit_fail_closed", "Smart", "Smart = smart,", "Smart = smart, Fail-Closed,")
+replace_once("nodepool_automatic", "NodePool = select, Fail-Closed", "NodePool = smart, Fail-Closed")
 replace_once("nodepool_no_fail", "NodePool = select, Fail-Closed, policy-path", "NodePool = select, policy-path")
 replace_once("nodepool_hidden", "update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0\n\n# Regions", "update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0\n\n# Regions")
 replace_group_fragment("nodepool_update_interval", "NodePool", "update-interval=3600", "update-interval=7200")
 replace_group_fragment("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1")
-replace_group_fragment("hongkong_smart", "HongKong", "url-test", "smart")
-replace_group_fragment("hongkong_interval", "HongKong", "interval=600", "interval=900")
-replace_group_fragment("taiwan_select", "TaiWan", "url-test", "select")
-replace_group_fragment("taiwan_tolerance", "TaiWan", "tolerance=100", "tolerance=0")
-replace_group_fragment("japan_explicit_member", "Japan", "url-test,", "url-test, NodePool,")
+replace_group_fragment("hongkong_url_test", "HongKong", "smart", "url-test")
+replace_group_fragment("hongkong_interval_added", "HongKong", "HongKong = smart,", "HongKong = smart, interval=600,")
+replace_group_fragment("taiwan_select", "TaiWan", "smart", "select")
+replace_group_fragment("taiwan_tolerance_added", "TaiWan", "TaiWan = smart,", "TaiWan = smart, tolerance=100,")
+replace_group_fragment("japan_explicit_member", "Japan", "Japan = smart,", "Japan = smart, NodePool,")
 replace_group_fragment("singapore_filter", "Singapore", "policy-regex-filter=", "removed-filter=")
 replace_group_fragment("america_hidden", "America", "hidden=0", "hidden=1")
 replace_group_fragment("america_no_evaluate", "America", "evaluate-before-use=true", "evaluate-before-use=false")
@@ -119,7 +119,7 @@ replace_once("adblock_group_returned", "# Services\n", "AdBlock = select, REJECT
 replace_once("security_group_returned", "# Services\n", "Security = select, REJECT, DIRECT\n# Services\n")
 replace_once("udp_group_returned", "# Services\n", "UDP = select, Proxy, REJECT, DIRECT\n# Services\n")
 replace_once("unknown_member", "Games = select, Proxy, HongKong", "Games = select, UnknownPolicy, Proxy, HongKong")
-replace_once("policy_cycle", "Proxy = select, Auto, NodePool, HongKong", "Proxy = select, Final, Auto, NodePool, HongKong")
+replace_once("policy_cycle", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, Final, Smart, NodePool, HongKong")
 
 # Rule order, fixed policies and mobile source boundary (81-102).
 replace_once("final_deleted", "FINAL,Final,dns-failed\n", "")
@@ -167,4 +167,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.6 mutations={len(MUTATIONS)}")
+print(f"PASS R13.7 mutations={len(MUTATIONS)}")
