@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.7 configuration auditor."""
+"""Fault-injection regression tests for the R13.8 configuration auditor."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 
 # Header, snapshot and public-source boundary (1-9).
-replace_once("version", "R13.7 Smart Hybrid", "R13.6 Hybrid Auto")
+replace_once("version", "R13.8 Smart Hybrid", "R13.7 Smart Hybrid")
 replace_once("date", "# > Update Date: 2026.08.30", "# > Update Date: 2026.08.29")
 replace_once("header_claim", "Smart and region groups learn from real traffic", "Manual groups allegedly optimize")
 replace_once("smart_risk_warning", "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.\n", "")
@@ -46,7 +46,7 @@ replace_once("subscription_placeholder", "https://example.invalid/REPLACE_WITH_S
 replace_once("mutable_main", "# Repository-hosted remote rule sets\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Ads.list,REJECT,no-resolve\n# Repository-hosted remote rule sets\n")
 replace_once("mobile_dynamic_ads", "# Artificial intelligence\n", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n# Artificial intelligence\n")
 
-# General and access invariants (10-32).
+# Complete General and access invariants (10-45).
 replace_once("loglevel", "loglevel = notify", "loglevel = debug")
 replace_once("auto_suspend", "auto-suspend = true", "auto-suspend = false")
 replace_once("ipv6", "ipv6 = true", "ipv6 = false")
@@ -57,7 +57,7 @@ replace_once("include_all", "include-all-networks = true", "include-all-networks
 replace_once("include_local", "include-local-networks = false", "include-local-networks = true")
 replace_once("include_apns", "include-apns = true", "include-apns = false")
 replace_once("include_cellular", "include-cellular-services = false", "include-cellular-services = true")
-replace_once("dns_server", "dns-server = 223.5.5.5, 223.6.6.6", "dns-server = 8.8.8.8")
+replace_once("dns_server", "dns-server = 223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1", "dns-server = 8.8.8.8")
 replace_once("encrypted_dns", "encrypted-dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query", "encrypted-dns-server = https://dns.google/dns-query")
 replace_once("dns_follow_outbound", "encrypted-dns-follow-outbound-mode = false", "encrypted-dns-follow-outbound-mode = true")
 replace_once("dns_cert", "encrypted-dns-skip-cert-verification = false", "encrypted-dns-skip-cert-verification = true")
@@ -70,11 +70,24 @@ replace_once("gateway_lan", "gateway-restricted-to-lan = true", "gateway-restric
 replace_once("udp_unsupported", "udp-policy-not-supported-behaviour = REJECT", "udp-policy-not-supported-behaviour = DIRECT")
 replace_once("quic", "block-quic = per-policy", "block-quic = off")
 replace_once("udp_probe", "proxy-test-udp = apple.com@9.9.9.9", "proxy-test-udp = apple.com@8.8.8.8")
+replace_once("internet_test_url", "internet-test-url = http://connectivitycheck.platform.hicloud.com/generate_204", "internet-test-url = http://example.com/generate_204")
+replace_once("proxy_test_url", "proxy-test-url = http://cp.cloudflare.com/generate_204", "proxy-test-url = http://example.com/generate_204")
+replace_once("test_timeout", "test-timeout = 5", "test-timeout = 10")
+replace_once("compatibility_mode", "compatibility-mode = 3", "compatibility-mode = 2")
+replace_once("reject_error_page", "show-error-page-for-reject = false", "show-error-page-for-reject = true")
+replace_once("icmp_forwarding", "icmp-forwarding = false", "icmp-forwarding = true")
+replace_once("geoip_auto_update", "disable-geoip-db-auto-update = false", "disable-geoip-db-auto-update = true")
+replace_once("always_real_ip", "always-real-ip = <simple-hostname>, *.local,", "always-real-ip = <simple-hostname>,")
+replace_once("skip_proxy_cgnat", "100.64.0.0/10, 127.0.0.0/8", "127.0.0.0/8")
+replace_once("exclude_simple_hostnames", "exclude-simple-hostnames = true", "exclude-simple-hostnames = false")
+replace_once("raw_tcp_telegram", "always-raw-tcp-hosts = 149.154.*, 91.108.*,", "always-raw-tcp-hosts = 91.108.*,")
+replace_once("dns_svcb", "allow-dns-svcb = false", "allow-dns-svcb = true")
+replace_once("local_host_for_proxy", "use-local-host-item-for-proxy = false", "use-local-host-item-for-proxy = true")
 
-# Host, built-in alias and group architecture (33-80).
+# Host, built-in alias and group architecture (46-96).
 replace_once("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1")
-replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1", "dns.alidns.com = 8.8.8.8")
-replace_once("dnspod_bootstrap", "doh.pub = 1.12.12.12, 120.53.53.53", "doh.pub = 8.8.4.4")
+replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1", "dns.alidns.com = 8.8.8.8")
+replace_once("dnspod_static_bootstrap", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\n", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\ndoh.pub = 1.12.12.12, 120.53.53.53\n")
 replace_once("fail_closed_proxy", "Fail-Closed = reject", "Fail-Closed = direct")
 replace_once("extra_proxy", "Fail-Closed = reject\n\n[Proxy Group]", "Fail-Closed = reject\nUnexpected = direct\n\n[Proxy Group]")
 replace_once("final_members", "Final = select, Proxy, REJECT,", "Final = select, DIRECT, Proxy,")
@@ -106,10 +119,13 @@ replace_group_fragment("singapore_filter", "Singapore", "policy-regex-filter=", 
 replace_group_fragment("america_hidden", "America", "hidden=0", "hidden=1")
 replace_group_fragment("america_no_evaluate", "America", "evaluate-before-use=true", "evaluate-before-use=false")
 replace_group_fragment("america_filter_case", "America", "policy-regex-filter=(?i).*", "policy-regex-filter=.*")
-replace_once("chatgpt_proxy", "ChatGPT = select, Japan, Singapore, TaiWan, America,", "ChatGPT = select, Japan, Singapore, TaiWan, America, Proxy,")
-replace_once("claude_hongkong", "Claude = select, Japan, Singapore, TaiWan, America,", "Claude = select, Japan, Singapore, TaiWan, America, HongKong,")
-replace_once("gemini_hongkong", "Gemini = select, Japan, Singapore, TaiWan, America,", "Gemini = select, HongKong, Japan, Singapore, TaiWan, America,")
-replace_once("tiktok_hongkong", "TikTok = select, Japan, Singapore, TaiWan, America,", "TikTok = select, HongKong, Japan, Singapore, TaiWan, America,")
+replace_group_fragment("chatgpt_select", "ChatGPT", "smart", "select")
+replace_group_fragment("claude_hongkong", "Claude", 'include-other-group="Japan,Singapore,TaiWan,America"', 'include-other-group="HongKong,Japan,Singapore,TaiWan,America"')
+replace_group_fragment("gemini_explicit_member", "Gemini", "Gemini = smart,", "Gemini = smart, Proxy,")
+replace_group_fragment("tiktok_no_evaluate", "TikTok", "evaluate-before-use=true", "evaluate-before-use=false")
+replace_group_fragment("chatgpt_unterminated_sources", "ChatGPT", 'include-other-group="Japan,Singapore,TaiWan,America"', 'include-other-group="Japan,Singapore,TaiWan,America')
+replace_group_fragment("claude_unquoted_sources", "Claude", 'include-other-group="Japan,Singapore,TaiWan,America"', "include-other-group=Japan,Singapore,TaiWan,America")
+replace_group_fragment("gemini_duplicate_source_option", "Gemini", 'include-other-group="Japan,Singapore,TaiWan,America"', 'include-other-group="Japan,Singapore,TaiWan,America", include-other-group="Japan,Singapore,TaiWan,America"')
 replace_once("bahamut_japan", "Bahamut = select, TaiWan, HongKong,", "Bahamut = select, TaiWan, HongKong, Japan,")
 replace_once("apple_proxy_default", "Apple = select, DIRECT, Proxy,", "Apple = select, Proxy, DIRECT,")
 replace_once("github_allserver", "GitHub = select, Proxy, HongKong, Japan, Singapore, America,", "GitHub = select, Proxy, HongKong, Japan, Singapore, America, AllServer,")
@@ -121,7 +137,7 @@ replace_once("udp_group_returned", "# Services\n", "UDP = select, Proxy, REJECT,
 replace_once("unknown_member", "Games = select, Proxy, HongKong", "Games = select, UnknownPolicy, Proxy, HongKong")
 replace_once("policy_cycle", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, Final, Smart, NodePool, HongKong")
 
-# Rule order, fixed policies and mobile source boundary (81-102).
+# Rule order, fixed policies and mobile source boundary (97-118).
 replace_once("final_deleted", "FINAL,Final,dns-failed\n", "")
 replace_once("final_duplicated", "FINAL,Final,dns-failed\n", "FINAL,Final,dns-failed\nFINAL,Final,dns-failed\n")
 replace_once("stun_direct", "PROTOCOL,STUN,Proxy", "PROTOCOL,STUN,DIRECT")
@@ -145,8 +161,8 @@ replace_once("china_policy", "/Rules/China.list,DIRECT,extended-matching", "/Rul
 replace_once("geoip_policy", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Domestic,no-resolve")
 replace_once("ipv6_direct", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 
-if len(MUTATIONS) != 102:
-    raise RuntimeError(f"expected 102 mutations, built {len(MUTATIONS)}")
+if len(MUTATIONS) != 118:
+    raise RuntimeError(f"expected 118 mutations, built {len(MUTATIONS)}")
 
 environment = dict(os.environ)
 environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -167,4 +183,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.7 mutations={len(MUTATIONS)}")
+print(f"PASS R13.8 mutations={len(MUTATIONS)}")
