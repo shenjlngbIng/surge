@@ -1,11 +1,11 @@
 {
-  "schema": 21,
+  "schema": 22,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.7 Smart Hybrid",
+  "profile": "Surge iOS Privacy + Push R13.8 Smart Hybrid",
   "generated": "2026-08-30",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "66a9d39a23062ccea7af643df1cc9358f91e1a78ccaa44f7403accb4abbfd88e",
-  "profile_lines": 367,
+  "profile_sha256": "8c95b6bd4f5072a01eea847082f79c81974964e05597e83c763d7cf0a7c9b550",
+  "profile_lines": 368,
   "active_rules": 142,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
@@ -79,31 +79,40 @@
           "America"
         ]
       },
-      "restricted_services": {
-        "ChatGPT": [
-          "Japan",
-          "Singapore",
-          "TaiWan",
-          "America"
-        ],
-        "Claude": [
-          "Japan",
-          "Singapore",
-          "TaiWan",
-          "America"
-        ],
-        "Gemini": [
-          "Japan",
-          "Singapore",
-          "TaiWan",
-          "America"
-        ],
-        "TikTok": [
-          "Japan",
-          "Singapore",
-          "TaiWan",
-          "America"
-        ],
+      "restricted_service_smart": {
+        "mode": "smart",
+        "source_mode": "recursive-include-other-group",
+        "evaluate_before_use": true,
+        "fixed_test_schedule_seconds": 300,
+        "empty_group_behavior": "DIRECT/SUBSTITUTE",
+        "groups": {
+          "ChatGPT": [
+            "Japan",
+            "Singapore",
+            "TaiWan",
+            "America"
+          ],
+          "Claude": [
+            "Japan",
+            "Singapore",
+            "TaiWan",
+            "America"
+          ],
+          "Gemini": [
+            "Japan",
+            "Singapore",
+            "TaiWan",
+            "America"
+          ],
+          "TikTok": [
+            "Japan",
+            "Singapore",
+            "TaiWan",
+            "America"
+          ]
+        }
+      },
+      "restricted_service_select": {
         "Bahamut": [
           "TaiWan",
           "HongKong"
@@ -177,7 +186,7 @@
       "unmatched_domain_fallback": "Final/Proxy"
     },
     "dns": {
-      "dns_server": "223.5.5.5, 223.6.6.6",
+      "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
       "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
       "follow_outbound_mode": false,
       "certificate_verification": true,
@@ -218,17 +227,17 @@
       "foreign_resolver_policy": "Proxy",
       "unmatched_domains_force_local_resolution": false,
       "proxy_hostname_uses_remote_resolution": true,
-      "bootstrap": {
+      "static_bootstrap": {
         "dns.alidns.com": [
           "223.5.5.5",
           "223.6.6.6",
-          "2400:3200::1"
-        ],
-        "doh.pub": [
-          "1.12.12.12",
-          "120.53.53.53"
+          "2400:3200::1",
+          "2400:3200:baba::1"
         ]
-      }
+      },
+      "dynamic_hostname_bootstrap": [
+        "doh.pub"
+      ]
     },
     "capture": {
       "include-all-networks": "true",
