@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.6 rule snapshots, locks and optional online resources."""
+"""Validate R13.7 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 20 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 21 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -122,8 +122,8 @@ expected_invariants = {
     "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": ["ApplePush"],
-    "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer"],
-    "visible_control_groups": ["Final", "Proxy", "Auto", "NodePool"],
+    "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer", "Auto"],
+    "visible_control_groups": ["Final", "Proxy", "Smart", "NodePool"],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
     "fail_closed_alias": "reject",
@@ -142,14 +142,15 @@ for key, expected in expected_invariants.items():
 architecture = dict(invariants.get("policy_architecture", {}))
 if architecture.get("automatic_empty_group_behavior") != "DIRECT/SUBSTITUTE":
     fail("automatic empty-group behavior invariant mismatch")
-if architecture.get("auto") != {
-    "mode": "url-test", "hidden": False, "source": "NodePool",
-    "excluded_policy": "Fail-Closed", "interval": 600,
-    "tolerance": 100, "evaluate_before_use": True,
+if architecture.get("smart") != {
+    "mode": "smart", "hidden": False, "source": "NodePool",
+    "excluded_policy": "Fail-Closed", "evaluate_before_use": True,
+    "fixed_test_schedule_seconds": 300,
+    "uses_real_connection_quality": True, "per_site_memory": True,
 }:
-    fail("Auto architecture invariant mismatch")
+    fail("Smart architecture invariant mismatch")
 if architecture.get("proxy") != {
-    "mode": "select", "default": "Auto", "manual_fail_closed_entry": "NodePool",
+    "mode": "select", "default": "Smart", "manual_fail_closed_entry": "NodePool",
 }:
     fail("Proxy architecture invariant mismatch")
 if architecture.get("node_pool") != {
@@ -159,8 +160,9 @@ if architecture.get("node_pool") != {
     fail("NodePool architecture invariant mismatch")
 regions = dict(architecture.get("regions", {}))
 if regions != {
-    "mode": "url-test", "source": "NodePool", "interval": 600,
-    "tolerance": 100, "evaluate_before_use": True,
+    "mode": "smart", "source": "NodePool",
+    "fixed_test_schedule_seconds": 300,
+    "uses_real_connection_quality": True, "evaluate_before_use": True,
     "empty_group_behavior": "DIRECT/SUBSTITUTE",
     "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
 }:
@@ -372,6 +374,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.6 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"PASS R13.7 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
     f"local_rule_files=29 rules=142 embedded_rule_contents=0"
 )
