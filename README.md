@@ -1,10 +1,10 @@
-# Surge iOS Privacy + Push R13.7
+# Surge iOS Privacy + Push R13.8
 
-这是面向 Surge iOS 的完整分流配置。R13.7 延续上一版对国内外软件、规则顺序、DNS、UDP、APNs、IPv4/IPv6 兜底和远程规则供应链的全盘复核结果，并把日常节点选择升级为 Smart 混合模式。国内 BiliBili 修复、Telegram 分流、推送、哨兵、加密 DNS 和固定规则边界都没有改变。
+这是面向 Surge iOS 的完整分流配置。R13.8 对国内外软件、规则顺序、Smart、DNS、UDP、APNs、IPv4/IPv6 兜底和远程规则供应链重新做了全盘复核。Telegram、推送、哨兵、四个已删除的隐藏开关和固定规则内容保持不变；本版修正 DNS 引导的长期可用性，并让 AI/TikTok 在所有已审阅支持地区之间自动选优。
 
-日常流量默认进入可见的 `Smart`。它从 `NodePool` 递归导入真实代理，精确排除 `Fail-Closed`，首次使用前评估，随后综合真实连接首包时间、TCP 重传、失败重试、测速结果和约一小时的站点记忆动态选路。香港、台湾、日本、新加坡、美国五个地区入口也使用 Smart，并保留原有精确名称过滤。Surge 对 Smart 使用固定五分钟测试调度，因此配置不写无效的 `interval` 或 `tolerance`。
+日常流量默认进入可见的 `Smart`。它从 `NodePool` 递归导入真实代理，精确排除 `Fail-Closed`，首次使用前评估，随后综合真实连接首包时间、TCP 重传、失败重试、测速结果和约一小时的站点记忆动态选路。香港、台湾、日本、新加坡、美国五个地区入口也使用 Smart，并保留原有精确名称过滤。ChatGPT、Claude、Gemini 与 TikTok 直接递归导入日本、新加坡、台湾、美国四个地区中的真实节点，在地区边界内跨区自动重试，不再固定把日本当作唯一默认自动池。Surge 对 Smart 使用固定五分钟测试调度，因此配置不写无效的 `interval` 或 `tolerance`。
 
-配置没有恢复 `AdBlock`、`Security`、`UDP`、`Domestic` 四个隐藏开关。Surge 官方文档明确说明，Smart 只接受真实代理策略，会忽略内建策略和直接嵌套组；任何自动组在没有可用成员时都可能以 `DIRECT` 替代，并在日志中显示 `SUBSTITUTE`。R13.7 因此不声称全局严格失败关闭。需要严格手动边界时，把 `Proxy` 切到 `NodePool`，再在 `NodePool` 选择已知可用节点或 `Fail-Closed`。
+配置没有恢复 `AdBlock`、`Security`、`UDP`、`Domestic` 四个隐藏开关。Surge 官方文档明确说明，Smart 只接受真实代理策略，会忽略内建策略和直接嵌套组；任何自动组在没有可用成员时都可能以 `DIRECT` 替代，并在日志中显示 `SUBSTITUTE`。R13.8 因此不声称全局严格失败关闭。需要严格手动边界时，把 `Proxy` 切到 `NodePool`，再在 `NodePool` 选择已知可用节点或 `Fail-Closed`。
 
 ## 当前基线
 
@@ -18,7 +18,7 @@
 | 固定 Ads | 152 条 |
 | 固定 Pegasus | 1,438 条 |
 | 国内 BiliBili | 16 个精确后缀 |
-| 配置故障注入 | 102 项 |
+| 配置故障注入 | 118 项 |
 | 固定快照提交 | `2b8fa93901061cf0482b079203630bcd11bfe0b1` |
 
 主配置不嵌入规则快照。29 份固定规则都通过 jsDelivr 的完整提交 SHA 加载；唯一动态资源是 `https://ruleset.skk.moe/List/non_ip/domestic.conf`，每 24 小时更新。
@@ -35,7 +35,7 @@
 3. 在 Surge 中重新下载配置，不要只刷新旧规则缓存。
 4. 打开 `Proxy`，确认当前选择为 `Smart`。旧配置可能保留此前选择的 `Auto` 或 `NodePool`，升级后只需手动切换这一次。
 5. `Smart` 首次使用会先评估节点，之后依据真实连接质量、失败记录和站点历史动态选路；界面显示的是近期最常用节点，不代表每条新连接都使用同一节点。
-6. 地区组会在匹配节点中智能选择。需要临时指定节点时，可在 Surge iOS 的策略组界面长按对应策略进行临时覆盖。
+6. 地区组会在匹配节点中智能选择；AI/TikTok 会在四个允许地区的真实节点间独立 Smart 选优。需要临时指定节点时，可在 Surge iOS 的策略组界面长按对应 Smart 策略进行临时覆盖。
 7. 需要严格手动控制时，把 `Proxy` 切到 `NodePool`，然后选择已知可用节点。选择 `Fail-Closed` 会主动拒绝代理请求，这是安全哨兵。
 8. 清理旧版留下的规则缓存，重载配置后按本文末尾的真机清单验证。
 
@@ -49,7 +49,7 @@
 | `NodePool` | `Fail-Closed`＋私人订阅节点 | 手动稳定入口，不做全订阅测速 |
 | 五个地区组 | 名称过滤后的订阅节点 | Smart 自动选优并可重试，可临时手动覆盖 |
 | `ApplePush` | `Proxy`，后备 `DIRECT` | 唯一明确允许直连后备的可用性例外 |
-| `ChatGPT`、`Claude`、`Gemini`、`TikTok` | 日本、新加坡、台湾、美国 | 排除不适合的香港默认出口 |
+| `ChatGPT`、`Claude`、`Gemini`、`TikTok` | 日本、新加坡、台湾、美国的真实节点 | Smart 跨允许地区自动选优并重试，排除香港 |
 | `Bahamut` | 台湾、香港 | 与官方服务地区边界一致 |
 | `Apple` | `DIRECT` 首选 | 国内 Apple 服务保持低延迟，可手动切代理 |
 | 其他国际软件 | `Proxy`＋适用地区 | 默认继承当前稳定节点 |
@@ -64,7 +64,7 @@
 - 动态广告大表会命中 `httpdns.bilivideo.com` 和 `line3-h5-mobile-api.biligame.com`，应用会等待 HTTPDNS/H5 请求超时后再回退。
 - 规则匹配只依赖普通域名解析时，SNI/Host 路径可能漏过应直连的请求。
 
-R13.7 保持以下处理不变。
+R13.8 保持以下处理不变。
 
 1. `Rules/BiliBili.list` 补全为 16 个审阅后缀并固定 `DIRECT`。
 2. `httpdns.bilivideo.com` 与 `line3-h5-mobile-api.biligame.com` 作为精确功能护栏放在 Ads 前。
@@ -74,7 +74,7 @@ R13.7 保持以下处理不变。
 
 ## 广告误杀与移动端性能
 
-R13.7 仍不加载动态 `reject.conf` 和 `reject_phishing.conf`。这两份十万级列表在移动端会增加下载、解析和内存压力，而且实测与功能域名发生重叠。它们的维护项目也只建议在 Surge for Mac 使用大规模列表，并建议移动平台使用专门的内容拦截工具。
+R13.8 仍不加载动态 `reject.conf` 和 `reject_phishing.conf`。这两份十万级列表在移动端会增加下载、解析和内存压力，而且实测与功能域名发生重叠。它们的维护项目也只建议在 Surge for Mac 使用大规模列表，并建议移动平台使用专门的内容拦截工具。
 
 保留以下防护边界。
 
@@ -91,9 +91,9 @@ Pegasus 历史列表不能替代 iOS 更新、Lockdown Mode 或当前威胁情�
 | --- | --- | --- |
 | 微信、国内直连、China 精确域名、CN GeoIP | `DIRECT` | 不再经过 `Domestic` 状态组 |
 | 国内 BiliBili | `DIRECT` | 16 后缀＋两条 Ads 前置功能护栏 |
-| ChatGPT | `ChatGPT` | 补充 11 个 OpenAI 官方当前网络依赖 |
-| Claude、Gemini | 同名地区限制组 | 日本、新加坡、台湾、美国 |
-| TikTok | `TikTok` | 同上，不默认香港 |
+| ChatGPT | `ChatGPT` Smart | 四个允许地区自动选优；补充 11 个 OpenAI 官方当前网络依赖 |
+| Claude、Gemini | 同名 Smart | 日本、新加坡、台湾、美国之间自动选优 |
+| TikTok | `TikTok` Smart | 同上，香港不进入候选池 |
 | Bahamut | `Bahamut` | 台湾、香港 |
 | YouTube、Netflix、Disney+、HBO、Prime Video | 同名策略组 | 默认 `Proxy`，可切地区 |
 | Spotify | `Spotify` | 五条音视频、电视、Podcast 功能护栏 |
@@ -105,7 +105,7 @@ Pegasus 历史列表不能替代 iOS 更新、Lockdown Mode 或当前威胁情�
 
 ## 首条命中顺序
 
-Surge 规则按首条命中执行。R13.7 维持以下关键顺序。
+Surge 规则按首条命中执行。R13.8 维持以下关键顺序。
 
 1. 局域网发现、多播拒绝和本地网段。
 2. Apple Captive Portal 直连。
@@ -128,7 +128,9 @@ Surge 规则按首条命中执行。R13.7 维持以下关键顺序。
 
 ## DNS、UDP 与 APNs
 
-- Surge 自身使用 AliDNS 与 DNSPod 双 DoH，固定引导地址，证书校验开启。
+- Surge 自身使用 AliDNS 与 DNSPod 双 DoH，证书校验开启。
+- 传统引导 DNS 同时配置 AliDNS 两条 IPv4 和两条官方 IPv6 地址；这些服务器只负责连通性测试和解析 DoH 主机名。
+- `dns.alidns.com` 保留四地址静态引导；`doh.pub` 不再钉住 DNSPod 已不建议公开使用的旧 IP，而是通过上述引导 DNS 动态解析，允许服务方调整后端。
 - `encrypted-dns-follow-outbound-mode=false` 避免域名型代理节点启动时形成解析环。
 - 已审阅大陆应用 DNS 位于端口拒绝前并固定 `DIRECT`；境外应用 DNS 位于端口拒绝后并固定 `Proxy`。
 - `GEOIP,CN` 保留 `no-resolve`，未知域名不会为了 GeoIP 判断强制走本地 DNS。
@@ -169,7 +171,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.7-Complete-No-Embedded-20260830.zip
+python3 tools/package_release.py --output ../Surge-R13.8-Complete-No-Embedded-20260830.zip
 ```
 
 ## 真机验收
@@ -183,6 +185,7 @@ python3 tools/package_release.py --output ../Surge-R13.7-Complete-No-Embedded-20
 - APNs 在锁屏、Wi-Fi/蜂窝切换后仍能收到通知。
 - 检查 IPv4、IPv6 与 DNS 出口是否符合所选节点；注意远端代理使用的递归 DNS 由节点提供方决定。
 - 测试一个 UDP 应用；节点不支持 UDP 时应失败，而不是直连。
+- 如果 AirDrop、Xcode 调试或 USB Dashboard 异常，先临时关闭 `include-all-networks` 验证；这是 Surge 官方披露的全网络接管兼容性取舍。
 
 如果 BiliBili 仍卡顿，先停用所有外部模块，清空规则缓存并重新下载配置，然后在最近请求中检查 `httpdns.bilivideo.com`、`line3-h5-mobile-api.biligame.com` 和实际视频 CDN 的首条命中。若命中正确但仍慢，应换一个稳定的直连网络/DNS 环境或检查运营商链路；配置不能修复服务端、运营商或节点本身故障。
 
@@ -195,5 +198,11 @@ python3 tools/package_release.py --output ../Surge-R13.7-Complete-No-Embedded-20
 - [Surge Select 策略组](https://manual.nssurge.com/policy-groups/select.html)
 - [Surge 内建策略别名](https://manual.nssurge.com/policies/built-in.html)
 - [Surge 域名规则与 extended matching](https://manual.nssurge.com/rules/domain.html)
+- [Surge 加密 DNS 与主机名引导](https://manual.nssurge.com/dns/encrypted-dns.html)
+- [Surge DNS 服务器与 IPv6 语法](https://manual.nssurge.com/dns/dns-server.html)
+- [DNSPod 免费 DoH/DoT 域名接入公告](https://docs.dnspod.cn/notices/mian-fei-ban-dot-dohbu-zai-gong-kai-ipjie-ru-de-gong-gao/)
+- [AliDNS 官方双 IPv4 与双 IPv6 地址](https://help.aliyun.com/en/dns/httpdns-ios14-native-encryption-dns-scheme)
+- [Telegram 官方 CIDR 列表](https://core.telegram.org/resources/cidr.txt)
+- [Apple APNs 官方端口与网段](https://support.apple.com/en-us/102266)
 - [OpenAI ChatGPT 网络建议](https://help.openai.com/en/articles/9247338-network-recommendations-for-chatgpt-errors-on-web-and-apps)
 - [SukkaW/Surge 移动端建议](https://github.com/SukkaW/Surge)

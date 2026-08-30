@@ -1,4 +1,4 @@
-# R13.7 全盘分流审计报告
+# R13.8 全盘分流审计报告
 
 审计日期为 2026-08-30。
 
@@ -23,20 +23,23 @@
 | 中 | ChatGPT 规则未覆盖当前官方网络建议中的部分依赖 | 增加 11 条官方依赖，本地活动规则 52 增至 63 |
 | 中 | 固定资源只按普通 DNS 路径匹配，SNI/Host 可能漏分流 | 除 Ads 外的固定资源及动态国内补充启用 `extended-matching` |
 | 中 | AI/TikTok/Bahamut 可通过通用 Proxy 或不合适地区绕过限制 | AI/TikTok 仅四个支持地区；Bahamut 仅台湾、香港 |
+| 中 | AI/TikTok 原先是手动 `select`，默认只进入日本 Smart，无法在其他允许地区自动容错 | 四组改为 Smart，递归汇总四个允许地区的真实节点；不新增隐藏组 |
 | 中 | 固定规则使用旧快照提交且远程内容未逐文件在线核验 | 快照钉住 `2b8fa939…`，增加 29 文件 CDN 哈希校验 |
+| 中 | `doh.pub` 虽使用主机名，仍被 `[Host]` 冻结到 DNSPod 已不建议公开使用的旧 IP | 删除 DNSPod 静态映射，改由双栈 AliDNS 引导动态解析；AliDNS 补齐第二条官方 IPv6 |
 | 低 | Pegasus 文件头仍声明旧 `Security` 策略 | 文件头、资源锁和运行规则统一为 `REJECT` |
 
 ## 策略组审计
 
-Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.7 因此只让 Smart 导入 `NodePool` 中的真实代理，并保留独立的手动安全入口。
+Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.8 因此只让 Smart 导入 `NodePool` 中的真实代理，并保留独立的手动安全入口。
 
-R13.7 采用以下边界。
+R13.8 采用以下边界。
 
 - `[Proxy] Fail-Closed = reject` 使用内建策略别名，不再伪造本地端口失败节点。
 - `NodePool` 是手动 `select`，首项 `Fail-Closed`，其余成员由私人 `policy-path` 提供。
 - `Smart` 只导入 `NodePool` 的真实订阅代理，并用精确过滤排除 `Fail-Closed`。
 - 香港、台湾、日本、新加坡、美国均为 Smart，只导入名称匹配的 `NodePool` 节点。
-- 六个 Smart 组统一锁定 `evaluate-before-use=true` 和可见状态；不写对 Smart 无效的 `interval` 或 `tolerance`。Surge 自身按固定五分钟周期安排测试。
+- 总入口、五个地区组和四个受限服务组共十个 Smart，统一锁定 `evaluate-before-use=true` 和可见状态；不写对 Smart 无效的 `interval` 或 `tolerance`。Surge 自身按固定五分钟周期安排测试。
+- ChatGPT、Claude、Gemini 与 TikTok 通过带引号的 `include-other-group` 递归汇总日本、新加坡、台湾、美国的真实代理，跨允许地区自动选优，不把香港或通用 Proxy 放入候选池。
 - `Proxy` 首项为 `Smart`，第二项保留手动 `NodePool`，之后是五个地区入口。
 - `ApplePush` 保留 `Proxy → DIRECT` fallback，这是通知可达性的明确例外。
 - 配置没有 `url-test` 或 load-balance 节点组，没有策略引用循环、未知成员或 Smart 中的显式内建成员。
@@ -46,7 +49,7 @@ R13.7 采用以下边界。
 
 | 软件/类别 | 审计结果 |
 | --- | --- |
-| ChatGPT、Claude、Gemini | 仅日本、新加坡、台湾、美国；不允许通用 Proxy 绕过地区边界 |
+| ChatGPT、Claude、Gemini | 仅日本、新加坡、台湾、美国；Smart 跨允许地区自动选优，不允许通用 Proxy 绕过边界 |
 | TikTok | 同上 |
 | Bahamut | 仅台湾、香港 |
 | GitHub | Proxy、香港、日本、新加坡、美国 |
@@ -88,7 +91,8 @@ R13.7 采用以下边界。
 
 ## DNS、UDP、APNs 与双栈
 
-- 两个传统 DNS、两个 DoH、固定 Host 引导和证书校验均被审计锁定。
+- 传统引导 DNS 使用 AliDNS 双 IPv4＋双 IPv6；两个 DoH 和证书校验被审计锁定。
+- `dns.alidns.com` 保留官方四地址静态引导；`doh.pub` 由引导 DNS 动态解析，不再冻结 DNSPod 旧 IP。
 - 16 条大陆应用 DNS 在端口拒绝前固定直连；13 条境外应用 DNS 在端口拒绝后固定代理。
 - 公网 53、853、8853 在局域网例外之后拒绝。
 - STUN 在公网 DNS 与普通业务规则之前固定代理。
@@ -118,11 +122,12 @@ R13.7 采用以下边界。
 - 16 个 BiliBili 精确后缀、国际版退役与前置功能护栏；
 - 18 份服务来源锁、Pegasus 锁和维护来源锁；
 - DNS、UDP、APNs、双栈和唯一 FINAL；
-- 102 项故障注入；
+- 118 项故障注入，覆盖全部 36 项 `[General]` 设置及新增 Smart 递归导入语法；
 - 发布目录与 ZIP 导入安全回归；
 - 动态国内在线格式检查、固定上游零差异检查；
 - 快照推送后的 29 份 jsDelivr 文件逐一哈希检查。
+- Telegram 官方 14 个 CIDR 与 Apple 官方 5 个 IPv4、4 个 IPv6 APNs 网段逐项在线复核。
 
 ## 剩余风险
 
-静态配置无法证明私人节点在线、地区标签真实、节点 DNS 无泄漏、运营商链路正常，也无法检查未随仓库提供的 Surge 模块。自动组没有可用成员时存在官方 `DIRECT/SUBSTITUTE` 风险，这项行为无法由配置覆盖。最终必须在真实设备的 Wi-Fi 和蜂窝网络完成验收。命中规则与策略正确但速度仍差时，应检查服务端、运营商、DNS 或节点质量，不能继续用更宽泛规则掩盖链路问题。
+静态配置无法证明私人节点在线、地区标签真实、节点 DNS 无泄漏、运营商链路正常，也无法检查未随仓库提供的 Surge 模块。自动组没有可用成员时存在官方 `DIRECT/SUBSTITUTE` 风险，这项行为无法由配置覆盖。`include-all-networks=true` 还可能影响 AirDrop、Xcode 调试或 USB Dashboard，这是全网络接管的兼容性取舍。最终必须在真实设备的 Wi-Fi 和蜂窝网络完成验收。命中规则与策略正确但速度仍差时，应检查服务端、运营商、DNS 或节点质量，不能继续用更宽泛规则掩盖链路问题。

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.7 rule snapshots, locks and optional online resources."""
+"""Validate R13.8 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 21 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 22 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -167,6 +167,24 @@ if regions != {
     "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
 }:
     fail("region architecture invariant mismatch")
+if architecture.get("restricted_service_smart") != {
+    "mode": "smart",
+    "source_mode": "recursive-include-other-group",
+    "evaluate_before_use": True,
+    "fixed_test_schedule_seconds": 300,
+    "empty_group_behavior": "DIRECT/SUBSTITUTE",
+    "groups": {
+        "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
+        "Claude": ["Japan", "Singapore", "TaiWan", "America"],
+        "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
+        "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
+    },
+}:
+    fail("restricted-service Smart architecture invariant mismatch")
+if architecture.get("restricted_service_select") != {
+    "Bahamut": ["TaiWan", "HongKong"],
+}:
+    fail("restricted-service select architecture invariant mismatch")
 if invariants.get("domestic_resources") != {
     "dynamic_supplement": "domestic.conf",
     "pinned_precise_set": "China.list",
@@ -177,7 +195,7 @@ if invariants.get("domestic_resources") != {
 }:
     fail("domestic resource invariant mismatch")
 if invariants.get("dns") != {
-    "dns_server": "223.5.5.5, 223.6.6.6",
+    "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
     "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
     "follow_outbound_mode": False,
     "certificate_verification": True,
@@ -187,10 +205,13 @@ if invariants.get("dns") != {
     "foreign_resolver_policy": "Proxy",
     "unmatched_domains_force_local_resolution": False,
     "proxy_hostname_uses_remote_resolution": True,
-    "bootstrap": {
-        "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1"],
-        "doh.pub": ["1.12.12.12", "120.53.53.53"],
+    "static_bootstrap": {
+        "dns.alidns.com": [
+            "223.5.5.5", "223.6.6.6", "2400:3200::1",
+            "2400:3200:baba::1",
+        ],
     },
+    "dynamic_hostname_bootstrap": ["doh.pub"],
 }:
     fail("DNS invariant mismatch")
 if invariants.get("udp_quic") != {
@@ -374,6 +395,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.7 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"PASS R13.8 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
     f"local_rule_files=29 rules=142 embedded_rule_contents=0"
 )
