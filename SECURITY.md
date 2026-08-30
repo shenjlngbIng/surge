@@ -1,10 +1,10 @@
 # 安全策略与运行边界
 
-R13.5 的目标是在 Surge iOS 上提供可审计的失败关闭分流。这里的“失败关闭”是指订阅为空、手动组未选到可用节点或旧策略状态失效时，代理流量不会因为自动策略组的替代行为静默回落到 `DIRECT`。它不代表节点服务本身、上游 DNS、操作系统或第三方规则绝对可信。
+R13.6 的目标是在 Surge iOS 上提供可审计的混合自动分流。日常路径使用 `url-test` 自动选优，手动 `NodePool` 保留 `Fail-Closed` 安全入口。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
 
 ## 私密信息
 
-公开配置只允许保留下面的无效占位地址：
+公开配置只允许保留下面的无效占位地址。
 
 ```text
 https://example.invalid/REPLACE_WITH_SUB_STORE_URL
@@ -12,15 +12,19 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 
 不要提交真实订阅、Sub-Store 地址、令牌、设备日志、节点名称或个人域名。私人副本应放在仓库之外；凭据泄露后应立即在服务端撤销和轮换。
 
-## 失败关闭模型
+## 混合自动与失败关闭边界
 
 - `[Proxy]` 中的 `Fail-Closed = reject` 是 Surge 内建 `REJECT` 的别名。
-- `NodePool` 与香港、台湾、日本、新加坡、美国五个地区入口均为手动 `select`，首项是 `Fail-Closed`。
-- `Proxy` 默认进入 `NodePool`；AI、TikTok 和流媒体策略只引用经过地区限制复核的手动组。
-- 不使用 Smart、`url-test` 或其他自动组承诺严格失败关闭。Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代。
-- `ApplePush` 是明确例外：其后备顺序允许 `DIRECT`，用于保留 APNs 可达性。这不是通用代理流量的回退路径。
+- `NodePool` 保持手动 `select`，首项是 `Fail-Closed`，其他成员来自私人 `policy-path`。
+- `Auto` 使用 `url-test`，从 `NodePool` 导入真实节点，并排除 `Fail-Closed`。
+- 香港、台湾、日本、新加坡、美国五个地区入口使用 `url-test`，只导入名称匹配的 `NodePool` 节点。
+- 六个自动组统一锁定 600 秒结果有效期、100 毫秒切换容差和首次使用前评估。
+- `Proxy` 默认进入 `Auto`，第二项保留 `NodePool`。AI、TikTok 和流媒体策略继续引用经过地区限制复核的组。
+- 配置不使用 Smart。Smart 会忽略嵌套组，无法按当前方式复用 `NodePool`。
+- Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代，并显示 `SUBSTITUTE`。R13.6 对此不作严格失败关闭承诺。
+- `ApplePush` 是明确的可用性例外，其后备顺序允许 `DIRECT`，用于保留 APNs 可达性。
 
-手动组不会自动替你寻找最快节点。导入后必须选择真实可用节点；如果选中 `Fail-Closed`，相关连接被拒绝是预期行为。
+需要严格手动边界时，把 `Proxy` 切到 `NodePool`，再选择已知可用节点或 `Fail-Closed`。`NodePool` 不会自动寻找最快节点，选中 `Fail-Closed` 后，相关连接会被主动拒绝。
 
 ## 规则供应链
 
@@ -43,7 +47,7 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 
 ## 已知限制与真机验证
 
-静态审计不能证明订阅节点在线、节点没有 DNS 泄漏、运营商没有劫持，也不能看到未随仓库提供的模块改写。升级后至少在 Wi-Fi 和蜂窝各验证一次：国内 BiliBili 首页、搜索、视频与弹幕，ChatGPT 登录和对话，APNs 推送，IPv4/IPv6 出口，DNS 检测，以及 UDP 应用。出现异常时先停用外部模块，再查看 Surge 最近请求中首条命中规则和最终策略。
+静态审计不能证明订阅节点在线、节点没有 DNS 泄漏、运营商没有劫持，也看不到未随仓库提供的模块改写。自动组为空时的 `DIRECT/SUBSTITUTE` 属于 Surge 已知行为。升级后至少在 Wi-Fi 和蜂窝各验证一次，检查国内 BiliBili 首页、搜索、视频与弹幕，ChatGPT 登录和对话，APNs 推送，IPv4/IPv6 出口、DNS 检测和 UDP 应用。出现异常时先停用外部模块，再查看 Surge 最近请求中的首条命中规则和最终策略。
 
 ## 报告问题
 
