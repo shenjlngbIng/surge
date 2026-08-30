@@ -1,5 +1,16 @@
 # 更新日志
 
+## 2026-08-30 R13.6 混合自动节点优化
+
+- 新增可见的 `Auto = url-test` 日常入口。它只从 `NodePool` 导入真实订阅节点，并用精确过滤排除 `Fail-Closed`。
+- `Proxy` 首项改为 `Auto`，第二项保留手动 `NodePool`。现有配置升级后只需确认一次 `Proxy` 当前选择，之后由 Surge 自动选优。
+- 香港、台湾、日本、新加坡、美国五个地区入口改为 `url-test`。六个自动组统一使用 `interval=600`、`tolerance=100` 和 `evaluate-before-use=true`，地区名称过滤保持不变。
+- Smart 继续不存在。`AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 继续删除，规则固定策略不变。
+- 明确记录 Surge 自动组在没有可用成员时可能发生 `DIRECT/SUBSTITUTE`。需要严格手动边界时，用户可选择 `Proxy → NodePool`，再选择已知节点或 `Fail-Closed`。
+- DNS、Telegram、`ApplePush = fallback, Proxy, DIRECT`、BiliBili 国内直连、国际版退役、Ads/Pegasus、STUN、UDP/QUIC、IPv4/IPv6 兜底和 30 个运行资源均未改变。
+- 策略组增至 30 个，活动规则维持 142 条。运行锁升级到 schema 20，故障注入扩展到 102 项。
+- 完整包更新为 `Surge-R13.6-Complete-No-Embedded-20260830.zip`，README、迁移、安全、贡献、审计、工作流、发布清单与双份哈希同步更新。
+
 ## 2026-08-29 R13.5 全盘分流与严格失败关闭
 
 - 逐项复核国内外软件、策略组、首条命中、DNS、UDP、APNs、双栈兜底、远程资源和发布链；当前基线为 29 个策略组、142 条活动规则、29 个固定资源、1 个动态国内资源和 29 份本地规则文件。

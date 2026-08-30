@@ -1,14 +1,16 @@
-# Surge iOS Privacy + Push R13.5
+# Surge iOS Privacy + Push R13.6
 
-这是面向 Surge iOS 的完整分流配置。R13.5 已对国内外软件、策略组、规则顺序、DNS、UDP、APNs、IPv4/IPv6 兜底和远程规则供应链做全盘复核，重点修复国内 BiliBili 长时间加载和旧版“失败关闭”并不成立的问题。
+这是面向 Surge iOS 的完整分流配置。R13.6 延续上一版对国内外软件、规则顺序、DNS、UDP、APNs、IPv4/IPv6 兜底和远程规则供应链的全盘复核结果，并把日常节点选择改成混合自动模式。国内 BiliBili 修复、Telegram 分流、推送、哨兵、加密 DNS 和固定规则边界都没有改变。
 
-Surge 官方说明，自动策略组在没有可用成员时会使用 `DIRECT` 替代，日志显示为 `SUBSTITUTE`；Smart 还会忽略内建策略和嵌套组。因此本版删除 `AllServer` Smart，`NodePool` 与五个地区入口全部改为手动 `select`，首项是内建 `reject` 的别名 `Fail-Closed`。这意味着节点选择需要人工完成，但无可用节点时不会由自动组静默直连。
+日常流量默认进入 `Auto`。它从 `NodePool` 导入真实节点，排除 `Fail-Closed`，首次使用前完成测试，随后按延迟自动选优。香港、台湾、日本、新加坡、美国五个地区入口也使用同样的 `url-test` 机制。测试结果有效期为 600 秒，切换容差为 100 毫秒，能减少延迟接近的节点反复跳动。
+
+配置没有恢复 Smart，也没有恢复 `AdBlock`、`Security`、`UDP`、`Domestic` 四个隐藏开关。Surge 官方文档明确说明，任何自动组在没有可用成员时都可能以 `DIRECT` 替代，并在日志中显示 `SUBSTITUTE`。R13.6 因此不再声称全局严格失败关闭。需要严格手动边界时，把 `Proxy` 切到 `NodePool`，再在 `NodePool` 选择已知可用节点或 `Fail-Closed`。
 
 ## 当前基线
 
 | 项目 | 数量或状态 |
-| --- | ---: |
-| 策略组 | 29 |
+| --- | --- |
+| 策略组 | 30 |
 | 活动规则 | 142 |
 | 固定远程规则 | 29 |
 | 动态远程规则 | 1 |
@@ -16,14 +18,14 @@ Surge 官方说明，自动策略组在没有可用成员时会使用 `DIRECT` �
 | 固定 Ads | 152 条 |
 | 固定 Pegasus | 1,438 条 |
 | 国内 BiliBili | 16 个精确后缀 |
-| 配置故障注入 | 82 项 |
+| 配置故障注入 | 102 项 |
 | 固定快照提交 | `2b8fa93901061cf0482b079203630bcd11bfe0b1` |
 
 主配置不嵌入规则快照。29 份固定规则都通过 jsDelivr 的完整提交 SHA 加载；唯一动态资源是 `https://ruleset.skk.moe/List/non_ip/domestic.conf`，每 24 小时更新。
 
 ## 快速使用
 
-1. 打开 `Surge.conf`，只替换 `NodePool` 的 `policy-path`：
+1. 打开 `Surge.conf`，只替换 `NodePool` 的 `policy-path`。配置行如下。
 
    ```ini
    NodePool = select, Fail-Closed, policy-path=https://example.invalid/REPLACE_WITH_SUB_STORE_URL, ...
@@ -31,18 +33,21 @@ Surge 官方说明，自动策略组在没有可用成员时会使用 `DIRECT` �
 
 2. 私下填入你的 Surge 格式订阅或 Sub-Store 地址。不要把真实地址、令牌或节点信息提交到公开仓库。
 3. 在 Surge 中重新下载配置，不要只刷新旧规则缓存。
-4. 打开 `NodePool`，选择一个真实可用节点。默认 `Fail-Closed` 会主动拒绝连接，这是安全哨兵，不是故障节点。
-5. 如果使用地区组，再分别为日本、新加坡、台湾、美国、香港选择匹配节点。
-6. 清理旧版留下的策略选择和规则缓存，重载配置后按本文末尾的真机清单验证。
+4. 打开 `Proxy`，确认当前选择为 `Auto`。旧配置可能保留此前选择的 `NodePool`，升级后只需手动切换这一次。
+5. `Auto` 首次使用会等待一轮测试。结果超过 600 秒或网络发生变化时，Surge 会在再次使用时重新评估。
+6. 地区组会自动选择匹配节点。需要临时指定节点时，可在 Surge iOS 的策略组界面长按对应策略进行临时覆盖。
+7. 需要严格手动控制时，把 `Proxy` 切到 `NodePool`，然后选择已知可用节点。选择 `Fail-Closed` 会主动拒绝代理请求，这是安全哨兵。
+8. 清理旧版留下的规则缓存，重载配置后按本文末尾的真机清单验证。
 
 ## 策略架构
 
 | 策略 | 默认或成员 | 说明 |
 | --- | --- | --- |
 | `Final` | `Proxy`、`REJECT` | 未命中流量默认代理 |
-| `Proxy` | `NodePool`、五个地区组 | 默认进入手动节点池 |
+| `Proxy` | `Auto`、`NodePool`、五个地区组 | 默认自动，可随时切回手动安全入口 |
+| `Auto` | 过滤掉 `Fail-Closed` 的订阅节点 | `url-test` 自动选择低延迟可用节点 |
 | `NodePool` | `Fail-Closed`＋私人订阅节点 | 手动稳定入口，不做全订阅测速 |
-| 五个地区组 | `Fail-Closed`＋名称过滤后的节点 | 手动选择，不使用 Smart/url-test |
+| 五个地区组 | 名称过滤后的订阅节点 | `url-test` 自动选优，可临时手动覆盖 |
 | `ApplePush` | `Proxy`，后备 `DIRECT` | 唯一明确允许直连后备的可用性例外 |
 | `ChatGPT`、`Claude`、`Gemini`、`TikTok` | 日本、新加坡、台湾、美国 | 排除不适合的香港默认出口 |
 | `Bahamut` | 台湾、香港 | 与官方服务地区边界一致 |
@@ -53,13 +58,13 @@ Surge 官方说明，自动策略组在没有可用成员时会使用 `DIRECT` �
 
 ## 国内 BiliBili 修复
 
-国内版卡住并不只是“有没有直连规则”的问题。旧配置同时存在三类风险：
+旧配置有三类风险，任何一类都可能让国内版卡住。
 
 - 国内 BiliBili 虽然指向 `DIRECT`，但固定列表缺少 `biligame.net`、`bilivideo.cn`、`bilicomic.com`、`bilivideo.net`。
 - 动态广告大表会命中 `httpdns.bilivideo.com` 和 `line3-h5-mobile-api.biligame.com`，应用会等待 HTTPDNS/H5 请求超时后再回退。
 - 规则匹配只依赖普通域名解析时，SNI/Host 路径可能漏过应直连的请求。
 
-R13.5 的处理如下：
+R13.6 保持以下处理不变。
 
 1. `Rules/BiliBili.list` 补全为 16 个审阅后缀并固定 `DIRECT`。
 2. `httpdns.bilivideo.com` 与 `line3-h5-mobile-api.biligame.com` 作为精确功能护栏放在 Ads 前。
@@ -69,9 +74,9 @@ R13.5 的处理如下：
 
 ## 广告误杀与移动端性能
 
-R13.5 不再加载动态 `reject.conf` 和 `reject_phishing.conf`。这两份十万级列表在移动端会增加下载、解析和内存压力，而且实测与功能域名发生重叠。它们的维护项目也只建议在 Surge for Mac 使用大规模列表，并建议移动平台使用专门的内容拦截工具。
+R13.6 仍不加载动态 `reject.conf` 和 `reject_phishing.conf`。这两份十万级列表在移动端会增加下载、解析和内存压力，而且实测与功能域名发生重叠。它们的维护项目也只建议在 Surge for Mac 使用大规模列表，并建议移动平台使用专门的内容拦截工具。
 
-保留的防护边界：
+保留以下防护边界。
 
 - 152 条固定、可审阅的 Ads 规则固定 `REJECT`。
 - 1,438 个 Amnesty Tech 2021 Pegasus 历史 IOC 固定 `REJECT`。
@@ -100,7 +105,7 @@ Pegasus 历史列表不能替代 iOS 更新、Lockdown Mode 或当前威胁情�
 
 ## 首条命中顺序
 
-Surge 规则按首条命中执行。R13.5 维持以下关键顺序：
+Surge 规则按首条命中执行。R13.6 维持以下关键顺序。
 
 1. 局域网发现、多播拒绝和本地网段。
 2. Apple Captive Portal 直连。
@@ -150,26 +155,26 @@ python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
 ```
 
-上游只读比对：
+上游只读比对
 
 ```bash
 python3 tools/update_external_resources.py --download --check
 python3 tools/update_service_rules.py --download --check
 ```
 
-生成发布文件：
+生成发布文件
 
 ```bash
 python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.5-Complete-No-Embedded-20260829.zip
+python3 tools/package_release.py --output ../Surge-R13.6-Complete-No-Embedded-20260830.zip
 ```
 
 ## 真机验收
 
-在 Wi-Fi 和蜂窝网络各做一次：
+在 Wi-Fi 和蜂窝网络各完成一遍以下检查。
 
 - BiliBili 首页、搜索、账号、封面、视频起播、拖动、弹幕和评论；最近请求应显示国内域名走 `DIRECT`。
 - ChatGPT 登录、历史记录、对话流式输出、附件与语音入口；策略应为 `ChatGPT` 支持地区节点。
@@ -184,7 +189,9 @@ python3 tools/package_release.py --output ../Surge-R13.5-Complete-No-Embedded-20
 ## 主要依据
 
 - [Surge 策略组与无可用成员替代行为](https://manual.nssurge.com/policy-groups/overview.html)
-- [Surge Smart 策略组限制](https://manual.nssurge.com/policy-groups/smart.html)
+- [Surge 自动测速策略组](https://manual.nssurge.com/policy-groups/url-test.html)
+- [Surge 策略成员导入与过滤](https://manual.nssurge.com/policy-groups/policy-including.html)
+- [Surge 自动组临时覆盖](https://manual.nssurge.com/policy-groups/parameters.html)
 - [Surge Select 策略组](https://manual.nssurge.com/policy-groups/select.html)
 - [Surge 内建策略别名](https://manual.nssurge.com/policies/built-in.html)
 - [Surge 域名规则与 extended matching](https://manual.nssurge.com/rules/domain.html)

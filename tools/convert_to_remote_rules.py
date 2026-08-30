@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.5 external runtime-rule inventory.
+"""Validate the R13.6 external runtime-rule inventory.
 
 The iOS profile loads 29 repository snapshots from one immutable commit and
 one reviewed dynamic domestic supplement.  Large mutable reject lists are not
@@ -13,8 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.5 Strict Fail-Closed"
-RELEASE_DATE = "2026-08-29"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.6 Hybrid Auto"
+RELEASE_DATE = "2026-08-30"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
@@ -182,7 +182,7 @@ def main() -> int:
     rules = active_rule_lines(text)
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.5 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.6 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.5 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.6 profile."""
 
 from __future__ import annotations
 
@@ -34,9 +34,23 @@ GROUP_ORDER = (
     "Final", "Proxy", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
     "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games", "NodePool", *REGIONS,
+    "Microsoft", "Games", "Auto", "NodePool", *REGIONS,
 )
 REMOVED_GROUPS = {"AllServer", "AdBlock", "Security", "UDP", "Domestic"}
+AUTO_FILTER = "policy-regex-filter=^(?!Fail-Closed$).+"
+AUTO_OPTIONS = (
+    "interval=600", "tolerance=100", "evaluate-before-use=true",
+    "no-alert=0", "hidden=0", "include-all-proxies=0",
+    "include-other-group=NodePool",
+)
+VISIBLE_SELECT_OPTIONS = ("no-alert=0", "hidden=0", "include-all-proxies=0")
+REGION_FILTER_SHA256 = {
+    "HongKong": "d73d8aca3f0d3e18d83f9a7250301509f1b1a5bef5c2e6c38e98bc9b39218ea2",
+    "TaiWan": "7ebe07a8a85a8ded7cae715491393a674805f836294a4d0357785b4eb9de098f",
+    "Japan": "e977bdaae8adda811ce510b3a97cd0980d90a15e16e9c4fb653680d85a22fd46",
+    "Singapore": "a7cfc4d2af80513590df01428b8ed41008cc371a86cef4d0fe9dde1c41b92b58",
+    "America": "9219ee1ac7b3200e8aade881175e7a7c8b57c2509644130ea599cbe53a18e694",
+}
 
 
 def fail(message: str) -> None:
@@ -91,6 +105,12 @@ def require_options(parts: list[str], name: str, options: tuple[str, ...]) -> No
             fail(f"{name} missing required option: {option}")
 
 
+def require_exact_options(parts: list[str], name: str, expected: tuple[str, ...]) -> None:
+    actual = tuple(part for part in parts[1:] if "=" in part)
+    if len(actual) != len(expected) or set(actual) != set(expected):
+        fail(f"{name} option inventory changed: {actual}")
+
+
 payload = PROFILE.read_bytes()
 if payload.startswith(b"\xef\xbb\xbf") or b"\r" in payload or not payload.endswith(b"\n"):
     fail("profile must be BOM-free UTF-8, LF-only, and end with a newline")
@@ -103,14 +123,15 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.08.29",
-    "# > Surge iOS Privacy + Push R13.5 Strict Fail-Closed | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Manual proxy and region groups prevent automatic-group DIRECT substitution when no node is usable.",
+    "# > Update Date: 2026.08.30",
+    "# > Surge iOS Privacy + Push R13.6 Hybrid Auto | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Auto and region url-test groups optimize daily selection; NodePool keeps a manual Fail-Closed entry.",
+    "# > Automatic groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Auto.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
     f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
-if text.splitlines()[:9] != expected_header:
+if text.splitlines()[:10] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
 if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF):
     fail("runtime snapshot must be a full lowercase Git SHA")
@@ -167,7 +188,7 @@ if proxies != {"Fail-Closed": "reject"}:
     fail("Fail-Closed must remain the built-in reject alias")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
-if tuple(groups) != GROUP_ORDER or len(groups) != 29:
+if tuple(groups) != GROUP_ORDER or len(groups) != 30:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
 if REMOVED_GROUPS & groups.keys():
     fail("removed automatic or stateful helper group returned")
@@ -178,24 +199,40 @@ for name in groups:
 
 if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "REJECT"]:
     fail("Final policy changed")
-if group_parts(groups, "Proxy")[0] != "select" or group_members(groups, "Proxy") != ["NodePool", *REGIONS]:
-    fail("Proxy must default to NodePool and expose only manual region entries")
+if group_parts(groups, "Proxy")[0] != "select" or group_members(groups, "Proxy") != ["Auto", "NodePool", *REGIONS]:
+    fail("Proxy must default to Auto and retain NodePool plus region entries")
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
     fail("ApplePush fallback exception changed")
-require_options(group_parts(groups, "ApplePush"), "ApplePush", ("hidden=1", "evaluate-before-use=true", "interval=60"))
+require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
+    "interval=60", "evaluate-before-use=true", "no-alert=0", "hidden=1",
+))
+
+for name in set(groups) - {"ApplePush", "Auto", "NodePool", *REGIONS}:
+    require_exact_options(group_parts(groups, name), name, VISIBLE_SELECT_OPTIONS)
 
 node_parts = group_parts(groups, "NodePool")
 if node_parts[0] != "select" or group_members(groups, "NodePool") != ["Fail-Closed"]:
     fail("NodePool must be manual and begin with Fail-Closed")
-require_options(node_parts, "NodePool", (f"policy-path={PLACEHOLDER}", "update-interval=3600", "hidden=0"))
+require_exact_options(node_parts, "NodePool", (
+    f"policy-path={PLACEHOLDER}", "update-interval=3600", "no-alert=0",
+    "hidden=0", "include-all-proxies=0",
+))
+
+auto_parts = group_parts(groups, "Auto")
+if auto_parts[0] != "url-test" or group_members(groups, "Auto"):
+    fail("Auto must be a memberless url-test group fed only by NodePool")
+require_exact_options(auto_parts, "Auto", (AUTO_FILTER, *AUTO_OPTIONS))
 
 for region in REGIONS:
     parts = group_parts(groups, region)
-    if parts[0] != "select" or group_members(groups, region) != ["Fail-Closed"]:
-        fail(f"{region} must be a manual select with Fail-Closed first")
-    require_options(parts, region, ("include-other-group=NodePool", "hidden=0", "include-all-proxies=0"))
-    if not any(option.startswith("policy-regex-filter=") for option in parts):
+    if parts[0] != "url-test" or group_members(groups, region):
+        fail(f"{region} must be a memberless url-test group fed only by NodePool")
+    filters = [option for option in parts if option.startswith("policy-regex-filter=")]
+    if len(filters) != 1:
         fail(f"{region} lost its node-name filter")
+    require_exact_options(parts, region, (filters[0], *AUTO_OPTIONS))
+    if hashlib.sha256(filters[0].encode()).hexdigest() != REGION_FILTER_SHA256[region]:
+        fail(f"{region} node-name filter changed")
 
 restricted = {
     "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
@@ -225,8 +262,9 @@ for name, members in generic_members.items():
         fail(f"{name} member order changed")
 
 automatic = {name: group_parts(groups, name)[0] for name in groups if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}}
-if automatic:
-    fail(f"strict profile contains an automatic node group: {automatic}")
+expected_automatic = {"Auto": "url-test", **{region: "url-test" for region in REGIONS}}
+if automatic != expected_automatic:
+    fail(f"automatic node-group boundary changed: {automatic}")
 
 # Validate group references and reject cycles.
 builtins = {"DIRECT", "REJECT", "REJECT-DROP", "Fail-Closed"}
@@ -360,7 +398,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 19 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 20 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -368,7 +406,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.5 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.6 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )
