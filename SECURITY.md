@@ -1,6 +1,6 @@
 # 安全策略与运行边界
 
-R13.7 的目标是在 Surge iOS 上提供可审计的 Smart 混合分流。日常路径根据真实连接质量自动选优，手动 `NodePool` 保留 `Fail-Closed` 安全入口。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
+R13.8 的目标是在 Surge iOS 上提供可审计的 Smart 混合分流。日常路径根据真实连接质量自动选优，手动 `NodePool` 保留 `Fail-Closed` 安全入口。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
 
 ## 私密信息
 
@@ -18,10 +18,10 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 - `NodePool` 保持手动 `select`，首项是 `Fail-Closed`，其他成员来自私人 `policy-path`。
 - `Smart` 通过 `include-other-group=NodePool` 递归导入真实代理，并用精确过滤排除 `Fail-Closed`。
 - 香港、台湾、日本、新加坡、美国五个地区入口使用 Smart，只导入名称匹配的 `NodePool` 节点。
-- 六个 Smart 组统一锁定首次使用前评估、可见状态和唯一导入来源；不写对 Smart 无效的 `interval` 或 `tolerance`。
-- `Proxy` 默认进入 `Smart`，第二项保留 `NodePool`。AI、TikTok 和流媒体策略继续引用经过地区限制复核的组。
-- Smart 中不显式列出 `DIRECT`、`REJECT`、`Fail-Closed` 或其他策略组，因为 Surge 会忽略这些非代理成员。严格拒绝能力只由独立的手动 `NodePool` 提供。
-- Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代，并显示 `SUBSTITUTE`。R13.7 对此不作严格失败关闭承诺。
+- 总入口、五个地区组和四个受限服务组共十个 Smart，统一锁定首次使用前评估、可见状态和审阅后的导入来源；不写对 Smart 无效的 `interval` 或 `tolerance`。
+- `Proxy` 默认进入 `Smart`，第二项保留 `NodePool`。ChatGPT、Claude、Gemini 与 TikTok 只递归导入日本、新加坡、台湾、美国四个地区的真实代理，并在这个边界内自动选优。
+- Smart 中不显式列出 `DIRECT`、`REJECT`、`Fail-Closed` 或其他策略组；地区与服务 Smart 通过 `include-other-group` 递归展开真实代理。严格拒绝能力只由独立的手动 `NodePool` 提供。
+- Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代，并显示 `SUBSTITUTE`。R13.8 对此不作严格失败关闭承诺。
 - `ApplePush` 是明确的可用性例外，其后备顺序允许 `DIRECT`，用于保留 APNs 可达性。
 
 需要严格手动边界时，把 `Proxy` 切到 `NodePool`，再选择已知可用节点或 `Fail-Closed`。`NodePool` 不会自动寻找最快节点，选中 `Fail-Closed` 后，相关连接会被主动拒绝。
@@ -39,7 +39,8 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 ## 网络边界
 
 - Surge 的远程访问保持关闭；本配置不开放控制端口。
-- AliDNS 与 DNSPod DoH 使用固定引导地址并开启证书校验；`encrypted-dns-follow-outbound-mode=false` 用于避免域名型代理节点的启动解析环。
+- AliDNS 与 DNSPod DoH 开启证书校验；`encrypted-dns-follow-outbound-mode=false` 用于避免域名型代理节点的启动解析环。
+- AliDNS 使用官方双 IPv4/双 IPv6 静态引导；DNSPod `doh.pub` 通过 AliDNS 引导动态解析，不再冻结服务方已不建议公开使用的旧 IP。
 - 局域网流量先行放行，随后拒绝未经审阅的公网 53、853 和 8853；已审阅的大陆应用 DNS 可直连，境外应用 DNS 进入代理。
 - STUN 固定进入 `Proxy`，`udp-policy-not-supported-behaviour=REJECT`，避免不支持 UDP 的节点静默直连。
 - IPv4、IPv6 公网字面量在末尾进入 `Proxy`，唯一 `FINAL` 仍指向 `Final`。
