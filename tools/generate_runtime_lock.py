@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.7 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.8 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.7 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.8 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,7 +83,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 21,
+    "schema": 22,
     "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -133,13 +133,20 @@ lock = {
                 "evaluate_before_use": True,
                 "empty_group_behavior": "DIRECT/SUBSTITUTE", "names": REGIONS,
             },
-            "restricted_services": {
-                "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
-                "Claude": ["Japan", "Singapore", "TaiWan", "America"],
-                "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
-                "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
-                "Bahamut": ["TaiWan", "HongKong"],
+            "restricted_service_smart": {
+                "mode": "smart",
+                "source_mode": "recursive-include-other-group",
+                "evaluate_before_use": True,
+                "fixed_test_schedule_seconds": 300,
+                "empty_group_behavior": "DIRECT/SUBSTITUTE",
+                "groups": {
+                    "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
+                    "Claude": ["Japan", "Singapore", "TaiWan", "America"],
+                    "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
+                    "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
+                },
             },
+            "restricted_service_select": {"Bahamut": ["TaiWan", "HongKong"]},
         },
         "security_resources": [
             {"name": "Pegasus.list", "mode": "immutable", "policy": "REJECT", "entries": len(active_rows(RULES / "Pegasus.list"))},
@@ -159,7 +166,7 @@ lock = {
             "unmatched_domain_fallback": "Final/Proxy",
         },
         "dns": {
-            "dns_server": "223.5.5.5, 223.6.6.6",
+            "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
             "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
             "follow_outbound_mode": False,
             "certificate_verification": True,
@@ -169,10 +176,13 @@ lock = {
             "foreign_resolver_policy": "Proxy",
             "unmatched_domains_force_local_resolution": False,
             "proxy_hostname_uses_remote_resolution": True,
-            "bootstrap": {
-                "dns.alidns.com": ["223.5.5.5", "223.6.6.6", "2400:3200::1"],
-                "doh.pub": ["1.12.12.12", "120.53.53.53"],
+            "static_bootstrap": {
+                "dns.alidns.com": [
+                    "223.5.5.5", "223.6.6.6", "2400:3200::1",
+                    "2400:3200:baba::1",
+                ],
             },
+            "dynamic_hostname_bootstrap": ["doh.pub"],
         },
         "capture": {
             "include-all-networks": "true",
