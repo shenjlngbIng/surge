@@ -1,6 +1,6 @@
 # 贡献与维护
 
-R13.7 把主配置、固定快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何行为变化都要同步更新这些边界，并完成本页的全套验证。
+R13.8 把主配置、固定快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何行为变化都要同步更新这些边界，并完成本页的全套验证。
 
 ## 必须保持的边界
 
@@ -12,14 +12,14 @@ R13.7 把主配置、固定快照、来源锁、运行锁、审计器、故障�
 - `NodePool` 必须保持手动 `select`，首项为 `Fail-Closed`，私人订阅只允许从这一组的 `policy-path` 导入。
 - `Smart` 必须为可见 `smart`，只通过 `include-other-group=NodePool` 导入真实代理，并用精确过滤排除 `Fail-Closed`。
 - 五个地区组必须为可见 Smart，只导入名称匹配的 `NodePool` 节点。
-- `Smart` 与五个地区组必须保持 `evaluate-before-use=true`、`hidden=0`、`include-all-proxies=0` 和唯一 `NodePool` 来源；禁止添加对 Smart 无效的 `interval`、`tolerance` 或显式内建成员。
-- `Proxy` 默认 `Smart`，第二项必须为手动 `NodePool`。AI 与 TikTok 只允许日本、新加坡、台湾、美国，Bahamut 只允许台湾、香港。
+- 总入口 `Smart` 与五个地区组必须保持 `evaluate-before-use=true`、`hidden=0`、`include-all-proxies=0` 和唯一 `NodePool` 来源；禁止添加对 Smart 无效的 `interval`、`tolerance` 或显式内建成员。
+- `Proxy` 默认 `Smart`，第二项必须为手动 `NodePool`。ChatGPT、Claude、Gemini 与 TikTok 必须保持可见 Smart，只递归导入日本、新加坡、台湾、美国；Bahamut 保持台湾、香港的手动顺序。
 - 禁止恢复 `url-test`、load-balance 或第二套自动总入口。文档必须说明自动空组可能发生 `DIRECT/SUBSTITUTE`，不得把 Smart 混合模式描述为全局严格失败关闭。
 - `Auto`、`AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 必须保持删除。
 - 国内 BiliBili 固定规则必须使用 `DIRECT`；退役国际版不得恢复专用策略组或规则文件，七条历史兼容域名只走通用 `Proxy`。
 - 九条已审阅的功能域名护栏必须位于 Ads 前，防止 BiliBili、Spotify、Google 更新与 OpenAI 遥测依赖被固定广告表误杀。
 - 除 Ads 外的固定运行资源必须启用 `extended-matching`；动态国内补充也必须启用。
-- Surge DNS 保留双 DoH、固定引导和证书校验。STUN 位于公网 DNS 拒绝之前；已审阅的大陆与境外应用 DNS 顺序不得颠倒。
+- Surge DNS 保留双 DoH、证书校验、AliDNS 双 IPv4/双 IPv6 引导和 DNSPod 动态主机名引导。禁止重新钉住 `doh.pub` 旧 IP。STUN 位于公网 DNS 拒绝之前；已审阅的大陆与境外应用 DNS 顺序不得颠倒。
 - 53、853、8853 在局域网规则之后拒绝；`GEOIP,CN,DIRECT,no-resolve` 保持 `no-resolve`；IPv4 与 IPv6 公网字面量代理规则紧贴唯一末尾 `FINAL`。
 - 发布目录只允许 `release_inventory.py` 声明的文件。
 
@@ -65,7 +65,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.7-Complete-No-Embedded-20260830.zip
+python3 tools/package_release.py --output ../Surge-R13.8-Complete-No-Embedded-20260830.zip
 ```
 
 固定远程校验要求快照提交已推送并可从 jsDelivr 读取。生成清单和哈希后再次运行本地审计，确保生成物没有掩盖未同步变化。
