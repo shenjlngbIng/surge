@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.7 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.8 profile."""
 
 from __future__ import annotations
 
@@ -30,6 +30,12 @@ PROFILE = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "Surge.co
 LOCK = ROOT / "Rules" / "r10.lock.json"
 PLACEHOLDER = "https://example.invalid/REPLACE_WITH_SUB_STORE_URL"
 REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
+RESTRICTED_SMART = {
+    "ChatGPT": ("Japan", "Singapore", "TaiWan", "America"),
+    "Claude": ("Japan", "Singapore", "TaiWan", "America"),
+    "Gemini": ("Japan", "Singapore", "TaiWan", "America"),
+    "TikTok": ("Japan", "Singapore", "TaiWan", "America"),
+}
 GROUP_ORDER = (
     "Final", "Proxy", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
@@ -91,11 +97,56 @@ def key_values(lines: list[str], section: str) -> dict[str, str]:
 
 
 def group_parts(groups: dict[str, str], name: str) -> list[str]:
-    return [part.strip() for part in groups[name].split(",")]
+    """Split a group line while preserving commas inside quoted option values."""
+
+    parts: list[str] = []
+    current: list[str] = []
+    quoted = False
+    escaped = False
+    for character in groups[name]:
+        if escaped:
+            current.append(character)
+            escaped = False
+        elif character == "\\" and quoted:
+            current.append(character)
+            escaped = True
+        elif character == '"':
+            current.append(character)
+            quoted = not quoted
+        elif character == "," and not quoted:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(character)
+    if quoted or escaped:
+        fail(f"{name} contains an unterminated quoted option")
+    parts.append("".join(current).strip())
+    return parts
 
 
 def group_members(groups: dict[str, str], name: str) -> list[str]:
     return [part for part in group_parts(groups, name)[1:] if "=" not in part]
+
+
+def included_groups(groups: dict[str, str], name: str) -> list[str]:
+    values = [
+        part.split("=", 1)[1]
+        for part in group_parts(groups, name)[1:]
+        if part.startswith("include-other-group=")
+    ]
+    if len(values) > 1:
+        fail(f"{name} contains duplicate include-other-group options")
+    if not values:
+        return []
+    value = values[0]
+    if value.startswith('"') or value.endswith('"'):
+        if len(value) < 2 or not (value.startswith('"') and value.endswith('"')):
+            fail(f"{name} contains malformed include-other-group quoting")
+        value = value[1:-1]
+    names = [item.strip() for item in value.split(",")]
+    if not names or any(not item for item in names) or len(names) != len(set(names)):
+        fail(f"{name} contains an invalid include-other-group list")
+    return names
 
 
 def require_options(parts: list[str], name: str, options: tuple[str, ...]) -> None:
@@ -123,14 +174,15 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.08.30",
-    "# > Surge iOS Privacy + Push R13.7 Smart Hybrid | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Surge iOS Privacy + Push R13.8 Smart Hybrid | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
     "# > Smart and region groups learn from real traffic; NodePool keeps a manual Fail-Closed entry.",
+    "# > AI and TikTok Smart groups pool only their reviewed supported regions.",
     "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
     f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
     "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
 ]
-if text.splitlines()[:10] != expected_header:
+if text.splitlines()[:11] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
 if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF):
     fail("runtime snapshot must be a full lowercase Git SHA")
@@ -148,19 +200,33 @@ general = key_values(sections["General"], "General")
 expected_general = {
     "loglevel": "notify",
     "auto-suspend": "true",
+    "internet-test-url": "http://connectivitycheck.platform.hicloud.com/generate_204",
+    "proxy-test-url": "http://cp.cloudflare.com/generate_204",
+    "test-timeout": "5",
+    "proxy-test-udp": "apple.com@9.9.9.9",
     "ipv6": "true",
     "ipv6-vif": "auto",
+    "compatibility-mode": "3",
     "wifi-assist": "false",
     "all-hybrid": "false",
     "include-all-networks": "true",
     "include-local-networks": "false",
     "include-apns": "true",
     "include-cellular-services": "false",
-    "dns-server": "223.5.5.5, 223.6.6.6",
+    "show-error-page-for-reject": "false",
+    "icmp-forwarding": "false",
+    "disable-geoip-db-auto-update": "false",
+    "always-real-ip": "<simple-hostname>, *.local, *.cmpassport.com, id6.me, open.e.189.cn, mdn.open.wo.cn, opencloud.wostore.cn, auth.wosms.cn, *.10099.com.cn, *.srv.nintendo.net, *.stun.playstation.net, xbox.*.microsoft.com, *.xboxlive.com",
+    "skip-proxy": "192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, localhost, *.local, ::1/128, fc00::/7, fe80::/10",
+    "exclude-simple-hostnames": "true",
+    "always-raw-tcp-hosts": "149.154.*, 91.108.*, *.push.apple.com:443, *push-apple.com.akadns.net:443, *.apple.com.edgekey.net:443",
+    "dns-server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
     "encrypted-dns-server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
     "encrypted-dns-follow-outbound-mode": "false",
     "encrypted-dns-skip-cert-verification": "false",
     "hijack-dns": "*:53",
+    "allow-dns-svcb": "false",
+    "use-local-host-item-for-proxy": "false",
     "allow-wifi-access": "false",
     "allow-hotspot-access": "false",
     "http-api-web-dashboard": "false",
@@ -168,17 +234,17 @@ expected_general = {
     "gateway-restricted-to-lan": "true",
     "udp-policy-not-supported-behaviour": "REJECT",
     "block-quic": "per-policy",
-    "proxy-test-udp": "apple.com@9.9.9.9",
 }
 for key, value in expected_general.items():
     if general.get(key) != value:
         fail(f"[General] invariant changed: {key}")
+if set(general) != set(expected_general):
+    fail(f"[General] key inventory changed: {sorted(set(general) ^ set(expected_general))}")
 
 hosts = key_values(sections["Host"], "Host")
 if hosts != {
     "sub.store": "127.0.0.1",
-    "dns.alidns.com": "223.5.5.5, 223.6.6.6, 2400:3200::1",
-    "doh.pub": "1.12.12.12, 120.53.53.53",
+    "dns.alidns.com": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
 }:
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
@@ -206,7 +272,7 @@ require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
     "interval=60", "evaluate-before-use=true", "no-alert=0", "hidden=1",
 ))
 
-for name in set(groups) - {"ApplePush", "Smart", "NodePool", *REGIONS}:
+for name in set(groups) - {"ApplePush", "Smart", "NodePool", *REGIONS, *RESTRICTED_SMART}:
     require_exact_options(group_parts(groups, name), name, VISIBLE_SELECT_OPTIONS)
 
 node_parts = group_parts(groups, "NodePool")
@@ -233,16 +299,20 @@ for region in REGIONS:
     if hashlib.sha256(filters[0].encode()).hexdigest() != REGION_FILTER_SHA256[region]:
         fail(f"{region} node-name filter changed")
 
-restricted = {
-    "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
-    "Claude": ["Japan", "Singapore", "TaiWan", "America"],
-    "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
-    "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
-    "Bahamut": ["TaiWan", "HongKong"],
-}
-for name, members in restricted.items():
-    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
-        fail(f"{name} supported-region boundary changed")
+for name, sources in RESTRICTED_SMART.items():
+    parts = group_parts(groups, name)
+    source_option = f'include-other-group="{",".join(sources)}"'
+    if parts[0] != "smart" or group_members(groups, name):
+        fail(f"{name} must be a memberless Smart group")
+    require_exact_options(parts, name, (
+        "evaluate-before-use=true", "no-alert=0", "hidden=0",
+        "include-all-proxies=0", source_option,
+    ))
+    if included_groups(groups, name) != list(sources):
+        fail(f"{name} supported-region source order changed")
+
+if group_parts(groups, "Bahamut")[0] != "select" or group_members(groups, "Bahamut") != ["TaiWan", "HongKong"]:
+    fail("Bahamut supported-region boundary changed")
 
 generic_members = {
     "GitHub": ["Proxy", "HongKong", "Japan", "Singapore", "America"],
@@ -261,14 +331,21 @@ for name, members in generic_members.items():
         fail(f"{name} member order changed")
 
 automatic = {name: group_parts(groups, name)[0] for name in groups if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}}
-expected_automatic = {"Smart": "smart", **{region: "smart" for region in REGIONS}}
+expected_automatic = {
+    **{name: "smart" for name in RESTRICTED_SMART},
+    "Smart": "smart",
+    **{region: "smart" for region in REGIONS},
+}
 if automatic != expected_automatic:
     fail(f"automatic node-group boundary changed: {automatic}")
 
 # Validate group references and reject cycles.
 builtins = {"DIRECT", "REJECT", "REJECT-DROP", "Fail-Closed"}
 for name in groups:
-    unknown = [member for member in group_members(groups, name) if member not in groups and member not in builtins]
+    unknown = [
+        member for member in [*group_members(groups, name), *included_groups(groups, name)]
+        if member not in groups and member not in builtins
+    ]
     if unknown:
         fail(f"{name} contains unknown policy members: {unknown}")
 
@@ -280,7 +357,7 @@ def visit(name: str) -> None:
     if name in visited:
         return
     visiting.add(name)
-    for member in group_members(groups, name):
+    for member in [*group_members(groups, name), *included_groups(groups, name)]:
         if member in groups:
             visit(member)
     visiting.remove(name)
@@ -397,7 +474,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 21 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 22 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -405,7 +482,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.7 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.8 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )
