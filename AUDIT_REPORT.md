@@ -1,19 +1,21 @@
-# R13.5 全盘分流审计报告
+# R13.6 全盘分流审计报告
 
-审计日期：2026-08-29
-对象：`Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP 与 GitHub Actions。
+审计日期为 2026-08-30。
+
+审计对象包括 `Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP 与 GitHub Actions。
 
 ## 结论
 
-本次是全盘详细检查，不是单独修补 BiliBili。配置中的国内外软件策略、首条命中、策略组失效行为、DNS、UDP、APNs、双栈兜底、固定/动态资源和发布链均已逐项复核并修正。
+本次覆盖完整配置。国内外软件策略、首条命中、策略组失效行为、DNS、UDP、APNs、双栈兜底、固定和动态资源、发布链均已逐项复核。
 
-静态目标基线为 29 个策略组、142 条活动规则、29 个不可变运行资源、1 个动态国内资源和 29 个本地 `.list` 文件。主配置没有嵌入规则快照，也不含公开订阅凭据。
+静态目标基线为 30 个策略组、142 条活动规则、29 个不可变运行资源、1 个动态国内资源和 29 个本地 `.list` 文件。主配置没有嵌入规则快照，也不含公开订阅凭据。
 
 ## 发现与处理
 
 | 严重度 | 发现 | 修复 |
 | --- | --- | --- |
-| 高 | Smart 空组会 `DIRECT/SUBSTITUTE`，旧版失败关闭声明不成立 | 删除 `AllServer` Smart；NodePool 与五个地区组改为手动 `select`，首项为 `reject` 别名 |
+| 高 | 自动组无可用成员时可能 `DIRECT/SUBSTITUTE` | 明示风险，保留手动 `NodePool → Fail-Closed` 入口，不再声称全局严格失败关闭 |
+| 中 | 全手动节点和地区选择增加日常维护负担 | 新增 `Auto`，五个地区组改用 `url-test`，统一使用 600 秒结果有效期、100 毫秒容差和首次使用前评估 |
 | 高 | `AdBlock`、`Security`、`UDP`、`Domestic` 会继承旧选择，实际行为可能偏离文档默认 | 删除四个状态组，规则固定为 `REJECT`、`Proxy` 或 `DIRECT` |
 | 高 | 十万级动态广告/钓鱼表不适合 iOS，并已误杀功能域名 | 删除两份移动端动态表，保留 152 条固定 Ads 与固定 Pegasus |
 | 高 | 国内 BiliBili 固定集合缺四个后缀，HTTPDNS/H5 与广告表重叠 | 补为 16 后缀，增加两条 Ads 前置直连护栏并启用扩展匹配 |
@@ -21,21 +23,24 @@
 | 中 | ChatGPT 规则未覆盖当前官方网络建议中的部分依赖 | 增加 11 条官方依赖，本地活动规则 52 增至 63 |
 | 中 | 固定资源只按普通 DNS 路径匹配，SNI/Host 可能漏分流 | 除 Ads 外的固定资源及动态国内补充启用 `extended-matching` |
 | 中 | AI/TikTok/Bahamut 可通过通用 Proxy 或不合适地区绕过限制 | AI/TikTok 仅四个支持地区；Bahamut 仅台湾、香港 |
-| 中 | 固定规则使用旧快照提交且远程内容未逐文件在线核验 | 新快照钉住 `ce744020…`，增加 29 文件 CDN 哈希校验 |
+| 中 | 固定规则使用旧快照提交且远程内容未逐文件在线核验 | 快照钉住 `2b8fa939…`，增加 29 文件 CDN 哈希校验 |
 | 低 | Pegasus 文件头仍声明旧 `Security` 策略 | 文件头、资源锁和运行规则统一为 `REJECT` |
 
 ## 策略组审计
 
-严格失败关闭需要区分“静态可证明”和“自动好用”。Surge 官方文档明确说明，自动组没有可用策略时会替代为 `DIRECT`；Smart 不使用内建策略或嵌套组作为候选。把 `Fail-Closed` 写进 Smart 不能改变这两个事实。
+Surge 官方文档说明，自动组没有可用策略时会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。Smart 还会忽略内建策略和嵌套组。R13.6 使用可审计的 `url-test` 做日常选优，同时保留独立的手动安全入口。
 
-R13.5 采用以下边界：
+R13.6 采用以下边界。
 
 - `[Proxy] Fail-Closed = reject` 使用内建策略别名，不再伪造本地端口失败节点。
 - `NodePool` 是手动 `select`，首项 `Fail-Closed`，其余成员由私人 `policy-path` 提供。
-- 香港、台湾、日本、新加坡、美国均为手动 `select`，首项 `Fail-Closed`，只导入名称匹配的 NodePool 节点。
-- `Proxy` 首项 `NodePool`，不引用任何自动组。
+- `Auto` 是 `url-test`，只导入 `NodePool` 的真实订阅节点，并用精确过滤排除 `Fail-Closed`。
+- 香港、台湾、日本、新加坡、美国均为 `url-test`，只导入名称匹配的 `NodePool` 节点。
+- 六个自动组统一锁定 `interval=600`、`tolerance=100`、`evaluate-before-use=true` 和可见状态。
+- `Proxy` 首项为 `Auto`，第二项保留手动 `NodePool`，之后是五个地区入口。
 - `ApplePush` 保留 `Proxy → DIRECT` fallback，这是通知可达性的明确例外。
-- 配置没有 Smart、url-test 或 load-balance 节点组，没有策略引用循环或未知成员。
+- 配置没有 Smart 或 load-balance 节点组，没有策略引用循环或未知成员。
+- `Auto` 或地区组为空时仍可能发生 `DIRECT/SUBSTITUTE`。需要严格失败关闭时，用户应选择 `Proxy → NodePool`，再在 `NodePool` 选择 `Fail-Closed` 或已知节点。
 
 ## 软件与地区审计
 
@@ -45,7 +50,7 @@ R13.5 采用以下边界：
 | TikTok | 同上 |
 | Bahamut | 仅台湾、香港 |
 | GitHub | Proxy、香港、日本、新加坡、美国 |
-| YouTube、Netflix、Disney+、Emby、Spotify、Streaming、Telegram、X、Google、Microsoft、Games | 默认 Proxy，可手动选择五个地区 |
+| YouTube、Netflix、Disney+、Emby、Spotify、Streaming、Telegram、X、Google、Microsoft、Games | 默认 Proxy，五个地区自动选优并支持临时手动覆盖 |
 | HBO、Prime Video | 默认 Proxy，并保留各自更适合的地区排序 |
 | Apple | DIRECT 首选；流媒体域名在 AppleCN 前进入 Streaming |
 | 微信、Direct、China、CN GeoIP、国内 DNS、共享国内云 | 固定 DIRECT |
@@ -56,7 +61,7 @@ R13.5 采用以下边界：
 
 ## BiliBili 根因
 
-旧版已把固定 BiliBili 列表指向 `DIRECT`，但仍可能长时间等待：
+旧版已把固定 BiliBili 列表指向 `DIRECT`，但仍可能长时间等待。审计确认了下面四项原因。
 
 1. 固定列表不含 `biligame.net`、`bilivideo.cn`、`bilicomic.com`、`bilivideo.net`。
 2. 动态广告表命中 `httpdns.bilivideo.com` 和 `line3-h5-mobile-api.biligame.com`。
@@ -67,7 +72,7 @@ R13.5 采用以下边界：
 
 ## 广告与安全边界
 
-动态 `reject.conf` 与 `reject_phishing.conf` 已从运行配置删除。审计时确认其中至少存在以下功能重叠：
+动态 `reject.conf` 与 `reject_phishing.conf` 已从运行配置删除。审计时确认其中至少存在以下功能重叠。
 
 - `httpdns.bilivideo.com`
 - `line3-h5-mobile-api.biligame.com`
@@ -106,18 +111,18 @@ R13.5 采用以下边界：
 
 ## 自动验证
 
-已覆盖：
+自动验证覆盖以下内容。
 
-- 配置结构、29 个策略组与 142 条规则；
+- 配置结构、30 个策略组与 142 条规则；
 - 30 个运行资源的类型、策略、顺序、更新间隔和扩展匹配；
 - 16 个 BiliBili 精确后缀、国际版退役与前置功能护栏；
 - 18 份服务来源锁、Pegasus 锁和维护来源锁；
 - DNS、UDP、APNs、双栈和唯一 FINAL；
-- 82 项故障注入；
+- 102 项故障注入；
 - 发布目录与 ZIP 导入安全回归；
 - 动态国内在线格式检查、固定上游零差异检查；
 - 快照推送后的 29 份 jsDelivr 文件逐一哈希检查。
 
 ## 剩余风险
 
-静态配置无法证明私人节点在线、地区标签真实、节点 DNS 无泄漏、运营商链路正常，也无法检查未随仓库提供的 Surge 模块。最终必须在真实设备的 Wi-Fi 和蜂窝网络完成验收。若命中规则与策略正确但速度仍差，应检查服务端、运营商、DNS 或节点质量，不能继续用更宽泛规则掩盖链路问题。
+静态配置无法证明私人节点在线、地区标签真实、节点 DNS 无泄漏、运营商链路正常，也无法检查未随仓库提供的 Surge 模块。自动组没有可用成员时存在官方 `DIRECT/SUBSTITUTE` 风险，这项行为无法由配置覆盖。最终必须在真实设备的 Wi-Fi 和蜂窝网络完成验收。命中规则与策略正确但速度仍差时，应检查服务端、运营商、DNS 或节点质量，不能继续用更宽泛规则掩盖链路问题。
