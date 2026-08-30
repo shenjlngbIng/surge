@@ -21,7 +21,7 @@
       ],
       "license_status": "published technical support data; redistribution terms not separately stated",
       "notes": "Local list is reviewed against Apple-published IPv4/IPv6 ranges and APNs host suffixes.",
-      "last_review": "2026-08-25"
+      "last_review": "2026-08-30"
     },
     {
       "file": "Ads.list",
@@ -112,8 +112,8 @@
         }
       ],
       "license_status": "official network list terms not separately stated; domain and extra-IP curation is repository-maintained",
-      "notes": "All current official CIDRs are covered; repository domains and two additional IPv4 routes remain explicit local curation.",
-      "last_review": "2026-08-25"
+      "notes": "All 14 current official CIDRs were rechecked online on 2026-08-30; repository domains and two additional IPv4 routes remain explicit local curation.",
+      "last_review": "2026-08-30"
     },
     {
       "file": "WeChat.list",
