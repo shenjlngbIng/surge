@@ -1,11 +1,11 @@
 {
-  "schema": 19,
+  "schema": 20,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.5 Strict Fail-Closed",
-  "generated": "2026-08-29",
+  "profile": "Surge iOS Privacy + Push R13.6 Hybrid Auto",
+  "generated": "2026-08-30",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "546c7dafb73ce4d74da02fabfa55737b6aafaaa177c39bd5ff0ab54425ca99e0",
-  "profile_lines": 362,
+  "profile_sha256": "916508791e083e81cf2768aaf0d13ae60ca2c685f982fe84607646bd1b7b7aab",
+  "profile_lines": 367,
   "active_rules": 142,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
@@ -33,12 +33,23 @@
     "visible_control_groups": [
       "Final",
       "Proxy",
+      "Auto",
       "NodePool"
     ],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
     "fail_closed_alias": "reject",
     "policy_architecture": {
+      "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
+      "auto": {
+        "mode": "url-test",
+        "hidden": false,
+        "source": "NodePool",
+        "excluded_policy": "Fail-Closed",
+        "interval": 600,
+        "tolerance": 100,
+        "evaluate_before_use": true
+      },
       "node_pool": {
         "mode": "select",
         "hidden": false,
@@ -48,13 +59,16 @@
       },
       "proxy": {
         "mode": "select",
-        "default": "NodePool"
+        "default": "Auto",
+        "manual_fail_closed_entry": "NodePool"
       },
       "regions": {
-        "mode": "select",
+        "mode": "url-test",
         "source": "NodePool",
-        "first_member": "Fail-Closed",
-        "automatic_fallback": false,
+        "interval": 600,
+        "tolerance": 100,
+        "evaluate_before_use": true,
+        "empty_group_behavior": "DIRECT/SUBSTITUTE",
         "names": [
           "HongKong",
           "TaiWan",
@@ -631,7 +645,7 @@
       "sha256": "56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
-      "release_audited": "2026-08-29"
+      "release_audited": "2026-08-30"
     }
   ]
 }
