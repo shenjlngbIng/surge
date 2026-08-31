@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.10 configuration auditor."""
+"""Fault-injection regression tests for the R13.11 configuration auditor."""
 
 from __future__ import annotations
 
@@ -35,18 +35,19 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
     MUTATIONS.append((name, "".join(lines)))
 
 
-# Header, snapshot and public-source boundary (1-9).
-replace_once("version", "R13.10 Real Diagnostics", "R13.9 Smart Diagnostics")
+# Header, snapshot and public-source boundary.
+replace_once("version", "R13.11 Fail-Closed Auto", "R13.10 Real Diagnostics")
 replace_once("date", "# > Update Date: 2026.08.31", "# > Update Date: 2026.08.30")
-replace_once("header_claim", "Diagnostics bridges Surge's local SOCKS5 service", "Diagnostics allegedly tests something")
-replace_once("smart_risk_warning", "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.\n", "")
+replace_once("auto_claim", "# > Auto, regional and restricted-service groups use url-test with an explicit REJECT safety member.\n", "")
+replace_once("diagnostics_claim", "# > External policy-path nodes cannot populate global Network Diagnosis; test UDP on a real NodePool policy.\n", "")
+replace_once("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", "")
 replace_once("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4")
 replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
 replace_once("subscription_placeholder", "https://example.invalid/REPLACE_WITH_SUB_STORE_URL", "https://example.com/private-subscription")
 replace_once("mutable_main", "# Repository-hosted remote rule sets\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Ads.list,REJECT,no-resolve\n# Repository-hosted remote rule sets\n")
 replace_once("mobile_dynamic_ads", "# Artificial intelligence\n", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n# Artificial intelligence\n")
 
-# Complete General and access invariants (10-45).
+# Complete General and access invariants.
 replace_once("loglevel", "loglevel = notify", "loglevel = debug")
 replace_once("auto_suspend", "auto-suspend = true", "auto-suspend = false")
 replace_once("ipv6", "ipv6 = true", "ipv6 = false")
@@ -64,7 +65,6 @@ replace_once("dns_cert", "encrypted-dns-skip-cert-verification = false", "encryp
 replace_once("hijack_dns", "hijack-dns = *:53", "hijack-dns = 8.8.8.8:53")
 replace_once("wifi_access", "allow-wifi-access = false", "allow-wifi-access = true")
 replace_once("hotspot_access", "allow-hotspot-access = false", "allow-hotspot-access = true")
-replace_once("socks5_port", "wifi-access-socks5-port = 6153", "wifi-access-socks5-port = 1080")
 replace_once("dashboard", "http-api-web-dashboard = false", "http-api-web-dashboard = true")
 replace_once("proxy_lan", "proxy-restricted-to-lan = true", "proxy-restricted-to-lan = false")
 replace_once("gateway_lan", "gateway-restricted-to-lan = true", "gateway-restricted-to-lan = false")
@@ -85,50 +85,53 @@ replace_once("raw_tcp_telegram", "always-raw-tcp-hosts = 149.154.*, 91.108.*,", 
 replace_once("dns_svcb", "allow-dns-svcb = false", "allow-dns-svcb = true")
 replace_once("local_host_for_proxy", "use-local-host-item-for-proxy = false", "use-local-host-item-for-proxy = true")
 
-# Host, diagnostic-safe proxy inventory and group architecture (46-97).
+# Host, empty static-proxy boundary and fail-closed group architecture.
 replace_once("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1")
 replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1", "dns.alidns.com = 8.8.8.8")
 replace_once("dnspod_static_bootstrap", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\n", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\ndoh.pub = 1.12.12.12, 120.53.53.53\n")
-replace_once("fail_closed_proxy", "[Proxy Group]", "[Proxy]\nFail-Closed = reject\n\n[Proxy Group]")
-replace_once("extra_proxy", "[Proxy Group]", "[Proxy]\nUnexpected = direct\n\n[Proxy Group]")
-replace_once("diagnostics_host", "Diagnostics = socks5, 127.0.0.1, 6153,", "Diagnostics = socks5, 127.0.0.2, 6153,")
-replace_once("diagnostics_port", "Diagnostics = socks5, 127.0.0.1, 6153,", "Diagnostics = socks5, 127.0.0.1, 1080,")
-replace_once("diagnostics_udp", "udp-relay=true, no-error-alert=true", "udp-relay=false, no-error-alert=true")
-replace_once("diagnostics_alert", "udp-relay=true, no-error-alert=true", "udp-relay=true, no-error-alert=false")
+replace_once("fail_closed_proxy", "[Proxy]\n", "[Proxy]\nFail-Closed = reject\n")
+replace_once("loopback_diagnostics", "[Proxy]\n", "[Proxy]\nDiagnostics = socks5, 127.0.0.1, 6153, udp-relay=true\n")
+replace_once("unexpected_proxy", "[Proxy]\n", "[Proxy]\nUnexpected = direct\n")
 replace_once("final_members", "Final = select, Proxy, REJECT,", "Final = select, DIRECT, Proxy,")
-replace_once("proxy_default", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, NodePool, Smart, HongKong")
-replace_once("proxy_diagnostics_loop", "Proxy = select, Smart, NodePool,", "Proxy = select, Diagnostics, Smart, NodePool,")
+replace_once("proxy_default", "Proxy = select, Auto, NodePool, HongKong", "Proxy = select, NodePool, Auto, HongKong")
 replace_once("proxy_manual_reject", "America, REJECT, no-alert=0", "America, no-alert=0")
-replace_once("allserver_returned", "# Services\n", "AllServer = smart, Fail-Closed, include-other-group=NodePool\n# Services\n")
+replace_once("allserver_returned", "# Services\n", "AllServer = smart, include-other-group=NodePool\n# Services\n")
 replace_once("applepush_direct_first", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy")
 replace_once("applepush_visible", "hidden=1\n# Services", "hidden=0\n# Services")
-replace_group_fragment("smart_url_test", "Smart", "smart", "url-test")
-replace_group_fragment("smart_filter", "Smart", "Smart = smart,", "Smart = smart, policy-regex-filter=.+,")
-replace_group_fragment("smart_interval_added", "Smart", "Smart = smart,", "Smart = smart, interval=600,")
-replace_group_fragment("smart_tolerance_added", "Smart", "Smart = smart,", "Smart = smart, tolerance=100,")
-replace_group_fragment("smart_no_evaluate", "Smart", "evaluate-before-use=true", "evaluate-before-use=false")
-replace_group_fragment("smart_alerts_disabled", "Smart", "no-alert=0", "no-alert=1")
-replace_group_fragment("smart_hidden", "Smart", "hidden=0", "hidden=1")
-replace_group_fragment("smart_include_all", "Smart", "include-all-proxies=0", "include-all-proxies=1")
-replace_group_fragment("smart_source", "Smart", "include-other-group=NodePool", "include-other-group=HongKong")
-replace_group_fragment("smart_explicit_fail_closed", "Smart", "Smart = smart,", "Smart = smart, REJECT,")
-replace_once("nodepool_automatic", "NodePool = select, policy-path", "NodePool = smart, policy-path")
-replace_once("nodepool_no_fail", "NodePool = select, policy-path", "NodePool = select, REJECT, policy-path")
-replace_once("nodepool_hidden", "update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0\n\n# Regions", "update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0\n\n# Regions")
+replace_group_fragment("auto_smart", "Auto", "url-test", "smart")
+replace_group_fragment("auto_select", "Auto", "url-test", "select")
+replace_group_fragment("auto_no_reject", "Auto", "url-test, REJECT,", "url-test,")
+replace_group_fragment("auto_direct", "Auto", "url-test, REJECT,", "url-test, DIRECT,")
+replace_group_fragment("auto_interval", "Auto", "interval=600", "interval=1800")
+replace_group_fragment("auto_tolerance", "Auto", "tolerance=100", "tolerance=500")
+replace_group_fragment("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false")
+replace_group_fragment("auto_alerts_disabled", "Auto", "no-alert=0", "no-alert=1")
+replace_group_fragment("auto_hidden", "Auto", "hidden=0", "hidden=1")
+replace_group_fragment("auto_include_all", "Auto", "include-all-proxies=0", "include-all-proxies=1")
+replace_group_fragment("auto_source", "Auto", "include-other-group=NodePool", "include-other-group=HongKong")
+replace_group_fragment("auto_filter", "Auto", "Auto = url-test,", "Auto = url-test, policy-regex-filter=.+,")
+replace_group_fragment("auto_extra_direct", "Auto", "url-test, REJECT,", "url-test, REJECT, DIRECT,")
+replace_group_fragment("nodepool_automatic", "NodePool", "select", "smart")
+replace_group_fragment("nodepool_no_reject", "NodePool", "select, REJECT,", "select,")
+replace_group_fragment("nodepool_direct", "NodePool", "select, REJECT,", "select, DIRECT,")
+replace_group_fragment("nodepool_hidden", "NodePool", "hidden=0", "hidden=1")
 replace_group_fragment("nodepool_update_interval", "NodePool", "update-interval=3600", "update-interval=7200")
 replace_group_fragment("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1")
-replace_group_fragment("hongkong_url_test", "HongKong", "smart", "url-test")
-replace_group_fragment("hongkong_interval_added", "HongKong", "HongKong = smart,", "HongKong = smart, interval=600,")
-replace_group_fragment("taiwan_select", "TaiWan", "smart", "select")
-replace_group_fragment("taiwan_tolerance_added", "TaiWan", "TaiWan = smart,", "TaiWan = smart, tolerance=100,")
-replace_group_fragment("japan_explicit_member", "Japan", "Japan = smart,", "Japan = smart, NodePool,")
+replace_group_fragment("hongkong_smart", "HongKong", "url-test", "smart")
+replace_group_fragment("hongkong_no_reject", "HongKong", "url-test, REJECT,", "url-test,")
+replace_group_fragment("hongkong_interval", "HongKong", "interval=600", "interval=1800")
+replace_group_fragment("hongkong_filter", "HongKong", "policy-regex-filter=", "removed-filter=")
+replace_group_fragment("taiwan_select", "TaiWan", "url-test", "select")
+replace_group_fragment("taiwan_tolerance", "TaiWan", "tolerance=100", "tolerance=500")
+replace_group_fragment("japan_direct", "Japan", "url-test, REJECT,", "url-test, REJECT, DIRECT,")
 replace_group_fragment("singapore_filter", "Singapore", "policy-regex-filter=", "removed-filter=")
 replace_group_fragment("america_hidden", "America", "hidden=0", "hidden=1")
 replace_group_fragment("america_no_evaluate", "America", "evaluate-before-use=true", "evaluate-before-use=false")
 replace_group_fragment("america_filter_case", "America", "policy-regex-filter=(?i).*", "policy-regex-filter=.*")
-replace_group_fragment("chatgpt_select", "ChatGPT", "smart", "select")
+replace_group_fragment("chatgpt_smart", "ChatGPT", "url-test", "smart")
+replace_group_fragment("chatgpt_no_reject", "ChatGPT", "url-test, REJECT,", "url-test,")
 replace_group_fragment("claude_hongkong", "Claude", 'include-other-group="Japan,Singapore,TaiWan,America"', 'include-other-group="HongKong,Japan,Singapore,TaiWan,America"')
-replace_group_fragment("gemini_explicit_member", "Gemini", "Gemini = smart,", "Gemini = smart, Proxy,")
+replace_group_fragment("gemini_direct", "Gemini", "url-test, REJECT,", "url-test, REJECT, DIRECT,")
 replace_group_fragment("tiktok_no_evaluate", "TikTok", "evaluate-before-use=true", "evaluate-before-use=false")
 replace_group_fragment("chatgpt_unterminated_sources", "ChatGPT", 'include-other-group="Japan,Singapore,TaiWan,America"', 'include-other-group="Japan,Singapore,TaiWan,America')
 replace_group_fragment("claude_unquoted_sources", "Claude", 'include-other-group="Japan,Singapore,TaiWan,America"', "include-other-group=Japan,Singapore,TaiWan,America")
@@ -141,26 +144,28 @@ replace_once("domestic_group_returned", "# Services\n", "Domestic = select, DIRE
 replace_once("adblock_group_returned", "# Services\n", "AdBlock = select, REJECT, DIRECT\n# Services\n")
 replace_once("security_group_returned", "# Services\n", "Security = select, REJECT, DIRECT\n# Services\n")
 replace_once("udp_group_returned", "# Services\n", "UDP = select, Proxy, REJECT, DIRECT\n# Services\n")
+replace_once("smart_group_returned", "# Subscription\n", "Smart = smart, include-other-group=NodePool\n# Subscription\n")
 replace_once("unknown_member", "Games = select, Proxy, HongKong", "Games = select, UnknownPolicy, Proxy, HongKong")
-replace_once("policy_cycle", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, Final, Smart, NodePool, HongKong")
+replace_once("policy_cycle", "Proxy = select, Auto, NodePool, HongKong", "Proxy = select, Final, Auto, NodePool, HongKong")
 
-# Rule order, fixed policies and mobile source boundary (97-118).
+# Rule order, fixed policies and mobile source boundary.
 replace_once("final_deleted", "FINAL,Final,dns-failed\n", "")
 replace_once("final_duplicated", "FINAL,Final,dns-failed\n", "FINAL,Final,dns-failed\nFINAL,Final,dns-failed\n")
 replace_once("stun_direct", "PROTOCOL,STUN,Proxy", "PROTOCOL,STUN,DIRECT")
-replace_once("diagnostics_tcp_direct", "DOMAIN,cp.cloudflare.com,Proxy", "DOMAIN,cp.cloudflare.com,DIRECT")
-replace_once("diagnostics_udp_deleted", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n", "")
-MUTATIONS.append((
-    "diagnostics_after_dns_reject",
-    SOURCE.replace("IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n", "", 1).replace(
-        "DEST-PORT,53,REJECT\n",
-        "DEST-PORT,53,REJECT\nIP-CIDR,1.1.1.1/32,Proxy,no-resolve\n",
-        1,
-    ),
-))
+replace_once("diagnostics_proxy_returned", "[Proxy]\n", "[Proxy]\nDiagnostics = socks5, 127.0.0.1, 6153, udp-relay=true\n")
+replace_once("diagnostics_tcp_rule_returned", "# Reviewed mainland resolver hostnames", "DOMAIN,cp.cloudflare.com,Proxy\n# Reviewed mainland resolver hostnames")
 replace_once("domestic_dns_proxy", "DOMAIN,dns.alidns.com,DIRECT", "DOMAIN,dns.alidns.com,Proxy")
 replace_once("dns_port_order", "DEST-PORT,53,REJECT\nDEST-PORT,853,REJECT", "DEST-PORT,853,REJECT\nDEST-PORT,53,REJECT")
 replace_once("foreign_dns_direct", "DOMAIN,dns.google,Proxy", "DOMAIN,dns.google,DIRECT")
+replace_once("udp_probe_ip_deleted", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n", "")
+MUTATIONS.append((
+    "udp_probe_ip_before_dns_reject",
+    SOURCE.replace("IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n", "", 1).replace(
+        "# Reviewed mainland resolver hostnames",
+        "IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n# Reviewed mainland resolver hostnames",
+        1,
+    ),
+))
 replace_once("mobile_dynamic_phishing", "# Historical Pegasus IOC defense-in-depth", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject_phishing.conf,REJECT,update-interval=86400\n# Historical Pegasus IOC defense-in-depth")
 replace_once("pegasus_policy", "/Rules/Pegasus.list,REJECT,extended-matching", "/Rules/Pegasus.list,Security,extended-matching")
 replace_once("apns_extended", "/Rules/APNs.list,ApplePush,extended-matching,no-resolve", "/Rules/APNs.list,ApplePush,no-resolve")
@@ -178,8 +183,9 @@ replace_once("china_policy", "/Rules/China.list,DIRECT,extended-matching", "/Rul
 replace_once("geoip_policy", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Domestic,no-resolve")
 replace_once("ipv6_direct", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 
-if len(MUTATIONS) != 128:
-    raise RuntimeError(f"expected 128 mutations, built {len(MUTATIONS)}")
+EXPECTED_MUTATIONS = 133
+if len(MUTATIONS) != EXPECTED_MUTATIONS:
+    raise RuntimeError(f"expected {EXPECTED_MUTATIONS} mutations, built {len(MUTATIONS)}")
 
 environment = dict(os.environ)
 environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -200,4 +206,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.10 mutations={len(MUTATIONS)}")
+print(f"PASS R13.11 mutations={len(MUTATIONS)}")

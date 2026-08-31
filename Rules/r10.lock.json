@@ -1,12 +1,12 @@
 {
-  "schema": 24,
+  "schema": 25,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.10 Real Diagnostics",
+  "profile": "Surge iOS Privacy + Push R13.11 Fail-Closed Auto",
   "generated": "2026-08-31",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "ae06889dfd4e3fa3ddc2617102a4f4d87f0d8d546daf0f1d24137e2ccdc76cc7",
-  "profile_lines": 377,
-  "active_rules": 143,
+  "profile_sha256": "7e4292f1a636d3aea5268c1e0b03de64e28f790ab0c7a038c71c28d9bddaac9d",
+  "profile_lines": 370,
+  "active_rules": 142,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
   "dynamic_runtime_resources": 1,
@@ -29,47 +29,57 @@
       "UDP",
       "Domestic",
       "AllServer",
-      "Auto"
+      "Smart"
     ],
     "visible_control_groups": [
       "Final",
       "Proxy",
-      "Smart",
+      "Auto",
       "NodePool"
     ],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
-    "user_defined_proxy_policies": 1,
+    "user_defined_proxy_policies": 0,
     "policy_architecture": {
       "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
-      "smart": {
-        "mode": "smart",
+      "smart_groups": [],
+      "auto": {
+        "mode": "url-test",
         "hidden": false,
         "source": "NodePool",
+        "explicit_members": [
+          "REJECT"
+        ],
+        "interval_seconds": 600,
+        "tolerance_milliseconds": 100,
         "evaluate_before_use": true,
-        "fixed_test_schedule_seconds": 300,
-        "uses_real_connection_quality": true,
-        "per_site_memory": true
+        "empty_source_behavior": "REJECT/error",
+        "direct_substitution_prevented": true
       },
       "node_pool": {
         "mode": "select",
         "hidden": false,
         "source": "policy-path",
-        "explicit_members": [],
+        "explicit_members": [
+          "REJECT"
+        ],
         "automatic_fallback": false
       },
       "proxy": {
         "mode": "select",
-        "default": "Smart",
+        "default": "Auto",
         "manual_fail_closed_entry": "REJECT"
       },
       "regions": {
-        "mode": "smart",
+        "mode": "url-test",
         "source": "NodePool",
-        "fixed_test_schedule_seconds": 300,
-        "uses_real_connection_quality": true,
+        "explicit_members": [
+          "REJECT"
+        ],
+        "interval_seconds": 600,
+        "tolerance_milliseconds": 100,
         "evaluate_before_use": true,
-        "empty_group_behavior": "DIRECT/SUBSTITUTE",
+        "empty_source_behavior": "REJECT/error",
         "names": [
           "HongKong",
           "TaiWan",
@@ -78,12 +88,16 @@
           "America"
         ]
       },
-      "restricted_service_smart": {
-        "mode": "smart",
+      "restricted_service_auto": {
+        "mode": "url-test",
         "source_mode": "recursive-include-other-group",
+        "explicit_members": [
+          "REJECT"
+        ],
         "evaluate_before_use": true,
-        "fixed_test_schedule_seconds": 300,
-        "empty_group_behavior": "DIRECT/SUBSTITUTE",
+        "interval_seconds": 600,
+        "tolerance_milliseconds": 100,
+        "empty_source_behavior": "REJECT/error",
         "groups": {
           "ChatGPT": [
             "Japan",
@@ -257,16 +271,13 @@
     },
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
-    "diagnostic_policy": "Diagnostics",
-    "diagnostic_bridge": {
-      "definition": "socks5, 127.0.0.1, 6153, udp-relay=true, no-error-alert=true",
-      "loopback_only": true,
-      "included_in_policy_groups": false,
-      "referenced_by_rules": false,
-      "wifi_access_socks5_port": 6153,
-      "inner_policy": "Proxy",
-      "tcp_target_rule": "DOMAIN,cp.cloudflare.com,Proxy",
-      "udp_target_rule": "IP-CIDR,1.1.1.1/32,Proxy,no-resolve"
+    "network_diagnostics": {
+      "static_proxy_policies": 0,
+      "global_proxy_and_udp_rows": "blank",
+      "loopback_bridge": false,
+      "reason": "policy-path policies are scoped to NodePool",
+      "real_policy_udp_test": "apple.com@1.1.1.1",
+      "udp_requires_policy_and_server_support": true
     },
     "runtime_rulesets_no_resolve": true,
     "public_ip_literals": {
