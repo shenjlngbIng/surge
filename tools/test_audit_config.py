@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.9 configuration auditor."""
+"""Fault-injection regression tests for the R13.10 configuration auditor."""
 
 from __future__ import annotations
 
@@ -36,9 +36,9 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 
 # Header, snapshot and public-source boundary (1-9).
-replace_once("version", "R13.9 Smart Diagnostics", "R13.8 Smart Hybrid")
-replace_once("date", "# > Update Date: 2026.08.30", "# > Update Date: 2026.08.29")
-replace_once("header_claim", "Smart and region groups learn from real traffic", "Manual groups allegedly optimize")
+replace_once("version", "R13.10 Real Diagnostics", "R13.9 Smart Diagnostics")
+replace_once("date", "# > Update Date: 2026.08.31", "# > Update Date: 2026.08.30")
+replace_once("header_claim", "Diagnostics bridges Surge's local SOCKS5 service", "Diagnostics allegedly tests something")
 replace_once("smart_risk_warning", "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.\n", "")
 replace_once("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4")
 replace_once("token_warning", "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.\n", "")
@@ -64,12 +64,13 @@ replace_once("dns_cert", "encrypted-dns-skip-cert-verification = false", "encryp
 replace_once("hijack_dns", "hijack-dns = *:53", "hijack-dns = 8.8.8.8:53")
 replace_once("wifi_access", "allow-wifi-access = false", "allow-wifi-access = true")
 replace_once("hotspot_access", "allow-hotspot-access = false", "allow-hotspot-access = true")
+replace_once("socks5_port", "wifi-access-socks5-port = 6153", "wifi-access-socks5-port = 1080")
 replace_once("dashboard", "http-api-web-dashboard = false", "http-api-web-dashboard = true")
 replace_once("proxy_lan", "proxy-restricted-to-lan = true", "proxy-restricted-to-lan = false")
 replace_once("gateway_lan", "gateway-restricted-to-lan = true", "gateway-restricted-to-lan = false")
 replace_once("udp_unsupported", "udp-policy-not-supported-behaviour = REJECT", "udp-policy-not-supported-behaviour = DIRECT")
 replace_once("quic", "block-quic = per-policy", "block-quic = off")
-replace_once("udp_probe", "proxy-test-udp = apple.com@9.9.9.9", "proxy-test-udp = apple.com@8.8.8.8")
+replace_once("udp_probe", "proxy-test-udp = apple.com@1.1.1.1", "proxy-test-udp = apple.com@8.8.8.8")
 replace_once("internet_test_url", "internet-test-url = http://connectivitycheck.platform.hicloud.com/generate_204", "internet-test-url = http://example.com/generate_204")
 replace_once("proxy_test_url", "proxy-test-url = http://cp.cloudflare.com/generate_204", "proxy-test-url = http://example.com/generate_204")
 replace_once("test_timeout", "test-timeout = 5", "test-timeout = 10")
@@ -90,8 +91,13 @@ replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:32
 replace_once("dnspod_static_bootstrap", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\n", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\ndoh.pub = 1.12.12.12, 120.53.53.53\n")
 replace_once("fail_closed_proxy", "[Proxy Group]", "[Proxy]\nFail-Closed = reject\n\n[Proxy Group]")
 replace_once("extra_proxy", "[Proxy Group]", "[Proxy]\nUnexpected = direct\n\n[Proxy Group]")
+replace_once("diagnostics_host", "Diagnostics = socks5, 127.0.0.1, 6153,", "Diagnostics = socks5, 127.0.0.2, 6153,")
+replace_once("diagnostics_port", "Diagnostics = socks5, 127.0.0.1, 6153,", "Diagnostics = socks5, 127.0.0.1, 1080,")
+replace_once("diagnostics_udp", "udp-relay=true, no-error-alert=true", "udp-relay=false, no-error-alert=true")
+replace_once("diagnostics_alert", "udp-relay=true, no-error-alert=true", "udp-relay=true, no-error-alert=false")
 replace_once("final_members", "Final = select, Proxy, REJECT,", "Final = select, DIRECT, Proxy,")
 replace_once("proxy_default", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, NodePool, Smart, HongKong")
+replace_once("proxy_diagnostics_loop", "Proxy = select, Smart, NodePool,", "Proxy = select, Diagnostics, Smart, NodePool,")
 replace_once("proxy_manual_reject", "America, REJECT, no-alert=0", "America, no-alert=0")
 replace_once("allserver_returned", "# Services\n", "AllServer = smart, Fail-Closed, include-other-group=NodePool\n# Services\n")
 replace_once("applepush_direct_first", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy")
@@ -142,6 +148,16 @@ replace_once("policy_cycle", "Proxy = select, Smart, NodePool, HongKong", "Proxy
 replace_once("final_deleted", "FINAL,Final,dns-failed\n", "")
 replace_once("final_duplicated", "FINAL,Final,dns-failed\n", "FINAL,Final,dns-failed\nFINAL,Final,dns-failed\n")
 replace_once("stun_direct", "PROTOCOL,STUN,Proxy", "PROTOCOL,STUN,DIRECT")
+replace_once("diagnostics_tcp_direct", "DOMAIN,cp.cloudflare.com,Proxy", "DOMAIN,cp.cloudflare.com,DIRECT")
+replace_once("diagnostics_udp_deleted", "IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n", "")
+MUTATIONS.append((
+    "diagnostics_after_dns_reject",
+    SOURCE.replace("IP-CIDR,1.1.1.1/32,Proxy,no-resolve\n", "", 1).replace(
+        "DEST-PORT,53,REJECT\n",
+        "DEST-PORT,53,REJECT\nIP-CIDR,1.1.1.1/32,Proxy,no-resolve\n",
+        1,
+    ),
+))
 replace_once("domestic_dns_proxy", "DOMAIN,dns.alidns.com,DIRECT", "DOMAIN,dns.alidns.com,Proxy")
 replace_once("dns_port_order", "DEST-PORT,53,REJECT\nDEST-PORT,853,REJECT", "DEST-PORT,853,REJECT\nDEST-PORT,53,REJECT")
 replace_once("foreign_dns_direct", "DOMAIN,dns.google,Proxy", "DOMAIN,dns.google,DIRECT")
@@ -162,8 +178,8 @@ replace_once("china_policy", "/Rules/China.list,DIRECT,extended-matching", "/Rul
 replace_once("geoip_policy", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Domestic,no-resolve")
 replace_once("ipv6_direct", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 
-if len(MUTATIONS) != 119:
-    raise RuntimeError(f"expected 119 mutations, built {len(MUTATIONS)}")
+if len(MUTATIONS) != 128:
+    raise RuntimeError(f"expected 128 mutations, built {len(MUTATIONS)}")
 
 environment = dict(os.environ)
 environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -184,4 +200,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.9 mutations={len(MUTATIONS)}")
+print(f"PASS R13.10 mutations={len(MUTATIONS)}")

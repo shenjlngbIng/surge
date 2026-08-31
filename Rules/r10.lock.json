@@ -1,12 +1,12 @@
 {
-  "schema": 23,
+  "schema": 24,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.9 Smart Diagnostics",
-  "generated": "2026-08-30",
+  "profile": "Surge iOS Privacy + Push R13.10 Real Diagnostics",
+  "generated": "2026-08-31",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "e76ddbd022f4424415366b504bb4e7e2ab5940222964eeaa3466eaec68a78ebe",
-  "profile_lines": 364,
-  "active_rules": 142,
+  "profile_sha256": "ae06889dfd4e3fa3ddc2617102a4f4d87f0d8d546daf0f1d24137e2ccdc76cc7",
+  "profile_lines": 377,
+  "active_rules": 143,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
   "dynamic_runtime_resources": 1,
@@ -39,7 +39,7 @@
     ],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
-    "user_defined_proxy_policies": 0,
+    "user_defined_proxy_policies": 1,
     "policy_architecture": {
       "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
       "smart": {
@@ -245,7 +245,7 @@
       "include-cellular-services": "false"
     },
     "udp_quic": {
-      "proxy_test_udp": "apple.com@9.9.9.9",
+      "proxy_test_udp": "apple.com@1.1.1.1",
       "unsupported_behaviour": "REJECT",
       "block_quic": "per-policy",
       "stun_policy": "Proxy",
@@ -257,7 +257,17 @@
     },
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
-    "diagnostic_policy": "Proxy",
+    "diagnostic_policy": "Diagnostics",
+    "diagnostic_bridge": {
+      "definition": "socks5, 127.0.0.1, 6153, udp-relay=true, no-error-alert=true",
+      "loopback_only": true,
+      "included_in_policy_groups": false,
+      "referenced_by_rules": false,
+      "wifi_access_socks5_port": 6153,
+      "inner_policy": "Proxy",
+      "tcp_target_rule": "DOMAIN,cp.cloudflare.com,Proxy",
+      "udp_target_rule": "IP-CIDR,1.1.1.1/32,Proxy,no-resolve"
+    },
     "runtime_rulesets_no_resolve": true,
     "public_ip_literals": {
       "china": "GEOIP,CN,DIRECT,no-resolve",
@@ -655,7 +665,7 @@
       "sha256": "56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
-      "release_audited": "2026-08-30"
+      "release_audited": "2026-08-31"
     }
   ]
 }

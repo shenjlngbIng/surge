@@ -1,6 +1,6 @@
-# R13.9 全盘分流与网络诊断审计报告
+# R13.10 全盘分流与真实网络诊断审计报告
 
-审计日期为 2026-08-30。
+审计日期为 2026-08-31。
 
 审计对象包括 `Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP 与 GitHub Actions。
 
@@ -8,13 +8,15 @@
 
 本次覆盖完整配置。国内外软件策略、首条命中、策略组失效行为、DNS、UDP、APNs、双栈兜底、固定和动态资源、发布链均已逐项复核。
 
-静态目标基线为 30 个策略组、142 条活动规则、29 个不可变运行资源、1 个动态国内资源和 29 个本地 `.list` 文件。主配置没有嵌入规则快照，也不含公开订阅凭据。
+静态目标基线为 30 个策略组、143 条活动规则、1 个只绑定本机的诊断代理、29 个不可变运行资源、1 个动态国内资源和 29 个本地 `.list` 文件。主配置没有嵌入规则快照，也不含公开订阅凭据。
 
 ## 发现与处理
 
 | 严重度 | 发现 | 修复 |
 | --- | --- | --- |
-| 高 | `[Proxy] Fail-Closed = reject` 会被网络诊断当成真实代理，TCP/UDP 测试固定超时 | 删除自定义拒绝代理；`NodePool` 只保留真实节点，手动失败关闭改为 `Proxy → REJECT` |
+| 高 | R13.8 的 `[Proxy] Fail-Closed = reject` 会被网络诊断当成真实代理，TCP/UDP 固定超时 | 保持删除自定义拒绝代理；手动失败关闭继续使用 `Proxy → REJECT` |
+| 高 | R13.9 没有任何 `[Proxy]` 实体；`policy-path` 节点只存在于外置策略组，网络诊断因此跳过代理与 UDP 两行 | 增加唯一的本机 `Diagnostics` SOCKS5 桥；内层 TCP/UDP 请求固定重入当前 `Proxy` |
+| 高 | 本机代理若被普通策略组或规则引用会产生回环风险 | 30 个组全部锁定 `include-all-proxies=0`，禁止把 `Diagnostics` 加入任何组或规则，并用故障注入验证 |
 | 高 | 自动组无可用成员时可能 `DIRECT/SUBSTITUTE` | 明示风险，保留手动 `Proxy → REJECT` 入口，不再声称全局严格失败关闭 |
 | 中 | `url-test` 只反映固定测速地址，可能出现测速快但真实访问质量差 | 总入口和五个地区组升级为 Smart，综合真实首包、重传、失败重试、测速与站点记忆 |
 | 高 | `AdBlock`、`Security`、`UDP`、`Domestic` 会继承旧选择，实际行为可能偏离文档默认 | 删除四个状态组，规则固定为 `REJECT`、`Proxy` 或 `DIRECT` |
@@ -29,13 +31,30 @@
 | 中 | `doh.pub` 虽使用主机名，仍被 `[Host]` 冻结到 DNSPod 已不建议公开使用的旧 IP | 删除 DNSPod 静态映射，改由双栈 AliDNS 引导动态解析；AliDNS 补齐第二条官方 IPv6 |
 | 低 | Pegasus 文件头仍声明旧 `Security` 策略 | 文件头、资源锁和运行规则统一为 `REJECT` |
 
+## 公开配置对照
+
+2026-08-31 逐项读取了用户指定的公开配置。对照只用于确认架构和风险，没有复制其私人节点、脚本或未经审阅的规则。
+
+| 来源 | 节点接入方式 | 全局代理/UDP 诊断结果 |
+| --- | --- | --- |
+| [Rabbit-Spec `Surge-Developer.conf`](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-Developer.conf) | 无 `[Proxy]`，策略组使用 `policy-path` | 没有主配置代理实体，不能解决空白诊断行 |
+| [Rabbit-Spec `Surge-EN.conf`](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-EN.conf) | 无 `[Proxy]`，策略组使用 `policy-path` | 同上，且未配置全局 UDP 探针 |
+| [Lucky `Lucky-Surge.conf`](https://raw.githubusercontent.com/As-Lucky/Lucky/main/Lucky-Surge.conf) | `[Proxy]` 为空，策略组使用 `policy-path` | 同上 |
+| [Coldvvater `Surge,conf`](https://gist.githubusercontent.com/Coldvvater/8093bc6be4340b5324b4a343493becfe/raw/Surge,conf) | 无 `[Proxy]`，策略组使用 `policy-path` | 同上 |
+| [Thoseyearsbrian/Aegis](https://github.com/Thoseyearsbrian/Aegis) | 无 `[Proxy]`，策略组使用 `policy-path` | 配置 UDP 探针与安全拒绝，但仍没有可供全局诊断选择的代理实体 |
+| [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script/tree/master/rule) | 规则数据仓库 | 适合补充服务分流，不负责节点装载或网络诊断目标选择 |
+
+公开配置共同采用的外置策略组方式仍保留在 `NodePool`，因为它最适合不公开订阅的用户配置。R13.10 只额外增加隔离的本机诊断桥，不把节点定义复制到 `[Proxy]`，也不改成需要公开凭据的托管节点段。
+
 ## 策略组审计
 
-Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.9 因此只让 Smart 导入 `NodePool` 中的真实代理，并把手动拒绝放在 `Proxy` 的内建策略中。
+Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.10 因此只让 Smart 导入 `NodePool` 中的真实代理，并把手动拒绝放在 `Proxy` 的内建策略中。
 
-R13.9 采用以下边界。
+R13.10 采用以下边界。
 
-- 主配置不定义 `[Proxy]` 静态代理，网络诊断不会再误测一个故意拒绝流量的别名。
+- `[Proxy]` 只定义 `Diagnostics = socks5, 127.0.0.1, 6153, udp-relay=true`，没有真实服务器、密码或订阅内容。
+- `Diagnostics` 不属于任何策略组，所有组均保持 `include-all-proxies=0`，任何规则也不得把流量送回 `Diagnostics`。
+- 网络诊断外层测试 `Diagnostics`；本机 SOCKS5 接收后按规则把 `cp.cloudflare.com` 和 `1.1.1.1` 固定交给当前 `Proxy`，从结构上切断 `Diagnostics → Diagnostics` 递归。
 - `NodePool` 是手动 `select`，成员只由私人 `policy-path` 提供。
 - `Smart` 只递归导入 `NodePool` 的真实订阅代理。
 - 香港、台湾、日本、新加坡、美国均为 Smart，只导入名称匹配的 `NodePool` 节点。
@@ -118,12 +137,12 @@ R13.9 采用以下边界。
 
 自动验证覆盖以下内容。
 
-- 配置结构、30 个策略组与 142 条规则；
+- 配置结构、唯一诊断代理、30 个策略组与 143 条规则；
 - 30 个运行资源的类型、策略、顺序、更新间隔和扩展匹配；
 - 16 个 BiliBili 精确后缀、国际版退役与前置功能护栏；
 - 18 份服务来源锁、Pegasus 锁和维护来源锁；
 - DNS、UDP、APNs、双栈和唯一 FINAL；
-- 119 项故障注入，覆盖全部 36 项 `[General]` 设置、Smart 递归导入语法、静态拒绝代理回归和 `Proxy → REJECT` 边界；
+- 128 项故障注入，覆盖全部 37 项 `[General]` 设置、Smart 递归导入语法、诊断桥地址/端口/UDP 参数、防回环、探针顺序、静态拒绝代理回归和 `Proxy → REJECT` 边界；
 - 发布目录与 ZIP 导入安全回归；
 - 动态国内在线格式检查、固定上游零差异检查；
 - 快照推送后的 29 份 jsDelivr 文件逐一哈希检查。

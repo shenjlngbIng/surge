@@ -1,24 +1,24 @@
-# Surge iOS Privacy + Push R13.9
+# Surge iOS Privacy + Push R13.10
 
-这是面向 Surge iOS 的完整分流配置。R13.9 修复 R13.8 真机网络诊断会把 `[Proxy]` 中的 `Fail-Closed = reject` 当成真实代理测试、导致 TCP 与 UDP 固定超时的问题。Telegram、推送、哨兵、DNS、BiliBili、四个已删除的隐藏开关、规则内容和固定快照均不变。
+这是面向 Surge iOS 的完整分流配置。R13.10 修复 R13.9 删除拒绝代理后，真机网络诊断的“测试代理策略”和“UDP 代理转发”两行被直接跳过、只显示空白的问题。配置新增唯一的本机 `Diagnostics` SOCKS5 诊断桥；它把诊断请求重新交给当前 `Proxy → Smart/手选节点`，因此不会泄露订阅，也不会用 `REJECT` 制造固定超时或假成功。Telegram、推送、哨兵、DNS、国内 BiliBili、四个已删除的隐藏开关、服务分流、固定规则内容和快照提交均保持原边界。
 
 日常流量默认进入可见的 `Smart`。它从只含真实订阅节点的 `NodePool` 递归导入代理，首次使用前评估，随后综合真实连接首包时间、TCP 重传、失败重试、测速结果和约一小时的站点记忆动态选路。香港、台湾、日本、新加坡、美国五个地区入口也使用 Smart，并保留原有精确名称过滤。ChatGPT、Claude、Gemini 与 TikTok 直接递归导入日本、新加坡、台湾、美国四个地区中的真实节点，在地区边界内跨区自动重试。Surge 对 Smart 使用固定五分钟测试调度，因此配置不写无效的 `interval` 或 `tolerance`。
 
-配置没有恢复 `AdBlock`、`Security`、`UDP`、`Domestic` 四个隐藏开关。Surge 官方文档明确说明，Smart 只接受真实代理策略；任何自动组没有可用成员时都可能以 `DIRECT` 替代，并在日志中显示 `SUBSTITUTE`。R13.9 因此不声称全局严格失败关闭。需要严格手动边界时，直接把 `Proxy` 切到内建 `REJECT`；不再定义会污染网络诊断的自定义拒绝代理。
+配置没有恢复 `AdBlock`、`Security`、`UDP`、`Domestic` 四个隐藏开关。Surge 官方文档明确说明，Smart 只接受真实代理策略；任何自动组没有可用成员时都可能以 `DIRECT` 替代，并在日志中显示 `SUBSTITUTE`。R13.10 因此不声称全局严格失败关闭。需要严格手动边界时，直接把 `Proxy` 切到内建 `REJECT`。`Diagnostics` 不属于任何策略组，也没有规则指向它；只有网络诊断会直接测试它，内层请求只能继续进入 `Proxy`，因此不会形成回环。
 
 ## 当前基线
 
 | 项目 | 数量或状态 |
 | --- | --- |
 | 策略组 | 30 |
-| 活动规则 | 142 |
+| 活动规则 | 143 |
 | 固定远程规则 | 29 |
 | 动态远程规则 | 1 |
 | 本地 `.list` 文件 | 29 |
 | 固定 Ads | 152 条 |
 | 固定 Pegasus | 1,438 条 |
 | 国内 BiliBili | 16 个精确后缀 |
-| 配置故障注入 | 119 项 |
+| 配置故障注入 | 128 项 |
 | 固定快照提交 | `2b8fa93901061cf0482b079203630bcd11bfe0b1` |
 
 主配置不嵌入规则快照。29 份固定规则都通过 jsDelivr 的完整提交 SHA 加载；唯一动态资源是 `https://ruleset.skk.moe/List/non_ip/domestic.conf`，每 24 小时更新。
@@ -37,7 +37,8 @@
 5. `Smart` 首次使用会先评估节点，之后依据真实连接质量、失败记录和站点历史动态选路；界面显示的是近期最常用节点，不代表每条新连接都使用同一节点。
 6. 地区组会在匹配节点中智能选择；AI/TikTok 会在四个允许地区的真实节点间独立 Smart 选优。需要临时指定节点时，可在 Surge iOS 的策略组界面长按对应 Smart 策略进行临时覆盖。
 7. 需要严格手动控制时，把 `Proxy` 直接切到 `REJECT`；需要固定节点时再进入 `NodePool` 选择真实节点。
-8. 清理旧版留下的规则缓存，重载配置后按本文末尾的真机清单验证。
+8. 清理旧版留下的规则缓存，重载配置后运行“网络诊断”。代理策略行应显示 `Diagnostics`；TCP 通过代表当前 `Proxy` 路径可用，UDP 通过还要求当前真实节点支持 UDP。
+9. 按本文末尾的真机清单验证。
 
 ## 策略架构
 
@@ -47,6 +48,7 @@
 | `Proxy` | `Smart`、`NodePool`、五个地区组、`REJECT` | 默认智能选路，可固定真实节点或手动拒绝 |
 | `Smart` | `NodePool` 中的真实订阅节点 | 综合真实连接质量、失败重试、测速与站点记忆动态选择 |
 | `NodePool` | 仅私人订阅节点 | 手动稳定入口，不做全订阅测速 |
+| `Diagnostics` | 本机 `127.0.0.1:6153` | 只供网络诊断使用；内层请求固定重入当前 `Proxy`，不加入任何策略组 |
 | 五个地区组 | 名称过滤后的订阅节点 | Smart 自动选优并可重试，可临时手动覆盖 |
 | `ApplePush` | `Proxy`，后备 `DIRECT` | 唯一明确允许直连后备的可用性例外 |
 | `ChatGPT`、`Claude`、`Gemini`、`TikTok` | 日本、新加坡、台湾、美国的真实节点 | Smart 跨允许地区自动选优并重试，排除香港 |
@@ -64,7 +66,7 @@
 - 动态广告大表会命中 `httpdns.bilivideo.com` 和 `line3-h5-mobile-api.biligame.com`，应用会等待 HTTPDNS/H5 请求超时后再回退。
 - 规则匹配只依赖普通域名解析时，SNI/Host 路径可能漏过应直连的请求。
 
-R13.9 保持以下处理不变。
+R13.10 保持以下处理不变。
 
 1. `Rules/BiliBili.list` 补全为 16 个审阅后缀并固定 `DIRECT`。
 2. `httpdns.bilivideo.com` 与 `line3-h5-mobile-api.biligame.com` 作为精确功能护栏放在 Ads 前。
@@ -74,7 +76,7 @@ R13.9 保持以下处理不变。
 
 ## 广告误杀与移动端性能
 
-R13.9 仍不加载动态 `reject.conf` 和 `reject_phishing.conf`。这两份十万级列表在移动端会增加下载、解析和内存压力，而且实测与功能域名发生重叠。它们的维护项目也只建议在 Surge for Mac 使用大规模列表，并建议移动平台使用专门的内容拦截工具。
+R13.10 仍不加载动态 `reject.conf` 和 `reject_phishing.conf`。这两份十万级列表在移动端会增加下载、解析和内存压力，而且实测与功能域名发生重叠。它们的维护项目也只建议在 Surge for Mac 使用大规模列表，并建议移动平台使用专门的内容拦截工具。
 
 保留以下防护边界。
 
@@ -105,22 +107,23 @@ Pegasus 历史列表不能替代 iOS 更新、Lockdown Mode 或当前威胁情�
 
 ## 首条命中顺序
 
-Surge 规则按首条命中执行。R13.9 维持以下关键顺序。
+Surge 规则按首条命中执行。R13.10 维持以下关键顺序。
 
 1. 局域网发现、多播拒绝和本地网段。
 2. Apple Captive Portal 直连。
 3. STUN 固定代理。
-4. 16 条已审阅大陆应用 DNS 直连。
-5. 公网 53、853、8853 拒绝。
-6. 出口诊断和 13 条境外应用 DNS 代理。
-7. 固定 Pegasus 拒绝。
-8. APNs 与 Apple 流媒体前置例外。
-9. WeChat、Direct 和九条 Ads 前置功能护栏。
-10. 七条退役 BiliBili 国际版兼容护栏。
-11. 固定 Ads 拒绝。
-12. AI、流媒体、国际软件和国内 BiliBili 固定列表。
-13. 共享国内云后缀、动态国内补充和固定 China 集合。
-14. Global、`GEOIP,CN,DIRECT,no-resolve`、双栈公网代理兜底和唯一 `FINAL`。
+4. `Diagnostics` 的 Cloudflare TCP/UDP 目标固定进入 `Proxy`。
+5. 16 条已审阅大陆应用 DNS 直连。
+6. 公网 53、853、8853 拒绝。
+7. 出口诊断和 13 条境外应用 DNS 代理。
+8. 固定 Pegasus 拒绝。
+9. APNs 与 Apple 流媒体前置例外。
+10. WeChat、Direct 和九条 Ads 前置功能护栏。
+11. 七条退役 BiliBili 国际版兼容护栏。
+12. 固定 Ads 拒绝。
+13. AI、流媒体、国际软件和国内 BiliBili 固定列表。
+14. 共享国内云后缀、动态国内补充和固定 China 集合。
+15. Global、`GEOIP,CN,DIRECT,no-resolve`、双栈公网代理兜底和唯一 `FINAL`。
 
 ## `extended-matching`
 
@@ -135,6 +138,7 @@ Surge 规则按首条命中执行。R13.9 维持以下关键顺序。
 - 已审阅大陆应用 DNS 位于端口拒绝前并固定 `DIRECT`；境外应用 DNS 位于端口拒绝后并固定 `Proxy`。
 - `GEOIP,CN` 保留 `no-resolve`，未知域名不会为了 GeoIP 判断强制走本地 DNS。
 - `udp-policy-not-supported-behaviour=REJECT`，不支持 UDP 的节点不会静默直连。
+- `Diagnostics = socks5, 127.0.0.1, 6153, udp-relay=true` 只用于网络诊断。TCP 探针 `cp.cloudflare.com` 与 UDP 探针 `apple.com@1.1.1.1` 在端口拒绝前固定进入当前 `Proxy`；它不改变普通软件的 DNS 路径。
 - `block-quic=per-policy` 保留按策略控制；STUN 明确代理。
 - APNs 由隐藏 `ApplePush` fallback 管理，先代理、失败后可直连。这是通知可用性的有意例外。
 
@@ -171,7 +175,7 @@ python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.9-Complete-No-Embedded-20260830.zip
+python3 tools/package_release.py --output ../Surge-R13.10-Complete-No-Embedded-20260831.zip
 ```
 
 ## 真机验收
@@ -185,6 +189,7 @@ python3 tools/package_release.py --output ../Surge-R13.9-Complete-No-Embedded-20
 - APNs 在锁屏、Wi-Fi/蜂窝切换后仍能收到通知。
 - 检查 IPv4、IPv6 与 DNS 出口是否符合所选节点；注意远端代理使用的递归 DNS 由节点提供方决定。
 - 测试一个 UDP 应用；节点不支持 UDP 时应失败，而不是直连。
+- 运行 Surge“网络诊断”；“测试代理策略”和“UDP 代理转发”均应出现 `Diagnostics`，不应空白或显示 `REJECT`。TCP 应通过；UDP 若失败，先在 `NodePool` 换到明确支持 UDP 的节点再测。
 - 如果 AirDrop、Xcode 调试或 USB Dashboard 异常，先临时关闭 `include-all-networks` 验证；这是 Surge 官方披露的全网络接管兼容性取舍。
 
 如果 BiliBili 仍卡顿，先停用所有外部模块，清空规则缓存并重新下载配置，然后在最近请求中检查 `httpdns.bilivideo.com`、`line3-h5-mobile-api.biligame.com` 和实际视频 CDN 的首条命中。若命中正确但仍慢，应换一个稳定的直连网络/DNS 环境或检查运营商链路；配置不能修复服务端、运营商或节点本身故障。
@@ -197,6 +202,9 @@ python3 tools/package_release.py --output ../Surge-R13.9-Complete-No-Embedded-20
 - [Surge 自动组临时覆盖](https://manual.nssurge.com/policy-groups/parameters.html)
 - [Surge Select 策略组](https://manual.nssurge.com/policy-groups/select.html)
 - [Surge 内建策略别名](https://manual.nssurge.com/policies/built-in.html)
+- [Surge 通用设置与本机 SOCKS5 端口](https://manual.nssurge.com/profile/general.html)
+- [Surge HTTP 连通性测试](https://manual.nssurge.com/tools/testing.html)
+- [Surge UDP 转发与测试](https://manual.nssurge.com/policies/udp.html)
 - [Surge 域名规则与 extended matching](https://manual.nssurge.com/rules/domain.html)
 - [Surge 加密 DNS 与主机名引导](https://manual.nssurge.com/dns/encrypted-dns.html)
 - [Surge DNS 服务器与 IPv6 语法](https://manual.nssurge.com/dns/dns-server.html)

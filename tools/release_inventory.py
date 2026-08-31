@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single strict inventory for every R13.9 release producer and verifier."""
+"""Single strict inventory for every R13.10 release producer and verifier."""
 
 from __future__ import annotations
 
@@ -85,6 +85,7 @@ TRANSIENT_ARCHIVES = {
     PurePosixPath("Surge-R13.7-Complete-No-Embedded-20260830.zip"),
     PurePosixPath("Surge-R13.8-Complete-No-Embedded-20260830.zip"),
     PurePosixPath("Surge-R13.9-Complete-No-Embedded-20260830.zip"),
+    PurePosixPath("Surge-R13.10-Complete-No-Embedded-20260831.zip"),
 }
 IGNORED_DIRECTORY_NAMES = {".git", "__pycache__"}
 ALLOWED_DIRECTORIES = frozenset(
