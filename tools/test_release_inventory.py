@@ -40,6 +40,7 @@ def main() -> int:
     rejected(lambda root: (root / ".env").write_text("TOKEN=secret\n"))
     rejected(lambda root: (root / "debug.log").write_text("debug\n"))
     rejected(lambda root: (root / "unknown").mkdir())
+    rejected(lambda root: (root / "Rules" / ".git").write_text("nested git marker\n"))
     rejected(lambda root: (root / "LEAK.txt").symlink_to("/etc/hosts"))
     rejected(lambda root: (root / "Surge.zip").symlink_to("/etc/hosts"))
     rejected(lambda root: (root / "README.md").unlink())
@@ -95,7 +96,7 @@ def main() -> int:
         if result.returncode == 0 or target.read_text() != "safe\n":
             raise AssertionError("symbolic-link package output was accepted")
 
-    print("PASS: strict release inventory regression cases=15")
+    print("PASS: strict release inventory regression cases=16")
     return 0
 
 

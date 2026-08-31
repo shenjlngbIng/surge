@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.8 rule snapshots, locks and optional online resources."""
+"""Validate R13.9 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 22 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 23 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -126,7 +126,7 @@ expected_invariants = {
     "visible_control_groups": ["Final", "Proxy", "Smart", "NodePool"],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
-    "fail_closed_alias": "reject",
+    "user_defined_proxy_policies": 0,
     "mobile_dynamic_reject_sources": [],
     "functional_guards_before_ads": list(FUNCTIONAL_GUARDS),
     "extended_matching_resources": sorted(EXTENDED_MATCH_RESOURCES),
@@ -144,18 +144,18 @@ if architecture.get("automatic_empty_group_behavior") != "DIRECT/SUBSTITUTE":
     fail("automatic empty-group behavior invariant mismatch")
 if architecture.get("smart") != {
     "mode": "smart", "hidden": False, "source": "NodePool",
-    "excluded_policy": "Fail-Closed", "evaluate_before_use": True,
+    "evaluate_before_use": True,
     "fixed_test_schedule_seconds": 300,
     "uses_real_connection_quality": True, "per_site_memory": True,
 }:
     fail("Smart architecture invariant mismatch")
 if architecture.get("proxy") != {
-    "mode": "select", "default": "Smart", "manual_fail_closed_entry": "NodePool",
+    "mode": "select", "default": "Smart", "manual_fail_closed_entry": "REJECT",
 }:
     fail("Proxy architecture invariant mismatch")
 if architecture.get("node_pool") != {
     "mode": "select", "hidden": False, "source": "policy-path",
-    "first_member": "Fail-Closed", "automatic_fallback": False,
+    "explicit_members": [], "automatic_fallback": False,
 }:
     fail("NodePool architecture invariant mismatch")
 regions = dict(architecture.get("regions", {}))
@@ -395,6 +395,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.8 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"PASS R13.9 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
     f"local_rule_files=29 rules=142 embedded_rule_contents=0"
 )

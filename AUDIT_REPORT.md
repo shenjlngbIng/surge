@@ -1,4 +1,4 @@
-# R13.8 全盘分流审计报告
+# R13.9 全盘分流与网络诊断审计报告
 
 审计日期为 2026-08-30。
 
@@ -14,7 +14,8 @@
 
 | 严重度 | 发现 | 修复 |
 | --- | --- | --- |
-| 高 | 自动组无可用成员时可能 `DIRECT/SUBSTITUTE` | 明示风险，保留手动 `NodePool → Fail-Closed` 入口，不再声称全局严格失败关闭 |
+| 高 | `[Proxy] Fail-Closed = reject` 会被网络诊断当成真实代理，TCP/UDP 测试固定超时 | 删除自定义拒绝代理；`NodePool` 只保留真实节点，手动失败关闭改为 `Proxy → REJECT` |
+| 高 | 自动组无可用成员时可能 `DIRECT/SUBSTITUTE` | 明示风险，保留手动 `Proxy → REJECT` 入口，不再声称全局严格失败关闭 |
 | 中 | `url-test` 只反映固定测速地址，可能出现测速快但真实访问质量差 | 总入口和五个地区组升级为 Smart，综合真实首包、重传、失败重试、测速与站点记忆 |
 | 高 | `AdBlock`、`Security`、`UDP`、`Domestic` 会继承旧选择，实际行为可能偏离文档默认 | 删除四个状态组，规则固定为 `REJECT`、`Proxy` 或 `DIRECT` |
 | 高 | 十万级动态广告/钓鱼表不适合 iOS，并已误杀功能域名 | 删除两份移动端动态表，保留 152 条固定 Ads 与固定 Pegasus |
@@ -30,20 +31,20 @@
 
 ## 策略组审计
 
-Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.8 因此只让 Smart 导入 `NodePool` 中的真实代理，并保留独立的手动安全入口。
+Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.9 因此只让 Smart 导入 `NodePool` 中的真实代理，并把手动拒绝放在 `Proxy` 的内建策略中。
 
-R13.8 采用以下边界。
+R13.9 采用以下边界。
 
-- `[Proxy] Fail-Closed = reject` 使用内建策略别名，不再伪造本地端口失败节点。
-- `NodePool` 是手动 `select`，首项 `Fail-Closed`，其余成员由私人 `policy-path` 提供。
-- `Smart` 只导入 `NodePool` 的真实订阅代理，并用精确过滤排除 `Fail-Closed`。
+- 主配置不定义 `[Proxy]` 静态代理，网络诊断不会再误测一个故意拒绝流量的别名。
+- `NodePool` 是手动 `select`，成员只由私人 `policy-path` 提供。
+- `Smart` 只递归导入 `NodePool` 的真实订阅代理。
 - 香港、台湾、日本、新加坡、美国均为 Smart，只导入名称匹配的 `NodePool` 节点。
 - 总入口、五个地区组和四个受限服务组共十个 Smart，统一锁定 `evaluate-before-use=true` 和可见状态；不写对 Smart 无效的 `interval` 或 `tolerance`。Surge 自身按固定五分钟周期安排测试。
 - ChatGPT、Claude、Gemini 与 TikTok 通过带引号的 `include-other-group` 递归汇总日本、新加坡、台湾、美国的真实代理，跨允许地区自动选优，不把香港或通用 Proxy 放入候选池。
-- `Proxy` 首项为 `Smart`，第二项保留手动 `NodePool`，之后是五个地区入口。
+- `Proxy` 首项为 `Smart`，第二项保留手动 `NodePool`，之后是五个地区入口，末项为手动 `REJECT`。
 - `ApplePush` 保留 `Proxy → DIRECT` fallback，这是通知可达性的明确例外。
 - 配置没有 `url-test` 或 load-balance 节点组，没有策略引用循环、未知成员或 Smart 中的显式内建成员。
-- `Smart` 或地区组为空时仍可能发生 `DIRECT/SUBSTITUTE`。需要严格失败关闭时，用户应选择 `Proxy → NodePool`，再在 `NodePool` 选择 `Fail-Closed` 或已知节点。
+- `Smart` 或地区组为空时仍可能发生 `DIRECT/SUBSTITUTE`。需要严格失败关闭时，用户应直接选择 `Proxy → REJECT`；需要固定节点时选择 `NodePool` 中的真实节点。
 
 ## 软件与地区审计
 
@@ -122,7 +123,7 @@ R13.8 采用以下边界。
 - 16 个 BiliBili 精确后缀、国际版退役与前置功能护栏；
 - 18 份服务来源锁、Pegasus 锁和维护来源锁；
 - DNS、UDP、APNs、双栈和唯一 FINAL；
-- 118 项故障注入，覆盖全部 36 项 `[General]` 设置及新增 Smart 递归导入语法；
+- 119 项故障注入，覆盖全部 36 项 `[General]` 设置、Smart 递归导入语法、静态拒绝代理回归和 `Proxy → REJECT` 边界；
 - 发布目录与 ZIP 导入安全回归；
 - 动态国内在线格式检查、固定上游零差异检查；
 - 快照推送后的 29 份 jsDelivr 文件逐一哈希检查。
