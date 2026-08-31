@@ -1,5 +1,15 @@
 # 更新日志
 
+## 2026-08-31 R13.11 失败关闭自动选路与诊断纠错
+
+- 根据 Surge iOS 真机事件确认，R13.10 的本机 `Diagnostics` SOCKS5 桥不支持 UDP relay；同时空 `Smart` 会被 Surge 替换为 `DIRECT/SUBSTITUTE`，旧版 TCP 绿色结果可能来自直连。撤回该桥、显式 SOCKS5 端口与 Cloudflare 回环探针。
+- `[Proxy]` 恢复为空。真实节点仍只由私人 `NodePool.policy-path` 导入，因此全局网络诊断的代理与 UDP 两行保持空白；具体 TCP/UDP 必须在真实节点策略上测试。
+- 删除全部十个 Smart。默认 `Auto`、五个地区组、ChatGPT、Claude、Gemini 与 TikTok 改为 `url-test`，统一加入显式 `REJECT`、`interval=600`、`tolerance=100` 和 `evaluate-before-use=true`。
+- `NodePool` 第一项加入内建 `REJECT`。订阅为空、资源更新失败、地区筛选为空或旧选择消失时明确失败，不再发生自动直连替代。
+- `Proxy` 默认项改为 `Auto`，继续保留手动 `NodePool`、五个地区入口与末尾 `REJECT`。AI/TikTok 地区边界、Bahamut、Telegram、ApplePush、DNS、哨兵、国内 BiliBili 和四个已删除的隐藏开关不变。
+- `udp-policy-not-supported-behaviour=REJECT` 和 `proxy-test-udp=apple.com@1.1.1.1` 保持不变。客户端配置不能给不支持 UDP 的服务端增加能力，禁止用 DIRECT 伪造通过。
+- 活动规则恢复为 142，运行锁升级到 schema 25，故障注入扩展到 133 项。完整包更新为 `Surge-R13.11-Complete-No-Embedded-20260831.zip`。
+
 ## 2026-08-31 R13.10 真实代理与 UDP 网络诊断
 
 - 根据 R13.9 真机截图确认：删除 `Fail-Closed` 后不再固定超时，但 `policy-path` 返回的节点只存在于外置策略组，不会进入主配置 `[Proxy]`；Surge 因无代理实体而跳过“测试代理策略”和“UDP 代理转发”，两行显示空白。

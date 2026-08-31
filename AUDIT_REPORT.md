@@ -1,153 +1,132 @@
-# R13.10 全盘分流与真实网络诊断审计报告
+# R13.11 全盘分流与失败关闭审计报告
 
-审计日期为 2026-08-31。
-
-审计对象包括 `Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP 与 GitHub Actions。
+审计日期为 2026-08-31。审计对象包括 `Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP、GitHub Actions，以及用户提供的 Surge 真机网络诊断和事件截图。
 
 ## 结论
 
-本次覆盖完整配置。国内外软件策略、首条命中、策略组失效行为、DNS、UDP、APNs、双栈兜底、固定和动态资源、发布链均已逐项复核。
+本次是全配置复核，不是只改 UDP。30 个策略组、142 条活动规则、DNS、UDP、APNs、Telegram、国内 BiliBili、AI/流媒体地区、Ads/Pegasus、双栈兜底、外部资源和发布链均已检查。
 
-静态目标基线为 30 个策略组、143 条活动规则、1 个只绑定本机的诊断代理、29 个不可变运行资源、1 个动态国内资源和 29 个本地 `.list` 文件。主配置没有嵌入规则快照，也不含公开订阅凭据。
+R13.10 的 `Diagnostics` 回环方案被真机证伪并已全部撤回。R13.11 没有静态 `[Proxy]` 策略，也没有 Smart 组。10 个自动组统一改为带显式 `REJECT` 的 `url-test`；订阅为空、资源失败或地区无匹配节点时不能再被 Surge 替换为 `DIRECT`。
 
-## 发现与处理
+## 真机发现与修复
 
-| 严重度 | 发现 | 修复 |
-| --- | --- | --- |
-| 高 | R13.8 的 `[Proxy] Fail-Closed = reject` 会被网络诊断当成真实代理，TCP/UDP 固定超时 | 保持删除自定义拒绝代理；手动失败关闭继续使用 `Proxy → REJECT` |
-| 高 | R13.9 没有任何 `[Proxy]` 实体；`policy-path` 节点只存在于外置策略组，网络诊断因此跳过代理与 UDP 两行 | 增加唯一的本机 `Diagnostics` SOCKS5 桥；内层 TCP/UDP 请求固定重入当前 `Proxy` |
-| 高 | 本机代理若被普通策略组或规则引用会产生回环风险 | 30 个组全部锁定 `include-all-proxies=0`，禁止把 `Diagnostics` 加入任何组或规则，并用故障注入验证 |
-| 高 | 自动组无可用成员时可能 `DIRECT/SUBSTITUTE` | 明示风险，保留手动 `Proxy → REJECT` 入口，不再声称全局严格失败关闭 |
-| 中 | `url-test` 只反映固定测速地址，可能出现测速快但真实访问质量差 | 总入口和五个地区组升级为 Smart，综合真实首包、重传、失败重试、测速与站点记忆 |
-| 高 | `AdBlock`、`Security`、`UDP`、`Domestic` 会继承旧选择，实际行为可能偏离文档默认 | 删除四个状态组，规则固定为 `REJECT`、`Proxy` 或 `DIRECT` |
-| 高 | 十万级动态广告/钓鱼表不适合 iOS，并已误杀功能域名 | 删除两份移动端动态表，保留 152 条固定 Ads 与固定 Pegasus |
-| 高 | 国内 BiliBili 固定集合缺四个后缀，HTTPDNS/H5 与广告表重叠 | 补为 16 后缀，增加两条 Ads 前置直连护栏并启用扩展匹配 |
-| 中 | Spotify 音视频/电视/Podcast、Google `gvt2`、OpenAI RUM 与广告表重叠 | 增加七条对应策略护栏，与 BiliBili 合计九条 |
-| 中 | ChatGPT 规则未覆盖当前官方网络建议中的部分依赖 | 增加 11 条官方依赖，本地活动规则 52 增至 63 |
-| 中 | 固定资源只按普通 DNS 路径匹配，SNI/Host 可能漏分流 | 除 Ads 外的固定资源及动态国内补充启用 `extended-matching` |
-| 中 | AI/TikTok/Bahamut 可通过通用 Proxy 或不合适地区绕过限制 | AI/TikTok 仅四个支持地区；Bahamut 仅台湾、香港 |
-| 中 | AI/TikTok 原先是手动 `select`，默认只进入日本 Smart，无法在其他允许地区自动容错 | 四组改为 Smart，递归汇总四个允许地区的真实节点；不新增隐藏组 |
-| 中 | 固定规则使用旧快照提交且远程内容未逐文件在线核验 | 快照钉住 `2b8fa939…`，增加 29 文件 CDN 哈希校验 |
-| 中 | `doh.pub` 虽使用主机名，仍被 `[Host]` 冻结到 DNSPod 已不建议公开使用的旧 IP | 删除 DNSPod 静态映射，改由双栈 AliDNS 引导动态解析；AliDNS 补齐第二条官方 IPv6 |
-| 低 | Pegasus 文件头仍声明旧 `Security` 策略 | 文件头、资源锁和运行规则统一为 `REJECT` |
+| 严重度 | 发现 | 影响 | R13.11 处理 |
+| --- | --- | --- | --- |
+| 严重 | `Diagnostics` 指向 Surge 本机 SOCKS5，服务不支持 UDP relay | UDP 诊断固定报 `The SOCKS proxy server doesn't support UDP relay` | 删除代理、端口依赖和回环探针规则 |
+| 严重 | `Smart` 没有可用子策略时变为 `SUBSTITUTE/DIRECT` | 代理诊断或业务流量可能直连，绿色 TCP 结果不可信 | 删除全部 Smart；自动组显式加入 `REJECT` |
+| 高 | 外置 `policy-path` 节点不会进入主配置 `[Proxy]` | 全局网络诊断无法直接选择真实节点 | 接受代理/UDP 两行空白；只测试具体真实节点 |
+| 高 | 把 UDP 不支持回退改成 DIRECT 可以制造假绿 | UDP 绕过代理并泄漏真实出口 | 继续锁定 `udp-policy-not-supported-behaviour=REJECT` |
+| 中 | `include-all-networks=true` 触发兼容性警告 | 可能影响 AirDrop、Xcode 或 USB Dashboard | 为 APNs/防旁路保留并明确披露，不误判为节点故障 |
+| 中 | 自动入口只按固定测速 URL 可能选到业务质量一般的节点 | 低延迟不等于所有站点体验最佳 | 使用 600 秒有效期、100 ms 容差；保留手动 `NodePool` 固定节点入口 |
+
+## 失败关闭证明
+
+[Surge 策略组文档](https://manual.nssurge.com/policy-groups/overview.html)说明，策略组没有可用成员时会替换为 `DIRECT`，日志显示为 `SUBSTITUTE`；Smart 还会忽略内建策略和嵌套组。因而无法靠给 Smart 写一个 `REJECT` 来解决空组问题。
+
+[URL Test 文档](https://manual.nssurge.com/policy-groups/url-test.html)说明，`url-test` 会从测试通过的成员中选择最低延迟策略；`evaluate-before-use=true` 会在第一次请求前等待测试，评估失败时请求直接报错。
+
+[策略导入文档](https://manual.nssurge.com/policy-groups/policy-including.html)说明，显式成员排在导入成员之前，且 `policy-regex-filter` 只过滤 `policy-path`、`include-all-proxies` 和 `include-other-group` 的导入成员，不过滤显式成员。因此 R13.11 的设计是可验证的。
+
+```ini
+Auto = url-test, REJECT, interval=600, tolerance=100, evaluate-before-use=true, ..., include-other-group=NodePool
+NodePool = select, REJECT, policy-path=<private-url>, ...
+HongKong = url-test, REJECT, policy-regex-filter=<reviewed-regex>, ..., include-other-group=NodePool
+```
+
+- 真实节点存在并通过测试时，`REJECT` 测试失败，真实节点胜出。
+- 订阅为空时，显式 `REJECT` 仍在，组不为空，不触发 `DIRECT/SUBSTITUTE`。
+- 第一次评估全失败时，请求报错；旧结果失效或节点消失后不会改成直连。
+- `NodePool` 选择项消失时，第一项是 `REJECT`，手动池也保持安全。
+- 五个地区组和四个受限服务组使用相同保护，共 10 个自动组。
+
+ApplePush 是唯一刻意保留的可用性例外，顺序仍为 `Proxy → DIRECT`。这不是隐蔽泄漏，而是明确的 APNs 送达取舍。
 
 ## 公开配置对照
 
-2026-08-31 逐项读取了用户指定的公开配置。对照只用于确认架构和风险，没有复制其私人节点、脚本或未经审阅的规则。
+用户指定的公开配置用于比较设计，不复制私人节点、脚本或未经审阅的大表。
 
-| 来源 | 节点接入方式 | 全局代理/UDP 诊断结果 |
-| --- | --- | --- |
-| [Rabbit-Spec `Surge-Developer.conf`](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-Developer.conf) | 无 `[Proxy]`，策略组使用 `policy-path` | 没有主配置代理实体，不能解决空白诊断行 |
-| [Rabbit-Spec `Surge-EN.conf`](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-EN.conf) | 无 `[Proxy]`，策略组使用 `policy-path` | 同上，且未配置全局 UDP 探针 |
-| [Lucky `Lucky-Surge.conf`](https://raw.githubusercontent.com/As-Lucky/Lucky/main/Lucky-Surge.conf) | `[Proxy]` 为空，策略组使用 `policy-path` | 同上 |
-| [Coldvvater `Surge,conf`](https://gist.githubusercontent.com/Coldvvater/8093bc6be4340b5324b4a343493becfe/raw/Surge,conf) | 无 `[Proxy]`，策略组使用 `policy-path` | 同上 |
-| [Thoseyearsbrian/Aegis](https://github.com/Thoseyearsbrian/Aegis) | 无 `[Proxy]`，策略组使用 `policy-path` | 配置 UDP 探针与安全拒绝，但仍没有可供全局诊断选择的代理实体 |
-| [blackmatrix7/ios_rule_script](https://github.com/blackmatrix7/ios_rule_script/tree/master/rule) | 规则数据仓库 | 适合补充服务分流，不负责节点装载或网络诊断目标选择 |
+| 来源 | 观察到的架构 | 可借鉴点 | 未直接采用的原因 |
+| --- | --- | --- | --- |
+| [Rabbit-Spec Developer](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-Developer.conf) | 外置 `policy-path` 与地区组 | 单 URL 导入、地区过滤 | 外置节点不能填充全局诊断；空 Smart 仍有替代风险 |
+| [Lucky](https://raw.githubusercontent.com/As-Lucky/Lucky/main/Lucky-Surge.conf) | `[Proxy]` 为空、节点由策略组加载 | 公开配置不暴露节点 | 同样不能让全局诊断直接测试真实节点 |
+| [Rabbit-Spec Surge-EN](https://raw.githubusercontent.com/Rabbit-Spec/Surge/Master/Conf/Spec/Surge-EN.conf) | Smart 地区组、`policy-path` 节点池、UDP 不支持时拒绝 | 地区分层与 UDP `REJECT` 边界 | Smart 地区为空仍可能 `SUBSTITUTE` |
+| [Coldvvater Surge.conf](https://gist.githubusercontent.com/Coldvvater/8093bc6be4340b5324b4a343493becfe/raw/Surge,conf) | 外置节点与服务分组 | 服务边界参考 | 不能解决私人外置节点的全局诊断限制 |
+| [Thoseyearsbrian/Aegis](https://github.com/Thoseyearsbrian/Aegis) | 安全基线、UDP 探针、外置节点 | 安全开关与审计思路 | 探针参数不能给不支持 UDP 的服务端增加能力 |
+| [blackmatrix7 规则库](https://github.com/blackmatrix7/ios_rule_script/tree/master/rule) | 大量按服务分类的规则 | 服务域名对照与来源追踪 | 规则库不负责节点装载、空组行为或 UDP 服务端能力 |
 
-公开配置共同采用的外置策略组方式仍保留在 `NodePool`，因为它最适合不公开订阅的用户配置。R13.10 只额外增加隔离的本机诊断桥，不把节点定义复制到 `[Proxy]`，也不改成需要公开凭据的托管节点段。
+公开配置普遍接受全局代理/UDP 诊断空白，没有用本机 SOCKS5 回环伪造真实代理。R13.11 回到这一诚实边界，同时额外加入显式 `REJECT` 解决空源直连风险。
 
-## 策略组审计
+## 国内外软件分流
 
-Surge 官方文档说明，Smart 会根据真实连接质量、测试结果和站点历史动态选路，并在连接失败时按评分重试其他代理。Smart 只接受真实代理策略，会忽略显式内建策略和直接嵌套组；`include-other-group` 则会递归展开其他组的已解析成员。自动组没有可用策略时仍会替代为 `DIRECT`，日志显示为 `SUBSTITUTE`。R13.10 因此只让 Smart 导入 `NodePool` 中的真实代理，并把手动拒绝放在 `Proxy` 的内建策略中。
-
-R13.10 采用以下边界。
-
-- `[Proxy]` 只定义 `Diagnostics = socks5, 127.0.0.1, 6153, udp-relay=true`，没有真实服务器、密码或订阅内容。
-- `Diagnostics` 不属于任何策略组，所有组均保持 `include-all-proxies=0`，任何规则也不得把流量送回 `Diagnostics`。
-- 网络诊断外层测试 `Diagnostics`；本机 SOCKS5 接收后按规则把 `cp.cloudflare.com` 和 `1.1.1.1` 固定交给当前 `Proxy`，从结构上切断 `Diagnostics → Diagnostics` 递归。
-- `NodePool` 是手动 `select`，成员只由私人 `policy-path` 提供。
-- `Smart` 只递归导入 `NodePool` 的真实订阅代理。
-- 香港、台湾、日本、新加坡、美国均为 Smart，只导入名称匹配的 `NodePool` 节点。
-- 总入口、五个地区组和四个受限服务组共十个 Smart，统一锁定 `evaluate-before-use=true` 和可见状态；不写对 Smart 无效的 `interval` 或 `tolerance`。Surge 自身按固定五分钟周期安排测试。
-- ChatGPT、Claude、Gemini 与 TikTok 通过带引号的 `include-other-group` 递归汇总日本、新加坡、台湾、美国的真实代理，跨允许地区自动选优，不把香港或通用 Proxy 放入候选池。
-- `Proxy` 首项为 `Smart`，第二项保留手动 `NodePool`，之后是五个地区入口，末项为手动 `REJECT`。
-- `ApplePush` 保留 `Proxy → DIRECT` fallback，这是通知可达性的明确例外。
-- 配置没有 `url-test` 或 load-balance 节点组，没有策略引用循环、未知成员或 Smart 中的显式内建成员。
-- `Smart` 或地区组为空时仍可能发生 `DIRECT/SUBSTITUTE`。需要严格失败关闭时，用户应直接选择 `Proxy → REJECT`；需要固定节点时选择 `NodePool` 中的真实节点。
-
-## 软件与地区审计
-
-| 软件/类别 | 审计结果 |
+| 范围 | 审计结果 |
 | --- | --- |
-| ChatGPT、Claude、Gemini | 仅日本、新加坡、台湾、美国；Smart 跨允许地区自动选优，不允许通用 Proxy 绕过边界 |
-| TikTok | 同上 |
+| 国内 BiliBili | 16 个固定后缀 `DIRECT`；HTTPDNS/H5 功能护栏位于 Ads 前；国际版专组继续删除 |
+| 微信与国内基础服务 | 固定 `DIRECT`，不经过已删除的 `Domestic` 状态组 |
+| ChatGPT、Claude、Gemini、TikTok | 日本、新加坡、台湾、美国自动选优；每组空源失败关闭 |
 | Bahamut | 仅台湾、香港 |
-| GitHub | Proxy、香港、日本、新加坡、美国 |
-| YouTube、Netflix、Disney+、Emby、Spotify、Streaming、Telegram、X、Google、Microsoft、Games | 默认 Proxy，五个地区自动选优并支持临时手动覆盖 |
-| HBO、Prime Video | 默认 Proxy，并保留各自更适合的地区排序 |
-| Apple | DIRECT 首选；流媒体域名在 AppleCN 前进入 Streaming |
-| 微信、Direct、China、CN GeoIP、国内 DNS、共享国内云 | 固定 DIRECT |
-| 国内 BiliBili | 固定 DIRECT，16 后缀与两条前置功能护栏 |
-| BiliBili 国际版 | 专用文件/策略保持删除，七条历史域名只走通用 Proxy |
+| Telegram | 固定进入 Telegram 选择组，默认继承 `Proxy`；官方 CIDR 与 raw TCP 边界不变 |
+| 流媒体 | 各服务组默认继承 `Proxy`，保留地区手选能力 |
+| Apple | 国内服务默认直连；流媒体例外先匹配；APNs 代理优先、直连后备 |
+| 未匹配公网流量 | IPv4/IPv6 字面量先进入 `Proxy`，最后唯一 `FINAL,Final,dns-failed` |
 
-18 份固定服务规则重新用锁定上游与本地过滤/增补边界生成比较，除 ChatGPT 明确新增的 11 条官方依赖外，现有服务快照无非预期增删。
+## BiliBili、广告与安全
 
-## BiliBili 根因
+国内 BiliBili 卡顿的既有修复继续保留。
 
-旧版已把固定 BiliBili 列表指向 `DIRECT`，但仍可能长时间等待。审计确认了下面四项原因。
-
-1. 固定列表不含 `biligame.net`、`bilivideo.cn`、`bilicomic.com`、`bilivideo.net`。
-2. 动态广告表命中 `httpdns.bilivideo.com` 和 `line3-h5-mobile-api.biligame.com`。
-3. 固定 BiliBili 规则位于广告边界之后，重叠功能域名会先被拒绝。
-4. 普通规则匹配未覆盖所有 SNI/Host 路径。
-
-处理后，两个确认重叠的功能主机位于 Ads 前，16 后缀集合与动态国内补充均固定直连；BiliBili 固定资源启用 `extended-matching`。国际兼容护栏仍在国内父后缀前，因此 `apiintl.biliapi.net` 不会被 `biliapi.net` 直连覆盖。
-
-## 广告与安全边界
-
-动态 `reject.conf` 与 `reject_phishing.conf` 已从运行配置删除。审计时确认其中至少存在以下功能重叠。
-
-- `httpdns.bilivideo.com`
-- `line3-h5-mobile-api.biligame.com`
-- `audio-ak.cdn.spotify.com`
-- `video-ak.cdn.spotify.com`
-- `audio-ak-spotify-com.akamaized.net`
-- `pod.spoti.fi`
-- `tv-static.scdn.co`
-- `gvt2.com`
-- `rum.browser-intake-datadoghq.com`
-
-当前只保留固定 Ads 与固定 Pegasus。固定列表可通过提交 SHA、锁文件、活动条目数与 SHA-256 复核；误报时必须走审阅差异，不允许临时切换隐藏 `DIRECT` 组。
+- `BiliBili.list` 含 16 个审阅后缀，使用 `DIRECT,extended-matching`。
+- `httpdns.bilivideo.com` 与 `line3-h5-mobile-api.biligame.com` 在 Ads 前固定直连。
+- 七条退役国际版域名先进入通用 `Proxy`，不会被国内父后缀覆盖。
+- 动态 `reject.conf` 与 `reject_phishing.conf` 继续禁用，避免 iOS 内存压力和功能误杀。
+- 152 条固定 Ads 与 1,438 条 Pegasus 历史 IOC 固定 `REJECT`。
+- Spotify、Google `gvt2`、OpenAI RUM 等九条功能护栏位于 Ads 前。
 
 ## DNS、UDP、APNs 与双栈
 
-- 传统引导 DNS 使用 AliDNS 双 IPv4＋双 IPv6；两个 DoH 和证书校验被审计锁定。
-- `dns.alidns.com` 保留官方四地址静态引导；`doh.pub` 由引导 DNS 动态解析，不再冻结 DNSPod 旧 IP。
-- 16 条大陆应用 DNS 在端口拒绝前固定直连；13 条境外应用 DNS 在端口拒绝后固定代理。
+- AliDNS、DNSPod 双 DoH、证书校验和 `encrypted-dns-follow-outbound-mode=false` 保持不变。
+- AliDNS 双 IPv4/双 IPv6 负责引导；`doh.pub` 动态解析，不冻结旧 IP。
+- 16 条大陆应用 DNS 在端口拒绝前直连；13 条境外应用 DNS 在端口拒绝后代理。
 - 公网 53、853、8853 在局域网例外之后拒绝。
-- STUN 在公网 DNS 与普通业务规则之前固定代理。
-- `GEOIP,CN,DIRECT,no-resolve` 不为未知域名强制本地解析。
-- IPv4 `0.0.0.0/0` 与 IPv6 `::/0` 紧贴唯一 FINAL 之前固定代理。
-- 不支持 UDP 的节点行为为 `REJECT`；QUIC 保持按策略处理。
-- APNs 继续先代理后直连，避免严格代理边界造成通知不可达。
+- STUN 在公网 DNS 与业务规则前固定 `Proxy`。
+- `GEOIP,CN,DIRECT,no-resolve` 不强制本地解析未知域名。
+- `proxy-test-udp=apple.com@1.1.1.1` 保留，供具体真实策略的 UDP 测试使用。
+- [Surge UDP 文档](https://manual.nssurge.com/policies/udp.html)明确要求 SOCKS5、Shadowsocks 等同时具备客户端 `udp-relay=true` 和服务端支持；HTTP/HTTPS、SSH、Trust Tunnel 本身不能转发 UDP。
+- `include-all-networks=true`、`include-apns=true` 与 ApplePush 顺序不变，故 DNS、推送和哨兵没有被本次纠错改写。
+
+## 网络诊断边界
+
+主配置 `[Proxy]` 为空，真实节点只由 `NodePool.policy-path` 导入。Surge 全局网络诊断只寻找主配置代理实体，因此代理和 UDP 两行保持空白。DNS 与直连测试仍正常。
+
+R13.11 禁止以下“修复”。
+
+- 禁止重新加入 `Fail-Closed = reject` 让全局诊断固定超时。
+- 禁止重新加入本机 SOCKS5 `Diagnostics` 让 TCP 假绿、UDP必败。
+- 禁止把 UDP 不支持行为改为 DIRECT。
+- 禁止声称空白诊断代表真实节点失效。
+
+要获得全局诊断对真实节点的支持，只能把真实节点定义放进 `[Proxy]`，例如通过用户私有的配置分离/托管节点段。公开仓库不能保存订阅和令牌，因此不能在单一公开文件中安全地替用户完成这一步。
 
 ## 供应链与发布
 
 | 资源 | 模式 | 控制 |
 | --- | --- | --- |
 | 29 份仓库规则 | 不可变 | 完整提交 SHA、活动条目、文件 SHA-256、CDN 在线比对 |
-| `domestic.conf` | 动态 | 精确 URL、格式/规模在线检查、24 小时更新 |
+| `domestic.conf` | 动态 | 精确 URL、格式与规模检查、24 小时更新 |
 | 18 份服务上游 | 维护输入 | 固定提交、Git Blob、上游/本地 SHA-256、显式增删边界 |
 | Pegasus 上游 | 维护输入 | 固定 Amnesty 提交、Git Blob、上游/本地 SHA-256 |
-| 发布目录 | 固定白名单 | 65 文件 ZIP、UTF-8/LF/无 BOM/NUL/符号链接检查 |
-
-运行配置不直接访问 Blackmatrix7 或 Amnesty 上游；设备读取仓库固定副本。动态国内表是唯一会在发布后改变内容的运行资源。
+| 发布目录 | 固定白名单 | UTF-8/LF、无 BOM/NUL、无符号链接、确定性 ZIP |
 
 ## 自动验证
 
-自动验证覆盖以下内容。
+- 30 个策略组、142 条活动规则、30 个运行资源与唯一 FINAL。
+- 10 个带显式 `REJECT` 的 `url-test`，0 个 Smart，0 个静态代理。
+- `Proxy → Auto` 默认、`NodePool → REJECT` 首项、五个地区过滤和四个服务地区边界。
+- DNS、UDP `REJECT`、APNs、STUN、QUIC、双栈和 BiliBili 顺序。
+- 29 个固定资源、1 个动态资源、29 个本地规则文件和零嵌入规则。
+- 133 项故障注入，覆盖 General、空源失败关闭、Smart/Diagnostics 回归、DIRECT 泄漏、策略循环、DNS/规则顺序和供应链边界。
+- 发布目录、ZIP 路径穿越、重复文件、符号链接、编码和清单校验。
 
-- 配置结构、唯一诊断代理、30 个策略组与 143 条规则；
-- 30 个运行资源的类型、策略、顺序、更新间隔和扩展匹配；
-- 16 个 BiliBili 精确后缀、国际版退役与前置功能护栏；
-- 18 份服务来源锁、Pegasus 锁和维护来源锁；
-- DNS、UDP、APNs、双栈和唯一 FINAL；
-- 128 项故障注入，覆盖全部 37 项 `[General]` 设置、Smart 递归导入语法、诊断桥地址/端口/UDP 参数、防回环、探针顺序、静态拒绝代理回归和 `Proxy → REJECT` 边界；
-- 发布目录与 ZIP 导入安全回归；
-- 动态国内在线格式检查、固定上游零差异检查；
-- 快照推送后的 29 份 jsDelivr 文件逐一哈希检查。
-- Telegram 官方 14 个 CIDR 与 Apple 官方 5 个 IPv4、4 个 IPv6 APNs 网段逐项在线复核。
+## 剩余限制
 
-## 剩余风险
+静态配置不能证明私人订阅在线、节点标签真实、服务端支持 UDP、远端递归 DNS 不泄漏、运营商链路稳定，也看不到未随仓库提供的模块改写。`url-test` 选择最低测试延迟，不等同于对每个网站都有 Smart 的站点记忆；需要时可在 `NodePool` 固定表现更好的节点。
 
-静态配置无法证明私人节点在线、地区标签真实、节点 DNS 无泄漏、运营商链路正常，也无法检查未随仓库提供的 Surge 模块。自动组没有可用成员时存在官方 `DIRECT/SUBSTITUTE` 风险，这项行为无法由配置覆盖。`include-all-networks=true` 还可能影响 AirDrop、Xcode 调试或 USB Dashboard，这是全网络接管的兼容性取舍。最终必须在真实设备的 Wi-Fi 和蜂窝网络完成验收。命中规则与策略正确但速度仍差时，应检查服务端、运营商、DNS 或节点质量，不能继续用更宽泛规则掩盖链路问题。
+`include-all-networks=true` 的 AirDrop/Xcode 兼容性警告仍存在。若关闭它，可能改变 APNs 与全网络防旁路覆盖，因此 R13.11 不擅自修改。最终仍需在真实设备的 Wi-Fi 和蜂窝网络完成验收。
