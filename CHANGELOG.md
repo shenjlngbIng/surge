@@ -1,5 +1,14 @@
 # 更新日志
 
+## 2026-08-30 R13.9 网络诊断与真实节点边界修复
+
+- 根据 Surge iOS 真机复现确认：R13.8 的 `[Proxy] Fail-Closed = reject` 会被网络诊断当成代理策略，导致代理 HTTP 测试和 UDP 转发测试固定显示 `Test timeout`；Smart 与真实节点本身仍可正常测速。
+- 删除 `[Proxy]` 中的自定义拒绝别名。`NodePool` 改为只包含私人 `policy-path` 返回的真实节点，网络诊断不再有可误选的故意失败代理。
+- `Proxy` 继续默认 `Smart`、第二项保留手动 `NodePool`，并在末项加入 Surge 内建 `REJECT`，保留明确的手动失败关闭能力且不污染代理诊断。
+- `Smart` 不再需要排除 `Fail-Closed` 的正则，只递归导入 `NodePool` 的真实代理；五个地区 Smart 和四个受限服务 Smart 的来源、地区边界与行为不变。
+- DNS、Telegram、ApplePush、哨兵、国内 BiliBili、Ads/Pegasus、STUN、QUIC、双栈兜底、30 个策略组、142 条规则和 30 个运行资源均未改变。
+- 运行锁升级到 schema 23；故障注入增加到 119 项，并新增“禁止恢复静态拒绝代理”和“Proxy 必须保留内建 REJECT”回归检查。发布白名单精确兼容根目录 worktree `.git` 管理文件，仍拒绝嵌套同名文件，发布目录回归增至 16 项。完整包更新为 `Surge-R13.9-Complete-No-Embedded-20260830.zip`。
+
 ## 2026-08-30 R13.8 Smart 跨区选优、DNS 双栈引导与全盘复核
 
 - 从主配置 `[Host]` 删除 `doh.pub = 1.12.12.12, 120.53.53.53`。DoH URL 继续使用 `https://doh.pub/dns-query`，但主机名改由 Surge 的传统引导 DNS 动态解析，遵循 DNSPod 的域名接入建议并保留后端调度能力。

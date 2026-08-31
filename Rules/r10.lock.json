@@ -1,11 +1,11 @@
 {
-  "schema": 22,
+  "schema": 23,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.8 Smart Hybrid",
+  "profile": "Surge iOS Privacy + Push R13.9 Smart Diagnostics",
   "generated": "2026-08-30",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "8c95b6bd4f5072a01eea847082f79c81974964e05597e83c763d7cf0a7c9b550",
-  "profile_lines": 368,
+  "profile_sha256": "e76ddbd022f4424415366b504bb4e7e2ab5940222964eeaa3466eaec68a78ebe",
+  "profile_lines": 364,
   "active_rules": 142,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
@@ -39,14 +39,13 @@
     ],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
-    "fail_closed_alias": "reject",
+    "user_defined_proxy_policies": 0,
     "policy_architecture": {
       "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
       "smart": {
         "mode": "smart",
         "hidden": false,
         "source": "NodePool",
-        "excluded_policy": "Fail-Closed",
         "evaluate_before_use": true,
         "fixed_test_schedule_seconds": 300,
         "uses_real_connection_quality": true,
@@ -56,13 +55,13 @@
         "mode": "select",
         "hidden": false,
         "source": "policy-path",
-        "first_member": "Fail-Closed",
+        "explicit_members": [],
         "automatic_fallback": false
       },
       "proxy": {
         "mode": "select",
         "default": "Smart",
-        "manual_fail_closed_entry": "NodePool"
+        "manual_fail_closed_entry": "REJECT"
       },
       "regions": {
         "mode": "smart",

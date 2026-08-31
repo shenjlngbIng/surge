@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.8 configuration auditor."""
+"""Fault-injection regression tests for the R13.9 configuration auditor."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 
 # Header, snapshot and public-source boundary (1-9).
-replace_once("version", "R13.8 Smart Hybrid", "R13.7 Smart Hybrid")
+replace_once("version", "R13.9 Smart Diagnostics", "R13.8 Smart Hybrid")
 replace_once("date", "# > Update Date: 2026.08.30", "# > Update Date: 2026.08.29")
 replace_once("header_claim", "Smart and region groups learn from real traffic", "Manual groups allegedly optimize")
 replace_once("smart_risk_warning", "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.\n", "")
@@ -84,19 +84,20 @@ replace_once("raw_tcp_telegram", "always-raw-tcp-hosts = 149.154.*, 91.108.*,", 
 replace_once("dns_svcb", "allow-dns-svcb = false", "allow-dns-svcb = true")
 replace_once("local_host_for_proxy", "use-local-host-item-for-proxy = false", "use-local-host-item-for-proxy = true")
 
-# Host, built-in alias and group architecture (46-96).
+# Host, diagnostic-safe proxy inventory and group architecture (46-97).
 replace_once("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1")
 replace_once("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1", "dns.alidns.com = 8.8.8.8")
 replace_once("dnspod_static_bootstrap", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\n", "# AliDNS bootstrap. DNSPod's doh.pub deliberately resolves through dns-server\ndoh.pub = 1.12.12.12, 120.53.53.53\n")
-replace_once("fail_closed_proxy", "Fail-Closed = reject", "Fail-Closed = direct")
-replace_once("extra_proxy", "Fail-Closed = reject\n\n[Proxy Group]", "Fail-Closed = reject\nUnexpected = direct\n\n[Proxy Group]")
+replace_once("fail_closed_proxy", "[Proxy Group]", "[Proxy]\nFail-Closed = reject\n\n[Proxy Group]")
+replace_once("extra_proxy", "[Proxy Group]", "[Proxy]\nUnexpected = direct\n\n[Proxy Group]")
 replace_once("final_members", "Final = select, Proxy, REJECT,", "Final = select, DIRECT, Proxy,")
 replace_once("proxy_default", "Proxy = select, Smart, NodePool, HongKong", "Proxy = select, NodePool, Smart, HongKong")
+replace_once("proxy_manual_reject", "America, REJECT, no-alert=0", "America, no-alert=0")
 replace_once("allserver_returned", "# Services\n", "AllServer = smart, Fail-Closed, include-other-group=NodePool\n# Services\n")
 replace_once("applepush_direct_first", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy")
 replace_once("applepush_visible", "hidden=1\n# Services", "hidden=0\n# Services")
 replace_group_fragment("smart_url_test", "Smart", "smart", "url-test")
-replace_group_fragment("smart_filter", "Smart", "policy-regex-filter=^(?!Fail-Closed$).+", "policy-regex-filter=.+")
+replace_group_fragment("smart_filter", "Smart", "Smart = smart,", "Smart = smart, policy-regex-filter=.+,")
 replace_group_fragment("smart_interval_added", "Smart", "Smart = smart,", "Smart = smart, interval=600,")
 replace_group_fragment("smart_tolerance_added", "Smart", "Smart = smart,", "Smart = smart, tolerance=100,")
 replace_group_fragment("smart_no_evaluate", "Smart", "evaluate-before-use=true", "evaluate-before-use=false")
@@ -104,9 +105,9 @@ replace_group_fragment("smart_alerts_disabled", "Smart", "no-alert=0", "no-alert
 replace_group_fragment("smart_hidden", "Smart", "hidden=0", "hidden=1")
 replace_group_fragment("smart_include_all", "Smart", "include-all-proxies=0", "include-all-proxies=1")
 replace_group_fragment("smart_source", "Smart", "include-other-group=NodePool", "include-other-group=HongKong")
-replace_group_fragment("smart_explicit_fail_closed", "Smart", "Smart = smart,", "Smart = smart, Fail-Closed,")
-replace_once("nodepool_automatic", "NodePool = select, Fail-Closed", "NodePool = smart, Fail-Closed")
-replace_once("nodepool_no_fail", "NodePool = select, Fail-Closed, policy-path", "NodePool = select, policy-path")
+replace_group_fragment("smart_explicit_fail_closed", "Smart", "Smart = smart,", "Smart = smart, REJECT,")
+replace_once("nodepool_automatic", "NodePool = select, policy-path", "NodePool = smart, policy-path")
+replace_once("nodepool_no_fail", "NodePool = select, policy-path", "NodePool = select, REJECT, policy-path")
 replace_once("nodepool_hidden", "update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0\n\n# Regions", "update-interval=3600, no-alert=0, hidden=1, include-all-proxies=0\n\n# Regions")
 replace_group_fragment("nodepool_update_interval", "NodePool", "update-interval=3600", "update-interval=7200")
 replace_group_fragment("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1")
@@ -161,8 +162,8 @@ replace_once("china_policy", "/Rules/China.list,DIRECT,extended-matching", "/Rul
 replace_once("geoip_policy", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Domestic,no-resolve")
 replace_once("ipv6_direct", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 
-if len(MUTATIONS) != 118:
-    raise RuntimeError(f"expected 118 mutations, built {len(MUTATIONS)}")
+if len(MUTATIONS) != 119:
+    raise RuntimeError(f"expected 119 mutations, built {len(MUTATIONS)}")
 
 environment = dict(os.environ)
 environment["PYTHONDONTWRITEBYTECODE"] = "1"
@@ -183,4 +184,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.8 mutations={len(MUTATIONS)}")
+print(f"PASS R13.9 mutations={len(MUTATIONS)}")

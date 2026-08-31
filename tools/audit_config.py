@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.8 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.9 profile."""
 
 from __future__ import annotations
 
@@ -43,7 +43,6 @@ GROUP_ORDER = (
     "Microsoft", "Games", "Smart", "NodePool", *REGIONS,
 )
 REMOVED_GROUPS = {"Auto", "AllServer", "AdBlock", "Security", "UDP", "Domestic"}
-SMART_FILTER = "policy-regex-filter=^(?!Fail-Closed$).+"
 SMART_OPTIONS = (
     "evaluate-before-use=true", "no-alert=0", "hidden=0",
     "include-all-proxies=0", "include-other-group=NodePool",
@@ -174,8 +173,8 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.08.30",
-    "# > Surge iOS Privacy + Push R13.8 Smart Hybrid | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Smart and region groups learn from real traffic; NodePool keeps a manual Fail-Closed entry.",
+    "# > Surge iOS Privacy + Push R13.9 Smart Diagnostics | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Smart and region groups learn from real traffic; Proxy keeps a manual built-in REJECT entry.",
     "# > AI and TikTok Smart groups pool only their reviewed supported regions.",
     "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
@@ -193,8 +192,10 @@ for marker in ("@main/Rules/", "raw.githubusercontent.com", "reject_phishing.con
         fail(f"mutable or mobile-heavy runtime source is forbidden: {marker}")
 
 sections = parse(text)
-if list(sections) != ["General", "Host", "Proxy", "Proxy Group", "Rule"]:
+if list(sections) != ["General", "Host", "Proxy Group", "Rule"]:
     fail(f"section order or inventory mismatch: {list(sections)}")
+if "Fail-Closed" in text:
+    fail("user-defined Fail-Closed proxies are forbidden because diagnostics may select them")
 
 general = key_values(sections["General"], "General")
 expected_general = {
@@ -248,10 +249,6 @@ if hosts != {
 }:
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
-proxies = key_values(sections["Proxy"], "Proxy")
-if proxies != {"Fail-Closed": "reject"}:
-    fail("Fail-Closed must remain the built-in reject alias")
-
 groups = key_values(sections["Proxy Group"], "Proxy Group")
 if tuple(groups) != GROUP_ORDER or len(groups) != 30:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
@@ -264,8 +261,8 @@ for name in groups:
 
 if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "REJECT"]:
     fail("Final policy changed")
-if group_parts(groups, "Proxy")[0] != "select" or group_members(groups, "Proxy") != ["Smart", "NodePool", *REGIONS]:
-    fail("Proxy must default to Smart and retain NodePool plus region entries")
+if group_parts(groups, "Proxy")[0] != "select" or group_members(groups, "Proxy") != ["Smart", "NodePool", *REGIONS, "REJECT"]:
+    fail("Proxy must default to Smart and retain NodePool, regions and manual REJECT")
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
     fail("ApplePush fallback exception changed")
 require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
@@ -276,8 +273,8 @@ for name in set(groups) - {"ApplePush", "Smart", "NodePool", *REGIONS, *RESTRICT
     require_exact_options(group_parts(groups, name), name, VISIBLE_SELECT_OPTIONS)
 
 node_parts = group_parts(groups, "NodePool")
-if node_parts[0] != "select" or group_members(groups, "NodePool") != ["Fail-Closed"]:
-    fail("NodePool must be manual and begin with Fail-Closed")
+if node_parts[0] != "select" or group_members(groups, "NodePool"):
+    fail("NodePool must be a memberless manual group fed only by policy-path")
 require_exact_options(node_parts, "NodePool", (
     f"policy-path={PLACEHOLDER}", "update-interval=3600", "no-alert=0",
     "hidden=0", "include-all-proxies=0",
@@ -286,7 +283,7 @@ require_exact_options(node_parts, "NodePool", (
 smart_parts = group_parts(groups, "Smart")
 if smart_parts[0] != "smart" or group_members(groups, "Smart"):
     fail("Smart must be a memberless smart group fed only by NodePool")
-require_exact_options(smart_parts, "Smart", (SMART_FILTER, *SMART_OPTIONS))
+require_exact_options(smart_parts, "Smart", SMART_OPTIONS)
 
 for region in REGIONS:
     parts = group_parts(groups, region)
@@ -340,7 +337,7 @@ if automatic != expected_automatic:
     fail(f"automatic node-group boundary changed: {automatic}")
 
 # Validate group references and reject cycles.
-builtins = {"DIRECT", "REJECT", "REJECT-DROP", "Fail-Closed"}
+builtins = {"DIRECT", "REJECT", "REJECT-DROP"}
 for name in groups:
     unknown = [
         member for member in [*group_members(groups, name), *included_groups(groups, name)]
@@ -460,7 +457,7 @@ for line in ("DOMAIN,img-prod-cms-rt-microsoft-com.akamaized.net,Microsoft", "DO
     if index(line) >= index(repository_line("RULE-SET", "Game.list", "Games")):
         fail("Microsoft/shared cloud guard must precede Game")
 
-valid_policies = set(groups) | {"DIRECT", "REJECT", "REJECT-DROP", "Fail-Closed"}
+valid_policies = set(groups) | {"DIRECT", "REJECT", "REJECT-DROP"}
 for rule in rules:
     fields = [field.strip() for field in rule.split(",")]
     policy = fields[1] if fields[0] == "FINAL" else fields[2]
@@ -474,7 +471,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 22 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 23 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -482,7 +479,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.8 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.9 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

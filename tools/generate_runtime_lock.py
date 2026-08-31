@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.8 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.9 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.8 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.9 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,7 +83,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 22,
+    "schema": 23,
     "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -109,22 +109,22 @@ lock = {
         "visible_control_groups": ["Final", "Proxy", "Smart", "NodePool"],
         "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
         "loglevel": "notify",
-        "fail_closed_alias": "reject",
+        "user_defined_proxy_policies": 0,
         "policy_architecture": {
             "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
             "smart": {
                 "mode": "smart", "hidden": False, "source": "NodePool",
-                "excluded_policy": "Fail-Closed", "evaluate_before_use": True,
+                "evaluate_before_use": True,
                 "fixed_test_schedule_seconds": 300,
                 "uses_real_connection_quality": True, "per_site_memory": True,
             },
             "node_pool": {
                 "mode": "select", "hidden": False, "source": "policy-path",
-                "first_member": "Fail-Closed", "automatic_fallback": False,
+                "explicit_members": [], "automatic_fallback": False,
             },
             "proxy": {
                 "mode": "select", "default": "Smart",
-                "manual_fail_closed_entry": "NodePool",
+                "manual_fail_closed_entry": "REJECT",
             },
             "regions": {
                 "mode": "smart", "source": "NodePool",

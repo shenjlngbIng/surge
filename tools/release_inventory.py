@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single strict inventory for every R13.8 release producer and verifier."""
+"""Single strict inventory for every R13.9 release producer and verifier."""
 
 from __future__ import annotations
 
@@ -84,6 +84,7 @@ TRANSIENT_ARCHIVES = {
     PurePosixPath("Surge-R13.6-Complete-No-Embedded-20260830.zip"),
     PurePosixPath("Surge-R13.7-Complete-No-Embedded-20260830.zip"),
     PurePosixPath("Surge-R13.8-Complete-No-Embedded-20260830.zip"),
+    PurePosixPath("Surge-R13.9-Complete-No-Embedded-20260830.zip"),
 }
 IGNORED_DIRECTORY_NAMES = {".git", "__pycache__"}
 ALLOWED_DIRECTORIES = frozenset(
@@ -155,6 +156,11 @@ def validate_release_tree(
                     continue
                 if not stat.S_ISREG(mode):
                     raise ValueError(f"special files are forbidden in a release tree: {relative}")
+                # A linked Git worktree stores its administrative pointer as a
+                # root-level .git file instead of a directory. It is never a
+                # release artifact and is safe to ignore only at this exact path.
+                if relative == PurePosixPath(".git"):
+                    continue
                 if relative not in RELEASE_PATHS:
                     raise ValueError(f"unknown release file: {relative}")
                 found.add(relative)

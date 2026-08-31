@@ -1,48 +1,44 @@
-# R13.7 到 R13.8 Smart 与 DNS 韧性迁移说明
+# R13.8 到 R13.9 网络诊断修复迁移说明
 
-R13.8 是一次全盘复核后的定向修复。BiliBili 国内版、Telegram、APNs、UDP/QUIC、哨兵、四个已删除的隐藏开关、规则内容、首条命中顺序和固定快照都不变；本版调整 Surge 自身 DoH 的启动解析，并补全 AI/TikTok 在允许地区内的自动容错。
+R13.9 是根据 Surge iOS 真机复现结果完成的定向修复。R13.8 将 `Fail-Closed = reject` 定义在 `[Proxy]` 中，日常 Smart 路由虽然能够正常使用真实节点，但 Surge 网络诊断会把这个故意拒绝流量的静态条目当成代理策略，导致 TCP 代理测试和 UDP 转发测试固定显示 `Test timeout`。
 
 ## 关键差异
 
-| 项目 | R13.7 | R13.8 |
+| 项目 | R13.8 | R13.9 |
 | --- | --- | --- |
-| 传统引导 DNS | AliDNS 双 IPv4 | AliDNS 双 IPv4＋双 IPv6 |
-| `dns.alidns.com` 静态引导 | 2 IPv4＋1 IPv6 | 2 IPv4＋2 IPv6 |
-| `doh.pub` 引导 | 固定 `1.12.12.12`、`120.53.53.53` | 由引导 DNS 动态解析主机名 |
-| AI/TikTok 默认选路 | 手动 `select`，首项日本 Smart | 服务自身 Smart，汇总四个允许地区的真实节点 |
-| 双 DoH 与证书校验 | 开启 | 不变 |
+| `[Proxy]` | `Fail-Closed = reject` | 不定义静态代理 |
+| `NodePool` | `Fail-Closed`＋真实订阅节点 | 仅真实订阅节点 |
+| Smart 来源 | 递归导入并过滤 `Fail-Closed` | 直接递归导入全部真实节点 |
+| 手动失败关闭 | `Proxy → NodePool → Fail-Closed` | `Proxy → REJECT` |
+| 网络诊断 | 可能固定测试 `Fail-Closed` | 不再存在可被误测的拒绝代理 |
+| DNS、规则与服务分流 | R13.8 基线 | 不变 |
 | 策略组和活动规则 | 30 / 142 | 不变 |
 | 运行资源 | 29 固定＋1 动态 | 不变 |
-| 运行锁 | schema 21 | schema 22 |
-| 完整包 | `Surge-R13.7-Complete-No-Embedded-20260830.zip` | `Surge-R13.8-Complete-No-Embedded-20260830.zip` |
+| 运行锁 | schema 22 | schema 23 |
+| 完整包 | `Surge-R13.8-Complete-No-Embedded-20260830.zip` | `Surge-R13.9-Complete-No-Embedded-20260830.zip` |
 
-## 为什么要改 DNS 引导
+## 为什么必须修改
 
-DNSPod 已公告不再公开推荐通过免费 DoH/DoT 的旧 IP 接入，建议使用 `https://doh.pub/dns-query`，以便服务方调整后端并提高稳定性。R13.7 的 DoH URL 虽然使用主机名，但 `[Host]` 又把该主机名冻结到旧 IP，长期会失去动态调度能力。
+Surge 将 `[Proxy]` 中定义的条目视为代理策略。网络诊断的代理项会对代理策略执行 HTTP 测试，UDP 项会测试代理 UDP 转发。`Fail-Closed = reject` 本来就是用来主动拒绝连接的安全哨兵，因此被诊断选中后必然超时；这不能反映当前 `Smart` 选择的真实节点状态。
 
-Surge 在配置加密 DNS 后，只把传统 `dns-server` 用于连通性测试和解析 DoH URL 中的主机名。R13.8 因此保留双 DoH、直连启动和证书校验，同时让 `doh.pub` 通过 AliDNS 引导动态解析。AliDNS 自身仍使用官方静态引导，并补齐第二条官方 IPv6 地址。
+R13.9 删除这个自定义代理别名，让 `NodePool` 只承载 `policy-path` 返回的真实节点。严格手动拒绝改用 Surge 内建 `REJECT`，仍然不会把失败流量静默改为直连。
 
 ## 升级步骤
 
 1. 备份私人 `NodePool.policy-path`，不要把地址或令牌提交到公开仓库。
-2. 完整导入 R13.8，不要只复制 `[General]` 或 `[Host]` 片段。
-3. 只替换 `NodePool.policy-path` 的占位 URL。
-4. 重新下载配置并清理旧规则缓存。
-5. 确认 `Proxy` 仍选择 `Smart`；升级不需要手动选择具体节点。
-6. ChatGPT、Claude、Gemini 与 TikTok 会在允许地区内自动选优；需要临时固定时，长按对应策略并选择一个真实节点。
-7. 在 Wi-Fi 和蜂窝各测试一次 DNS、国内 BiliBili、Telegram、APNs、AI、IPv4/IPv6 和 UDP。
+2. 完整导入 R13.9，并只替换 `NodePool.policy-path` 的占位 URL。
+3. 确认 `Proxy` 选择 `Smart`，`NodePool` 中能够看到真实节点。
+4. 重新运行网络诊断。TCP 项应显示某个真实节点；UDP 是否通过取决于该节点和服务商是否支持 UDP。
+5. 在 Wi-Fi 和蜂窝各验证一次 DNS、国内 BiliBili、Telegram、APNs、AI、IPv4/IPv6 与 UDP。
 
 ## 保持不变
 
-- `Proxy → Smart` 日常自动选路和 `NodePool → Fail-Closed` 手动安全入口不变。
-- 香港、台湾、日本、新加坡、美国五个地区组仍为 Smart。
-- AI/TikTok 的允许地区仍是日本、新加坡、台湾、美国，香港与通用 Proxy 仍不进入候选池；变化只是由手动首项改为跨允许地区 Smart。
-- 国内 BiliBili 仍使用 16 个精确后缀、两条 Ads 前置护栏和固定 `DIRECT`。
-- 国际版专用规则继续删除，七条历史域名只保留通用 `Proxy` 防串线护栏。
-- Telegram 当前官方 CIDR、Apple APNs 当前网段、ApplePush 的 `Proxy → DIRECT` 后备顺序都不变。
-- 152 条固定 Ads、1,438 条 Pegasus、STUN 代理、UDP 不支持即拒绝、QUIC 按策略和双栈公网代理兜底都不变。
+- `Proxy → Smart` 的日常自动选路、五个地区 Smart 和 AI/TikTok 的允许地区均不变。
+- 双 DoH、证书校验、AliDNS 双栈引导和 DNSPod 动态主机名引导均不变。
+- 国内 BiliBili 固定 `DIRECT`；国际版专用规则继续删除。
+- Telegram、ApplePush、哨兵、Ads/Pegasus、STUN、UDP/QUIC 和双栈公网兜底均不变。
 - `AdBlock`、`Security`、`UDP`、`Domestic` 四个隐藏状态组继续不存在。
 
 ## 回退
 
-确需回退时，恢复完整 R13.7 包与对应私人订阅地址。不要混用 R13.7 的 `Surge.conf` 与 R13.8 的 `Rules/r10.lock.json`、清单、校验和或审计脚本。
+确需回退时，恢复完整 R13.8 包与对应私人订阅地址。不要混用 R13.8 的 `Surge.conf` 与 R13.9 的运行锁、清单、校验和或审计脚本。
