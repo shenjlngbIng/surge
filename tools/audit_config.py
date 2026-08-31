@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.9 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.10 profile."""
 
 from __future__ import annotations
 
@@ -172,9 +172,9 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.08.30",
-    "# > Surge iOS Privacy + Push R13.9 Smart Diagnostics | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Smart and region groups learn from real traffic; Proxy keeps a manual built-in REJECT entry.",
+    "# > Update Date: 2026.08.31",
+    "# > Surge iOS Privacy + Push R13.10 Real Diagnostics | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Diagnostics bridges Surge's local SOCKS5 service to the selected Proxy policy for real TCP/UDP probes.",
     "# > AI and TikTok Smart groups pool only their reviewed supported regions.",
     "# > Smart groups may use DIRECT/SUBSTITUTE when empty; read README before enabling Smart.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
@@ -192,7 +192,7 @@ for marker in ("@main/Rules/", "raw.githubusercontent.com", "reject_phishing.con
         fail(f"mutable or mobile-heavy runtime source is forbidden: {marker}")
 
 sections = parse(text)
-if list(sections) != ["General", "Host", "Proxy Group", "Rule"]:
+if list(sections) != ["General", "Host", "Proxy", "Proxy Group", "Rule"]:
     fail(f"section order or inventory mismatch: {list(sections)}")
 if "Fail-Closed" in text:
     fail("user-defined Fail-Closed proxies are forbidden because diagnostics may select them")
@@ -204,7 +204,7 @@ expected_general = {
     "internet-test-url": "http://connectivitycheck.platform.hicloud.com/generate_204",
     "proxy-test-url": "http://cp.cloudflare.com/generate_204",
     "test-timeout": "5",
-    "proxy-test-udp": "apple.com@9.9.9.9",
+    "proxy-test-udp": "apple.com@1.1.1.1",
     "ipv6": "true",
     "ipv6-vif": "auto",
     "compatibility-mode": "3",
@@ -230,6 +230,7 @@ expected_general = {
     "use-local-host-item-for-proxy": "false",
     "allow-wifi-access": "false",
     "allow-hotspot-access": "false",
+    "wifi-access-socks5-port": "6153",
     "http-api-web-dashboard": "false",
     "proxy-restricted-to-lan": "true",
     "gateway-restricted-to-lan": "true",
@@ -249,6 +250,12 @@ if hosts != {
 }:
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
+proxies = key_values(sections["Proxy"], "Proxy")
+if proxies != {
+    "Diagnostics": "socks5, 127.0.0.1, 6153, udp-relay=true, no-error-alert=true",
+}:
+    fail("the single audited loopback Diagnostics proxy changed")
+
 groups = key_values(sections["Proxy Group"], "Proxy Group")
 if tuple(groups) != GROUP_ORDER or len(groups) != 30:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
@@ -258,6 +265,9 @@ for name in groups:
     option_keys = [part.split("=", 1)[0] for part in group_parts(groups, name)[1:] if "=" in part]
     if len(option_keys) != len(set(option_keys)):
         fail(f"{name} contains duplicate policy-group options")
+
+if any("Diagnostics" in group_members(groups, name) for name in groups):
+    fail("Diagnostics must stay outside every policy group to prevent a loop")
 
 if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "REJECT"]:
     fail("Final policy changed")
@@ -363,7 +373,7 @@ for group in groups:
     visit(group)
 
 rules = active(sections["Rule"])
-if len(rules) != 142 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
+if len(rules) != 143 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
@@ -400,12 +410,19 @@ if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "
     fail("international compatibility guard must precede domestic BiliBili parent suffixes")
 
 stun = index("PROTOCOL,STUN,Proxy")
+bridge_rules = [
+    "DOMAIN,cp.cloudflare.com,Proxy",
+    "IP-CIDR,1.1.1.1/32,Proxy,no-resolve",
+]
+bridge_start = index(bridge_rules[0])
+if rules[bridge_start:bridge_start + len(bridge_rules)] != bridge_rules or bridge_start != stun + 1:
+    fail("loopback Diagnostics targets must be contiguous immediately after STUN")
 domestic_dns_start = index(DOMESTIC_DNS_RULES[0])
 if rules[domestic_dns_start:domestic_dns_start + len(DOMESTIC_DNS_RULES)] != list(DOMESTIC_DNS_RULES):
     fail("mainland application DNS block changed")
 port_rules = ["DEST-PORT,53,REJECT", "DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
 port_start = index(port_rules[0])
-if rules[port_start:port_start + 3] != port_rules or not stun < domestic_dns_start < port_start:
+if rules[port_start:port_start + 3] != port_rules or not stun < bridge_start < domestic_dns_start < port_start:
     fail("STUN, mainland DNS and public DNS-port order changed")
 foreign_start = index(FOREIGN_DNS_RULES[0])
 if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES) or foreign_start <= port_start:
@@ -457,21 +474,23 @@ for line in ("DOMAIN,img-prod-cms-rt-microsoft-com.akamaized.net,Microsoft", "DO
     if index(line) >= index(repository_line("RULE-SET", "Game.list", "Games")):
         fail("Microsoft/shared cloud guard must precede Game")
 
-valid_policies = set(groups) | {"DIRECT", "REJECT", "REJECT-DROP"}
+valid_policies = set(groups) | set(proxies) | {"DIRECT", "REJECT", "REJECT-DROP"}
 for rule in rules:
     fields = [field.strip() for field in rule.split(",")]
     policy = fields[1] if fields[0] == "FINAL" else fields[2]
     if policy not in valid_policies:
         fail(f"rule references unknown policy: {rule}")
+    if policy == "Diagnostics":
+        fail("rules must never route traffic back to the loopback Diagnostics proxy")
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (142, 30, 29, 1, 29)
+    expected_counts = (143, 30, 29, 1, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 23 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 24 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -479,7 +498,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.9 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.10 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.9 rule snapshots, locks and optional online resources."""
+"""Validate R13.10 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 23 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 24 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -109,7 +109,7 @@ counts = tuple(lock.get(key) for key in (
     "active_rules", "runtime_resources", "immutable_repository_resources",
     "dynamic_runtime_resources", "local_rule_files",
 ))
-if counts != (142, 30, 29, 1, 29):
+if counts != (143, 30, 29, 1, 29):
     fail(f"runtime lock counts mismatch: {counts}")
 
 invariants = dict(lock.get("required_invariants", {}))
@@ -126,13 +126,13 @@ expected_invariants = {
     "visible_control_groups": ["Final", "Proxy", "Smart", "NodePool"],
     "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
     "loglevel": "notify",
-    "user_defined_proxy_policies": 0,
+    "user_defined_proxy_policies": 1,
     "mobile_dynamic_reject_sources": [],
     "functional_guards_before_ads": list(FUNCTIONAL_GUARDS),
     "extended_matching_resources": sorted(EXTENDED_MATCH_RESOURCES),
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
-    "diagnostic_policy": "Proxy",
+    "diagnostic_policy": "Diagnostics",
     "runtime_rulesets_no_resolve": True,
 }
 for key, expected in expected_invariants.items():
@@ -215,11 +215,22 @@ if invariants.get("dns") != {
 }:
     fail("DNS invariant mismatch")
 if invariants.get("udp_quic") != {
-    "proxy_test_udp": "apple.com@9.9.9.9", "unsupported_behaviour": "REJECT",
+    "proxy_test_udp": "apple.com@1.1.1.1", "unsupported_behaviour": "REJECT",
     "block_quic": "per-policy", "stun_policy": "Proxy",
     "blocked_public_dns_ports": [53, 853, 8853],
 }:
     fail("UDP/QUIC invariant mismatch")
+if invariants.get("diagnostic_bridge") != {
+    "definition": "socks5, 127.0.0.1, 6153, udp-relay=true, no-error-alert=true",
+    "loopback_only": True,
+    "included_in_policy_groups": False,
+    "referenced_by_rules": False,
+    "wifi_access_socks5_port": 6153,
+    "inner_policy": "Proxy",
+    "tcp_target_rule": "DOMAIN,cp.cloudflare.com,Proxy",
+    "udp_target_rule": "IP-CIDR,1.1.1.1/32,Proxy,no-resolve",
+}:
+    fail("network Diagnostics bridge invariant mismatch")
 if invariants.get("public_ip_literals") != {
     "china": DOMESTIC_GEOIP_RULE,
     "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
@@ -395,6 +406,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.9 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
-    f"local_rule_files=29 rules=142 embedded_rule_contents=0"
+    f"PASS R13.10 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"local_rule_files=29 rules=143 embedded_rule_contents=0"
 )

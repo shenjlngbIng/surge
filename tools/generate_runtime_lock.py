@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.9 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.10 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.9 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.10 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,7 +83,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 23,
+    "schema": 24,
     "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -109,7 +109,7 @@ lock = {
         "visible_control_groups": ["Final", "Proxy", "Smart", "NodePool"],
         "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
         "loglevel": "notify",
-        "user_defined_proxy_policies": 0,
+        "user_defined_proxy_policies": 1,
         "policy_architecture": {
             "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
             "smart": {
@@ -191,7 +191,7 @@ lock = {
             "include-cellular-services": "false",
         },
         "udp_quic": {
-            "proxy_test_udp": "apple.com@9.9.9.9",
+            "proxy_test_udp": "apple.com@1.1.1.1",
             "unsupported_behaviour": "REJECT",
             "block_quic": "per-policy",
             "stun_policy": "Proxy",
@@ -199,7 +199,17 @@ lock = {
         },
         "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
         "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
-        "diagnostic_policy": "Proxy",
+        "diagnostic_policy": "Diagnostics",
+        "diagnostic_bridge": {
+            "definition": "socks5, 127.0.0.1, 6153, udp-relay=true, no-error-alert=true",
+            "loopback_only": True,
+            "included_in_policy_groups": False,
+            "referenced_by_rules": False,
+            "wifi_access_socks5_port": 6153,
+            "inner_policy": "Proxy",
+            "tcp_target_rule": "DOMAIN,cp.cloudflare.com,Proxy",
+            "udp_target_rule": "IP-CIDR,1.1.1.1/32,Proxy,no-resolve",
+        },
         "runtime_rulesets_no_resolve": True,
         "public_ip_literals": {
             "china": DOMESTIC_GEOIP_RULE,

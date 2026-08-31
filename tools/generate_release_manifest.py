@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the deterministic file manifest shipped with the R13.9 release."""
+"""Generate the deterministic file manifest shipped with the R13.10 release."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ ROOT = Path(__file__).resolve().parent.parent
 OUTPUT = ROOT / "RELEASE_MANIFEST.txt"
 files = manifest_files(ROOT)
 lines = [
-    "Surge iOS Privacy + Push R13.9 Smart Diagnostics release manifest",
-    "Generated: 2026-08-30",
+    "Surge iOS Privacy + Push R13.10 Real Diagnostics release manifest",
+    "Generated: 2026-08-31",
     f"Files: {len(files)}",
     "",
 ]

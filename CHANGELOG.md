@@ -1,5 +1,14 @@
 # 更新日志
 
+## 2026-08-31 R13.10 真实代理与 UDP 网络诊断
+
+- 根据 R13.9 真机截图确认：删除 `Fail-Closed` 后不再固定超时，但 `policy-path` 返回的节点只存在于外置策略组，不会进入主配置 `[Proxy]`；Surge 因无代理实体而跳过“测试代理策略”和“UDP 代理转发”，两行显示空白。
+- 新增唯一的 `Diagnostics = socks5, 127.0.0.1, 6153, udp-relay=true, no-error-alert=true` 本机诊断桥，并显式锁定 `wifi-access-socks5-port=6153`。它不含订阅、服务器或认证信息。
+- `Diagnostics` 被所有策略组排除，任何规则也不得引用它。诊断桥接收到的内层请求只会按规则进入当前 `Proxy → Smart/手选节点`，避免 `Diagnostics → Diagnostics` 回环。
+- 将 TCP 探针 `cp.cloudflare.com` 和 UDP 探针地址 `1.1.1.1` 连续放在 STUN 后、通用 53/853/8853 拒绝前并固定到 `Proxy`；UDP 测试改为 `apple.com@1.1.1.1`。通过代表当前真实代理路径可用，不使用 DIRECT 或 REJECT 制造假结果。
+- Smart、NodePool、五个地区组、AI/TikTok 地区边界、DNS/DoH、Telegram、ApplePush、国内 BiliBili、Ads/Pegasus、STUN、QUIC、双栈兜底、29 个固定资源与 1 个动态资源均保持原行为。
+- 活动规则增至 143，运行锁升级到 schema 24，故障注入增至 128 项；新增诊断桥地址、端口、UDP、错误提示、防回环和探针顺序回归检查。完整包更新为 `Surge-R13.10-Complete-No-Embedded-20260831.zip`。
+
 ## 2026-08-30 R13.9 网络诊断与真实节点边界修复
 
 - 根据 Surge iOS 真机复现确认：R13.8 的 `[Proxy] Fail-Closed = reject` 会被网络诊断当成代理策略，导致代理 HTTP 测试和 UDP 转发测试固定显示 `Test timeout`；Smart 与真实节点本身仍可正常测速。

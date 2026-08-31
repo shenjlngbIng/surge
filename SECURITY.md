@@ -1,6 +1,6 @@
 # 安全策略与运行边界
 
-R13.9 的目标是在 Surge iOS 上提供可审计的 Smart 混合分流。日常路径根据真实连接质量自动选优，手动失败关闭由 `Proxy` 中的 Surge 内建 `REJECT` 提供。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
+R13.10 的目标是在 Surge iOS 上提供可审计的 Smart 混合分流和真实代理诊断。日常路径根据真实连接质量自动选优，手动失败关闭由 `Proxy` 中的 Surge 内建 `REJECT` 提供。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
 
 ## 私密信息
 
@@ -12,16 +12,18 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 
 不要提交真实订阅、Sub-Store 地址、令牌、设备日志、节点名称或个人域名。私人副本应放在仓库之外；凭据泄露后应立即在服务端撤销和轮换。
 
-## 混合自动与失败关闭边界
+## 混合自动、诊断与失败关闭边界
 
-- 主配置不定义 `[Proxy]` 静态代理，避免网络诊断把拒绝别名当成真实代理执行 TCP/UDP 测试。
+- `[Proxy]` 只允许一个本机 `Diagnostics` SOCKS5 诊断桥，固定为 `127.0.0.1:6153`，没有远端服务器、密码或订阅凭据。
+- `Diagnostics` 不得进入任何策略组，所有策略组必须保持 `include-all-proxies=0`，规则也不得引用它。这样网络诊断可以测试它，但内层请求只能进入 `Proxy`，不会递归回到诊断桥。
+- `cp.cloudflare.com` 与 `1.1.1.1` 两个内层探针目标必须位于通用 DNS 端口拒绝前并固定到 `Proxy`。普通业务流量仍按既有规则执行。
 - `NodePool` 保持手动 `select`，成员只来自私人 `policy-path`。
 - `Smart` 通过 `include-other-group=NodePool` 递归导入真实代理。
 - 香港、台湾、日本、新加坡、美国五个地区入口使用 Smart，只导入名称匹配的 `NodePool` 节点。
 - 总入口、五个地区组和四个受限服务组共十个 Smart，统一锁定首次使用前评估、可见状态和审阅后的导入来源；不写对 Smart 无效的 `interval` 或 `tolerance`。
 - `Proxy` 默认进入 `Smart`，第二项保留 `NodePool`。ChatGPT、Claude、Gemini 与 TikTok 只递归导入日本、新加坡、台湾、美国四个地区的真实代理，并在这个边界内自动选优。
 - Smart 中不显式列出 `DIRECT`、`REJECT` 或其他策略组；地区与服务 Smart 通过 `include-other-group` 递归展开真实代理。严格拒绝能力由 `Proxy` 的内建 `REJECT` 提供。
-- Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代，并显示 `SUBSTITUTE`。R13.9 对此不作严格失败关闭承诺。
+- Surge 官方说明，自动组没有可用成员时可能以 `DIRECT` 替代，并显示 `SUBSTITUTE`。R13.10 对此不作严格失败关闭承诺。
 - `ApplePush` 是明确的可用性例外，其后备顺序允许 `DIRECT`，用于保留 APNs 可达性。
 
 需要严格手动边界时，把 `Proxy` 直接切到 `REJECT`。需要固定真实节点时才进入 `NodePool` 选择；`NodePool` 自身不做自动选优。
@@ -39,6 +41,7 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 ## 网络边界
 
 - Surge 的远程访问保持关闭；本配置不开放控制端口。
+- `wifi-access-socks5-port=6153` 只锁定本机诊断桥依赖的端口；`allow-wifi-access=false`、`allow-hotspot-access=false` 和 `proxy-restricted-to-lan=true` 继续阻止把服务暴露给其他设备或公网。
 - AliDNS 与 DNSPod DoH 开启证书校验；`encrypted-dns-follow-outbound-mode=false` 用于避免域名型代理节点的启动解析环。
 - AliDNS 使用官方双 IPv4/双 IPv6 静态引导；DNSPod `doh.pub` 通过 AliDNS 引导动态解析，不再冻结服务方已不建议公开使用的旧 IP。
 - 局域网流量先行放行，随后拒绝未经审阅的公网 53、853 和 8853；已审阅的大陆应用 DNS 可直连，境外应用 DNS 进入代理。
