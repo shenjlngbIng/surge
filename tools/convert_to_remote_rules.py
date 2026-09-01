@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.13 external runtime-rule inventory.
+"""Validate the R13.14 external runtime-rule inventory.
 
 The iOS profile loads 29 repository snapshots from one immutable commit and
 one reviewed dynamic domestic supplement.  Large mutable reject lists are not
@@ -13,7 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.13 Simple Subscription"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.14 Restored Simple"
 RELEASE_DATE = "2026-09-01"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
@@ -22,22 +22,30 @@ UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
 
 DOMESTIC_DNS_RULES: tuple[str, ...] = (
-    "DOMAIN,dns.alidns.com,DIRECT",
-    "DOMAIN,dns.pub,DIRECT",
-    "DOMAIN,doh.pub,DIRECT",
-    "DOMAIN,dot.pub,DIRECT",
-    "DOMAIN,dns.360.cn,DIRECT",
-    "DOMAIN,doh.360.cn,DIRECT",
-    "DOMAIN-SUFFIX,alibabadns.com,DIRECT",
-    "DOMAIN-SUFFIX,alidns.com,DIRECT",
-    "DOMAIN-SUFFIX,bdydns.com,DIRECT",
-    "DOMAIN-SUFFIX,bytednsdoc.com,DIRECT",
-    "DOMAIN-SUFFIX,dns.la,DIRECT",
-    "DOMAIN-SUFFIX,dnspod.cn,DIRECT",
-    "DOMAIN-SUFFIX,dnspod.com,DIRECT",
-    "DOMAIN-SUFFIX,dnsv1.com,DIRECT",
-    "DOMAIN-SUFFIX,jomodns.com,DIRECT",
-    "DOMAIN-SUFFIX,smtcdns.net,DIRECT",
+    "DOMAIN,dns.alidns.com,Proxy",
+    "DOMAIN,dns.pub,Proxy",
+    "DOMAIN,doh.pub,Proxy",
+    "DOMAIN,dot.pub,Proxy",
+    "DOMAIN,dns.360.cn,Proxy",
+    "DOMAIN,doh.360.cn,Proxy",
+    "DOMAIN-SUFFIX,alibabadns.com,Proxy",
+    "DOMAIN-SUFFIX,alidns.com,Proxy",
+    "DOMAIN-SUFFIX,bdydns.com,Proxy",
+    "DOMAIN-SUFFIX,bytednsdoc.com,Proxy",
+    "DOMAIN-SUFFIX,dns.la,Proxy",
+    "DOMAIN-SUFFIX,dnspod.cn,Proxy",
+    "DOMAIN-SUFFIX,dnspod.com,Proxy",
+    "DOMAIN-SUFFIX,dnsv1.com,Proxy",
+    "DOMAIN-SUFFIX,jomodns.com,Proxy",
+    "DOMAIN-SUFFIX,smtcdns.net,Proxy",
+)
+
+SURGE_DNS_PROTOCOL_RULES: tuple[str, ...] = (
+    "PROTOCOL,DOH,Proxy",
+    "PROTOCOL,DOH3,Proxy",
+    "PROTOCOL,DOQ,Proxy",
+    "PROTOCOL,DOT,Proxy",
+    "PROTOCOL,DNS,Proxy",
 )
 
 FOREIGN_DNS_RULES: tuple[str, ...] = (
@@ -182,7 +190,7 @@ def main() -> int:
     rules = active_rule_lines(text)
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.13 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.14 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES

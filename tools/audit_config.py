@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.13 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.14 profile."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from convert_to_remote_rules import (
     REMOTE_BASE,
     REPOSITORY_RULES,
     RETIRED_BILIBILI_INTL_GUARDS,
+    SURGE_DNS_PROTOCOL_RULES,
     expected_remote_order,
     repository_line,
 )
@@ -29,32 +30,17 @@ ROOT = Path(__file__).resolve().parent.parent
 PROFILE = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "Surge.conf"
 LOCK = ROOT / "Rules" / "r10.lock.json"
 SUBSCRIPTION_PLACEHOLDER = "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL"
-REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
-RESTRICTED_AUTO = {
-    "ChatGPT": ("Japan", "Singapore", "TaiWan", "America"),
-    "Claude": ("Japan", "Singapore", "TaiWan", "America"),
-    "Gemini": ("Japan", "Singapore", "TaiWan", "America"),
-    "TikTok": ("Japan", "Singapore", "TaiWan", "America"),
-}
 GROUP_ORDER = (
     "Final", "Proxy", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
     "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games", "Auto", "NodePool", *REGIONS,
+    "Microsoft", "Games",
 )
-REMOVED_GROUPS = {"Smart", "AllServer", "AdBlock", "Security", "UDP", "Domestic"}
-AUTO_OPTIONS = (
-    "interval=600", "tolerance=100", "evaluate-before-use=true", "no-alert=0", "hidden=0",
-    "include-all-proxies=0", "include-other-group=NodePool",
-)
-VISIBLE_SELECT_OPTIONS = ("no-alert=0", "hidden=0", "include-all-proxies=0")
-REGION_FILTER_SHA256 = {
-    "HongKong": "d73d8aca3f0d3e18d83f9a7250301509f1b1a5bef5c2e6c38e98bc9b39218ea2",
-    "TaiWan": "7ebe07a8a85a8ded7cae715491393a674805f836294a4d0357785b4eb9de098f",
-    "Japan": "e977bdaae8adda811ce510b3a97cd0980d90a15e16e9c4fb653680d85a22fd46",
-    "Singapore": "a7cfc4d2af80513590df01428b8ed41008cc371a86cef4d0fe9dde1c41b92b58",
-    "America": "9219ee1ac7b3200e8aade881175e7a7c8b57c2509644130ea599cbe53a18e694",
+REMOVED_GROUPS = {
+    "Auto", "NodePool", "HongKong", "TaiWan", "Japan", "Singapore", "America",
+    "AllServer", "AdBlock", "Security", "UDP", "Domestic",
 }
+HIDDEN_SELECT_OPTIONS = ("no-alert=0", "hidden=1", "include-all-proxies=0")
 
 
 def fail(message: str) -> None:
@@ -173,13 +159,13 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.09.01",
-    "# > Surge iOS Privacy + Push R13.13 Simple Subscription | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Auto, regional and restricted-service groups use url-test with an explicit REJECT safety member.",
-    "# > Put one Surge-format subscription URL in NodePool; no linked profile or helper script is required.",
+    "# > Surge iOS Privacy + Push R13.14 Restored Simple | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Restores the pre-diagnostics one-subscription layout: one visible Proxy group, no REJECT placeholders.",
+    "# > Put one Surge-format subscription URL directly in Proxy; no linked profile or helper script is required.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
     f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
-    "# > REQUIRED: replace only NodePool.policy-path locally; never publish subscription tokens.",
+    "# > REQUIRED: replace only Proxy.policy-path locally; never publish subscription tokens.",
 ]
 if text.splitlines()[:11] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
@@ -224,8 +210,8 @@ expected_general = {
     "exclude-simple-hostnames": "true",
     "always-raw-tcp-hosts": "149.154.*, 91.108.*, *.push.apple.com:443, *push-apple.com.akadns.net:443, *.apple.com.edgekey.net:443",
     "dns-server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-    "encrypted-dns-server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
-    "encrypted-dns-follow-outbound-mode": "false",
+    "encrypted-dns-server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
+    "encrypted-dns-follow-outbound-mode": "true",
     "encrypted-dns-skip-cert-verification": "false",
     "hijack-dns": "*:53",
     "allow-dns-svcb": "false",
@@ -247,7 +233,8 @@ if set(general) != set(expected_general):
 hosts = key_values(sections["Host"], "Host")
 if hosts != {
     "sub.store": "127.0.0.1",
-    "dns.alidns.com": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
+    "cloudflare-dns.com": "1.1.1.1, 1.0.0.1, 2606:4700:4700::1111, 2606:4700:4700::1001",
+    "dns.quad9.net": "9.9.9.9, 149.112.112.112, 2620:fe::fe, 2620:fe::9",
 }:
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
@@ -262,93 +249,47 @@ if proxy_includes:
     fail("[Proxy] must stay empty in the single-subscription profile")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
-if tuple(groups) != GROUP_ORDER or len(groups) != 30:
+if tuple(groups) != GROUP_ORDER or len(groups) != 23:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
 if REMOVED_GROUPS & groups.keys():
-    fail("removed automatic or stateful helper group returned")
+    fail("removed nested, regional or stateful helper group returned")
 for name in groups:
     option_keys = [part.split("=", 1)[0] for part in group_parts(groups, name)[1:] if "=" in part]
     if len(option_keys) != len(set(option_keys)):
         fail(f"{name} contains duplicate policy-group options")
 
-if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "REJECT"]:
+if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "DIRECT"]:
     fail("Final policy changed")
-if group_parts(groups, "Proxy")[0] != "select" or group_members(groups, "Proxy") != ["Auto", "NodePool", *REGIONS, "REJECT"]:
-    fail("Proxy must default to fail-closed Auto and retain NodePool, regions and manual REJECT")
+require_exact_options(group_parts(groups, "Final"), "Final", HIDDEN_SELECT_OPTIONS)
+
+proxy_parts = group_parts(groups, "Proxy")
+if proxy_parts[0] != "smart" or group_members(groups, "Proxy"):
+    fail("Proxy must directly import real subscription policies without nested groups")
+require_exact_options(proxy_parts, "Proxy", (
+    f"policy-path={SUBSCRIPTION_PLACEHOLDER}", "update-interval=3600",
+    "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0",
+))
+
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
     fail("ApplePush fallback exception changed")
 require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
     "interval=60", "evaluate-before-use=true", "no-alert=0", "hidden=1",
 ))
 
-for name in set(groups) - {"ApplePush", "Auto", "NodePool", *REGIONS, *RESTRICTED_AUTO}:
-    require_exact_options(group_parts(groups, name), name, VISIBLE_SELECT_OPTIONS)
+service_groups = set(groups) - {"Final", "Proxy", "ApplePush"}
+for name in service_groups:
+    expected_members = ["DIRECT", "Proxy"] if name == "Apple" else ["Proxy"]
+    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != expected_members:
+        fail(f"{name} must be a hidden alias of the restored Proxy path")
+    require_exact_options(group_parts(groups, name), name, HIDDEN_SELECT_OPTIONS)
 
-node_parts = group_parts(groups, "NodePool")
-if node_parts[0] != "select" or group_members(groups, "NodePool") != ["REJECT"]:
-    fail("NodePool must place REJECT before external subscription policies")
-require_exact_options(node_parts, "NodePool", (
-    f"policy-path={SUBSCRIPTION_PLACEHOLDER}", "update-interval=3600",
-    "no-alert=0", "hidden=0", "include-all-proxies=0",
-))
-
-auto_parts = group_parts(groups, "Auto")
-if auto_parts[0] != "url-test" or group_members(groups, "Auto") != ["REJECT"]:
-    fail("Auto must be a fail-closed url-test group fed only by NodePool")
-require_exact_options(auto_parts, "Auto", AUTO_OPTIONS)
-
-for region in REGIONS:
-    parts = group_parts(groups, region)
-    if parts[0] != "url-test" or group_members(groups, region) != ["REJECT"]:
-        fail(f"{region} must be a fail-closed url-test group fed only by NodePool")
-    filters = [option for option in parts if option.startswith("policy-regex-filter=")]
-    if len(filters) != 1:
-        fail(f"{region} lost its node-name filter")
-    require_exact_options(parts, region, (filters[0], *AUTO_OPTIONS))
-    if hashlib.sha256(filters[0].encode()).hexdigest() != REGION_FILTER_SHA256[region]:
-        fail(f"{region} node-name filter changed")
-
-for name, sources in RESTRICTED_AUTO.items():
-    parts = group_parts(groups, name)
-    source_option = f'include-other-group="{",".join(sources)}"'
-    if parts[0] != "url-test" or group_members(groups, name) != ["REJECT"]:
-        fail(f"{name} must be a fail-closed url-test group")
-    require_exact_options(parts, name, (
-        "interval=600", "tolerance=100", "evaluate-before-use=true", "no-alert=0", "hidden=0",
-        "include-all-proxies=0", source_option,
-    ))
-    if included_groups(groups, name) != list(sources):
-        fail(f"{name} supported-region source order changed")
-
-if group_parts(groups, "Bahamut")[0] != "select" or group_members(groups, "Bahamut") != ["TaiWan", "HongKong"]:
-    fail("Bahamut supported-region boundary changed")
-
-generic_members = {
-    "GitHub": ["Proxy", "HongKong", "Japan", "Singapore", "America"],
-    "YouTube": ["Proxy", *REGIONS], "NETFLIX": ["Proxy", *REGIONS],
-    "Disney+": ["Proxy", *REGIONS],
-    "HBO": ["Proxy", "America", "Singapore", "Japan", "HongKong", "TaiWan"],
-    "PrimeVideo": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan"],
-    "Emby": ["Proxy", *REGIONS], "Spotify": ["Proxy", *REGIONS],
-    "Streaming": ["Proxy", *REGIONS], "Telegram": ["Proxy", *REGIONS],
-    "X": ["Proxy", *REGIONS], "Apple": ["DIRECT", "Proxy", *REGIONS],
-    "Google": ["Proxy", *REGIONS], "Microsoft": ["Proxy", *REGIONS],
-    "Games": ["Proxy", *REGIONS],
+automatic = {
+    name: group_parts(groups, name)[0]
+    for name in groups
+    if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}
 }
-for name, members in generic_members.items():
-    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
-        fail(f"{name} member order changed")
-
-automatic = {name: group_parts(groups, name)[0] for name in groups if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}}
-expected_automatic = {
-    **{name: "url-test" for name in RESTRICTED_AUTO},
-    "Auto": "url-test",
-    **{region: "url-test" for region in REGIONS},
-}
-if automatic != expected_automatic:
-    fail(f"automatic node-group boundary changed: {automatic}")
-if any(group_parts(groups, name)[0] == "smart" for name in groups):
-    fail("Smart is forbidden because an empty Smart group substitutes DIRECT")
+if automatic != {"Proxy": "smart"}:
+    fail(f"only the visible Proxy group may select nodes automatically: {automatic}")
 
 # Validate group references and reject cycles.
 builtins = {"DIRECT", "REJECT", "REJECT-DROP"}
@@ -377,7 +318,7 @@ for group in groups:
     visit(group)
 
 rules = active(sections["Rule"])
-if len(rules) != 142 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
+if len(rules) != 147 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
@@ -414,13 +355,16 @@ if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "
     fail("international compatibility guard must precede domestic BiliBili parent suffixes")
 
 stun = index("PROTOCOL,STUN,Proxy")
+surge_dns_start = index(SURGE_DNS_PROTOCOL_RULES[0])
+if rules[surge_dns_start:surge_dns_start + len(SURGE_DNS_PROTOCOL_RULES)] != list(SURGE_DNS_PROTOCOL_RULES):
+    fail("Surge encrypted-DNS protocol routing changed")
 domestic_dns_start = index(DOMESTIC_DNS_RULES[0])
 if rules[domestic_dns_start:domestic_dns_start + len(DOMESTIC_DNS_RULES)] != list(DOMESTIC_DNS_RULES):
-    fail("mainland application DNS block changed")
+    fail("mainland application DNS proxy block changed")
 port_rules = ["DEST-PORT,53,REJECT", "DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
 port_start = index(port_rules[0])
-if rules[port_start:port_start + 3] != port_rules or not stun < domestic_dns_start < port_start:
-    fail("STUN, mainland DNS and public DNS-port order changed")
+if rules[port_start:port_start + 3] != port_rules or not stun < surge_dns_start < domestic_dns_start < port_start:
+    fail("STUN, encrypted DNS, application DNS and public DNS-port order changed")
 foreign_start = index(FOREIGN_DNS_RULES[0])
 if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES) or foreign_start <= port_start:
     fail("foreign application DNS block or order changed")
@@ -485,12 +429,12 @@ for rule in rules:
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (142, 30, 29, 1, 29)
+    expected_counts = (147, 30, 29, 1, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 27 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 28 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -498,7 +442,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.13 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.14 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

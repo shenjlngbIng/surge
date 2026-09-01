@@ -1,12 +1,12 @@
 {
-  "schema": 27,
+  "schema": 28,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.13 Simple Subscription",
+  "profile": "Surge iOS Privacy + Push R13.14 Restored Simple",
   "generated": "2026-09-01",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "b03ba03f3516d69df55f2ee99bcfbd5eae45a5b9eeb9541bf2fe0b2267a05b92",
-  "profile_lines": 369,
-  "active_rules": 142,
+  "profile_sha256": "77753524f1397eaf8ac25bc5bf9f8adb86b23f365bbfef3f554d0c38b47c423a",
+  "profile_lines": 358,
+  "active_rules": 147,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
   "dynamic_runtime_resources": 1,
@@ -21,118 +21,67 @@
     "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
-      "ApplePush"
+      "Final",
+      "ApplePush",
+      "ChatGPT",
+      "Claude",
+      "Gemini",
+      "GitHub",
+      "YouTube",
+      "NETFLIX",
+      "Disney+",
+      "HBO",
+      "PrimeVideo",
+      "Emby",
+      "TikTok",
+      "Bahamut",
+      "Spotify",
+      "Streaming",
+      "Telegram",
+      "X",
+      "Apple",
+      "Google",
+      "Microsoft",
+      "Games"
     ],
     "removed_stateful_groups": [
+      "Auto",
+      "NodePool",
+      "HongKong",
+      "TaiWan",
+      "Japan",
+      "Singapore",
+      "America",
       "AdBlock",
       "Security",
       "UDP",
       "Domestic",
-      "AllServer",
-      "Smart"
+      "AllServer"
     ],
     "visible_control_groups": [
-      "Final",
-      "Proxy",
-      "Auto",
-      "NodePool"
+      "Proxy"
     ],
     "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
     "public_embedded_proxy_policies": 0,
     "policy_architecture": {
       "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
-      "smart_groups": [],
-      "auto": {
-        "mode": "url-test",
-        "hidden": false,
-        "source": "NodePool",
-        "explicit_members": [
-          "REJECT"
-        ],
-        "interval_seconds": 600,
-        "tolerance_milliseconds": 100,
-        "evaluate_before_use": true,
-        "empty_source_behavior": "REJECT/error",
-        "direct_substitution_prevented": true
-      },
-      "node_pool": {
-        "mode": "select",
+      "smart_groups": [
+        "Proxy"
+      ],
+      "proxy": {
+        "mode": "smart",
         "hidden": false,
         "source": "external-policy-path",
-        "explicit_members": [
-          "REJECT"
-        ],
+        "explicit_members": [],
         "include_all_proxies": false,
         "update_interval_seconds": 3600,
-        "automatic_fallback": false
+        "evaluate_before_use": true
       },
-      "proxy": {
-        "mode": "select",
-        "default": "Auto",
-        "manual_fail_closed_entry": "REJECT"
-      },
-      "regions": {
-        "mode": "url-test",
-        "source": "NodePool",
-        "explicit_members": [
-          "REJECT"
-        ],
-        "interval_seconds": 600,
-        "tolerance_milliseconds": 100,
-        "evaluate_before_use": true,
-        "empty_source_behavior": "REJECT/error",
-        "names": [
-          "HongKong",
-          "TaiWan",
-          "Japan",
-          "Singapore",
-          "America"
-        ]
-      },
-      "restricted_service_auto": {
-        "mode": "url-test",
-        "source_mode": "recursive-include-other-group",
-        "explicit_members": [
-          "REJECT"
-        ],
-        "evaluate_before_use": true,
-        "interval_seconds": 600,
-        "tolerance_milliseconds": 100,
-        "empty_source_behavior": "REJECT/error",
-        "groups": {
-          "ChatGPT": [
-            "Japan",
-            "Singapore",
-            "TaiWan",
-            "America"
-          ],
-          "Claude": [
-            "Japan",
-            "Singapore",
-            "TaiWan",
-            "America"
-          ],
-          "Gemini": [
-            "Japan",
-            "Singapore",
-            "TaiWan",
-            "America"
-          ],
-          "TikTok": [
-            "Japan",
-            "Singapore",
-            "TaiWan",
-            "America"
-          ]
-        }
-      },
-      "restricted_service_select": {
-        "Bahamut": [
-          "TaiWan",
-          "HongKong"
-        ]
-      }
+      "visible_groups": [
+        "Proxy"
+      ],
+      "reject_placeholder_members": 0
     },
     "security_resources": [
       {
@@ -202,26 +151,33 @@
     },
     "dns": {
       "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-      "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
-      "follow_outbound_mode": false,
+      "encrypted_dns_server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
+      "follow_outbound_mode": true,
       "certificate_verification": true,
+      "surge_dns_protocol_rules": [
+        "PROTOCOL,DOH,Proxy",
+        "PROTOCOL,DOH3,Proxy",
+        "PROTOCOL,DOQ,Proxy",
+        "PROTOCOL,DOT,Proxy",
+        "PROTOCOL,DNS,Proxy"
+      ],
       "domestic_application_resolvers": [
-        "DOMAIN,dns.alidns.com,DIRECT",
-        "DOMAIN,dns.pub,DIRECT",
-        "DOMAIN,doh.pub,DIRECT",
-        "DOMAIN,dot.pub,DIRECT",
-        "DOMAIN,dns.360.cn,DIRECT",
-        "DOMAIN,doh.360.cn,DIRECT",
-        "DOMAIN-SUFFIX,alibabadns.com,DIRECT",
-        "DOMAIN-SUFFIX,alidns.com,DIRECT",
-        "DOMAIN-SUFFIX,bdydns.com,DIRECT",
-        "DOMAIN-SUFFIX,bytednsdoc.com,DIRECT",
-        "DOMAIN-SUFFIX,dns.la,DIRECT",
-        "DOMAIN-SUFFIX,dnspod.cn,DIRECT",
-        "DOMAIN-SUFFIX,dnspod.com,DIRECT",
-        "DOMAIN-SUFFIX,dnsv1.com,DIRECT",
-        "DOMAIN-SUFFIX,jomodns.com,DIRECT",
-        "DOMAIN-SUFFIX,smtcdns.net,DIRECT"
+        "DOMAIN,dns.alidns.com,Proxy",
+        "DOMAIN,dns.pub,Proxy",
+        "DOMAIN,doh.pub,Proxy",
+        "DOMAIN,dot.pub,Proxy",
+        "DOMAIN,dns.360.cn,Proxy",
+        "DOMAIN,doh.360.cn,Proxy",
+        "DOMAIN-SUFFIX,alibabadns.com,Proxy",
+        "DOMAIN-SUFFIX,alidns.com,Proxy",
+        "DOMAIN-SUFFIX,bdydns.com,Proxy",
+        "DOMAIN-SUFFIX,bytednsdoc.com,Proxy",
+        "DOMAIN-SUFFIX,dns.la,Proxy",
+        "DOMAIN-SUFFIX,dnspod.cn,Proxy",
+        "DOMAIN-SUFFIX,dnspod.com,Proxy",
+        "DOMAIN-SUFFIX,dnsv1.com,Proxy",
+        "DOMAIN-SUFFIX,jomodns.com,Proxy",
+        "DOMAIN-SUFFIX,smtcdns.net,Proxy"
       ],
       "foreign_application_resolvers": [
         "DOMAIN,dns.google,Proxy",
@@ -238,21 +194,25 @@
         "DOMAIN-SUFFIX,quad9.net,Proxy",
         "DOMAIN-SUFFIX,nextdns.io,Proxy"
       ],
-      "domestic_resolver_policy": "DIRECT",
+      "domestic_resolver_policy": "Proxy",
       "foreign_resolver_policy": "Proxy",
       "unmatched_domains_force_local_resolution": false,
       "proxy_hostname_uses_remote_resolution": true,
       "static_bootstrap": {
-        "dns.alidns.com": [
-          "223.5.5.5",
-          "223.6.6.6",
-          "2400:3200::1",
-          "2400:3200:baba::1"
+        "cloudflare-dns.com": [
+          "1.1.1.1",
+          "1.0.0.1",
+          "2606:4700:4700::1111",
+          "2606:4700:4700::1001"
+        ],
+        "dns.quad9.net": [
+          "9.9.9.9",
+          "149.112.112.112",
+          "2620:fe::fe",
+          "2620:fe::9"
         ]
       },
-      "dynamic_hostname_bootstrap": [
-        "doh.pub"
-      ]
+      "dynamic_hostname_bootstrap": []
     },
     "capture": {
       "include-all-networks": "true",
@@ -274,7 +234,7 @@
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
     "network_diagnostics": {
-      "proxy_policy_source": "NodePool/policy-path",
+      "proxy_policy_source": "Proxy/policy-path",
       "global_proxy_row": "not-enumerated-for-external-policies",
       "global_udp_row": "not-enumerated-for-external-policies",
       "loopback_bridge": false,

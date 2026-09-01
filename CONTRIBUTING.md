@@ -1,42 +1,28 @@
-# Contributing
+# 贡献说明
 
-R13.13 把主配置、固定规则快照、来源锁、运行锁、审计器、故障注入和发布清单视为一个整体。行为变化必须同步更新这些文件，并完成全套验证。
+R13.14 把主配置、规则快照、来源锁、运行锁、审计器、故障注入和发布清单视为一个整体。行为变化必须同步更新并完成全套验证。
 
-## 配置边界
+## 不变量
 
-- 公开 `Surge.conf` 只保留 `NodePool.policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL`，不得提交真实订阅、节点或令牌。
-- `[Proxy]` 必须保持为空；禁止静态拒绝别名、本机 SOCKS5 回环诊断桥和公开节点。
-- `NodePool` 必须保持手动 `select`，显式第一项为 `REJECT`，只包含一个 `policy-path`，更新间隔 3,600 秒。
-- `Auto` 与五个地区组必须为可见 `url-test`，显式第一项为 `REJECT`，并保持 `interval=600`、`tolerance=100`、`evaluate-before-use=true` 和唯一 `NodePool` 来源。
-- ChatGPT、Claude、Gemini 与 TikTok 只递归导入日本、新加坡、台湾、美国；Bahamut 保持台湾、香港顺序。
-- 禁止恢复 Smart、load-balance、本机 `Diagnostics` 或第二套总自动入口。自动组不得加入 `DIRECT`。
-- DNS、APNs、BiliBili、Ads/Pegasus、STUN、UDP/QUIC 和规则顺序的审计边界不得在未验证真机行为时改变。
+- 公开 `Surge.conf` 只保留一个 `Proxy.policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL`，不得提交真实订阅、节点或令牌。
+- `[Proxy]` 保持为空，不得添加回环诊断、静态假代理或拒绝别名。
+- `Proxy` 保持唯一可见的 `smart` 组，直接加载外置订阅，不得恢复 `NodePool`、`Auto`、地区组或显式 `REJECT` 成员。
+- 服务策略保持隐藏并跟随 `Proxy`，Apple 保留 `DIRECT, Proxy` 顺序。
+- 加密 DNS 必须跟随规则；`DOH`、`DOH3`、`DOQ`、`DOT`、`DNS` 和已知应用内 DNS 端点保持 `Proxy`。
+- `hijack-dns=*:53`、53/853/8853 拒绝、证书校验、UDP 不支持时拒绝和 `block-quic=per-policy` 不得放松。
+- 固定运行资源继续钉住完整提交，动态资源必须有来源、范围、更新频率和失败边界。
 
 ## 验证
 
 ```bash
-export PYTHONDONTWRITEBYTECODE=1
-python3 -m compileall -q tools
-python3 tools/convert_to_remote_rules.py
-python3 tools/generate_runtime_lock.py
-python3 tools/generate_release_manifest.py
-python3 tools/generate_checksums.py
 python3 tools/audit_config.py
+python3 tools/test_audit_config.py
+python3 tools/convert_to_remote_rules.py
 python3 tools/audit_rules.py
 python3 tools/audit_precise_domains.py
-python3 tools/update_external_resources.py --verify-lock
-python3 tools/update_service_rules.py --verify-lock
-python3 tools/test_audit_config.py
 python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
-python3 tools/package_release.py --output ../Surge-R13.13-Complete-No-Embedded-20260901.zip
+python3 tools/package_release.py --output ../Surge-R13.14-Complete-No-Embedded-20260901.zip
 ```
 
-需要联网时再运行：
-
-```bash
-python3 tools/audit_rules.py --check-dynamic
-python3 tools/audit_rules.py --check-runtime-remote
-```
-
-发布前确认 `git diff --check` 无误，重新生成运行锁、清单与校验和，并确保 ZIP 中不含真实订阅或临时文件。
+不要在 Issue、提交、测试夹具或截图中包含真实订阅 URL、节点认证信息或私人日志。

@@ -68,7 +68,7 @@ def main() -> int:
         "Surge-R13.9-Candidate/MIGRATION.md": "MIGRATION.md",
         "Surge-R13.10-Candidate/MIGRATION.md": "MIGRATION.md",
         "Surge-R13.11-Candidate/README.md": "README.md",
-        "Surge-R13.13-Candidate/README.md": "README.md",
+        "Surge-R13.14-Candidate/README.md": "README.md",
     }
     for source, expected in allowed.items():
         if normalized_target(source) != PurePosixPath(expected):
