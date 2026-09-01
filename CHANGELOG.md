@@ -1,5 +1,13 @@
 # 更新日志
 
+## 2026-09-01 R13.16 恢复 Fail-Closed 哨兵
+
+- `[Proxy]` 恢复唯一的 `Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true` 不可达哨兵。
+- `Auto` 保持 Smart 自动选点，同时把 Fail-Closed 作为显式代理候选；真实节点正常时选真实节点，订阅为空或所有节点失败时明确失败关闭。
+- NodePool、Proxy、五个可见地区组和 20 个服务策略不直接暴露 Fail-Closed，不恢复 R13.13 的成排红色占位。
+- 地区无匹配节点时继续回退 Auto；DNS、147 条规则和 30 个运行资源保持不变。
+- 运行锁升级到 schema 30，完整包为 `Surge-R13.16-Complete-No-Embedded-20260901.zip`。
+
 ## 2026-09-01 R13.15 恢复完整策略分组
 
 - 修正 R13.14 过度简化，恢复 `NodePool`、`Auto`、五个地区组、20 个服务策略以及 AdBlock、Security、UDP、Domestic。

@@ -1,6 +1,6 @@
 # 安全边界
 
-R13.15 的公开配置不包含真实订阅、节点、令牌或私人日志。用户只在本机把 `NodePool.policy-path` 的占位 URL 替换为自己的 Surge 格式 Sub-Store 订阅地址。
+R13.16 的公开配置不包含真实订阅、节点、令牌或私人日志。用户只在本机把 `NodePool.policy-path` 的占位 URL 替换为自己的 Surge 格式 Sub-Store 订阅地址。公开 `[Proxy]` 仅含不可达的本机 `Fail-Closed` 哨兵，不含真实节点。
 
 ## 节点与策略
 

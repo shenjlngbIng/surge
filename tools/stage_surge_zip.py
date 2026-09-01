@@ -26,7 +26,7 @@ def normalized_target(name: str) -> PurePosixPath | None:
     if source.is_absolute() or ".." in source.parts:
         raise ValueError(f"unsafe archive path: {name!r}")
     parts = list(source.parts)
-    if parts and parts[0] in {"Surge", "Surge-R10-Candidate", "Surge-R12-Candidate", "Surge-R12.14-Candidate", "Surge-R12.15-Candidate", "Surge-R12.16-Candidate", "Surge-R12.17-Candidate", "Surge-R13.1-Candidate", "Surge-R13.2-Candidate", "Surge-R13.3-Candidate", "Surge-R13.4-Candidate", "Surge-R13.5-Candidate", "Surge-R13.6-Candidate", "Surge-R13.7-Candidate", "Surge-R13.8-Candidate", "Surge-R13.9-Candidate", "Surge-R13.10-Candidate", "Surge-R13.11-Candidate", "Surge-R13.12-Candidate", "Surge-R13.13-Candidate", "Surge-R13.14-Candidate", "Surge-R13.15-Candidate"}:
+    if parts and parts[0] in {"Surge", "Surge-R10-Candidate", "Surge-R12-Candidate", "Surge-R12.14-Candidate", "Surge-R12.15-Candidate", "Surge-R12.16-Candidate", "Surge-R12.17-Candidate", "Surge-R13.1-Candidate", "Surge-R13.2-Candidate", "Surge-R13.3-Candidate", "Surge-R13.4-Candidate", "Surge-R13.5-Candidate", "Surge-R13.6-Candidate", "Surge-R13.7-Candidate", "Surge-R13.8-Candidate", "Surge-R13.9-Candidate", "Surge-R13.10-Candidate", "Surge-R13.11-Candidate", "Surge-R13.12-Candidate", "Surge-R13.13-Candidate", "Surge-R13.14-Candidate", "Surge-R13.15-Candidate", "Surge-R13.16-Candidate"}:
         parts.pop(0)
     if not parts:
         return None

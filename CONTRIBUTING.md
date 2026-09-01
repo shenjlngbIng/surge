@@ -1,6 +1,6 @@
 # 贡献说明
 
-R13.15 把主配置、规则快照、来源锁、运行锁、审计器、故障注入和发布清单视为一个整体。行为变化必须同步更新并完成全套验证。
+R13.16 把主配置、规则快照、来源锁、运行锁、审计器、故障注入和发布清单视为一个整体。行为变化必须同步更新并完成全套验证。
 
 ## 不变量
 
@@ -22,7 +22,7 @@ python3 tools/audit_rules.py
 python3 tools/audit_precise_domains.py
 python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
-python3 tools/package_release.py --output ../Surge-R13.15-Complete-No-Embedded-20260901.zip
+python3 tools/package_release.py --output ../Surge-R13.16-Complete-No-Embedded-20260901.zip
 ```
 
 不要在 Issue、提交、测试夹具或截图中包含真实订阅 URL、节点认证信息或私人日志。
