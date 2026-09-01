@@ -1,5 +1,15 @@
 # 更新日志
 
+## 2026-09-01 R13.12 真实代理全局诊断
+
+- 根据 R13.11 真机截图确认，DNS 与直连测试正常，但“测试代理策略”和“UDP 代理转发”仍整段空白。根因是 `policy-path` 只向外置策略组提供成员，不会把节点定义放入主配置 `[Proxy]`。
+- 主配置 `[Proxy]` 改为 `#!include Private-Proxies.conf`。该本机私人托管配置必须含真实 `[Proxy]` 段；公开仓库不嵌入节点、订阅 URL 或令牌。
+- `NodePool` 删除 `policy-path`，改为显式 `REJECT` 加 `include-all-proxies=true`。Auto、五个地区组与四个受限服务组继续从 NodePool 递归取真实节点，失败关闭和地区边界不变。
+- 新增 `Scripts/SubStore-Surge-Profile.js`。它作为 Sub-Store 最后一个 Response Transformer，只在 `surge-profile=1` 且目标为 Surge 时输出自更新 `#!MANAGED-CONFIG` 与 `[Proxy]` 段；正常订阅请求保持原样。
+- 转换器拒绝空输出、仅 DIRECT/REJECT 输出和额外 INI 段，避免假诊断与配置注入；新增 7 项 Node 执行测试。继续禁止本机 SOCKS5 `Diagnostics` 回环和任何静态假代理。
+- 正确安装 `Private-Proxies.conf` 后，全局代理诊断应显示真实 HTTP 结果，UDP 诊断应显示真实成功或明确失败。UDP 是否通过仍取决于节点协议、订阅参数和服务器能力，失败不得回退 DIRECT。
+- 策略组、活动规则与运行资源保持 30 / 142 / 30；运行锁升级到 schema 26，故障注入保持 133 项。完整包更新为 `Surge-R13.12-Complete-No-Embedded-20260901.zip`。
+
 ## 2026-08-31 R13.11 失败关闭自动选路与诊断纠错
 
 - 根据 Surge iOS 真机事件确认，R13.10 的本机 `Diagnostics` SOCKS5 桥不支持 UDP relay；同时空 `Smart` 会被 Surge 替换为 `DIRECT/SUBSTITUTE`，旧版 TCP 绿色结果可能来自直连。撤回该桥、显式 SOCKS5 端口与 Cloudflare 回环探针。

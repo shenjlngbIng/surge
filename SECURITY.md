@@ -1,21 +1,17 @@
 # 安全策略与运行边界
 
-R13.11 的目标是在 Surge iOS 上提供可审计、默认自动且空源失败关闭的分流。日常路径由带显式 `REJECT` 的 `url-test` 自动选优；私人订阅未加载、地区无匹配节点或测试全部失败时，不允许以 `DIRECT/SUBSTITUTE` 替代。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
+R13.12 的目标是在 Surge iOS 上同时提供真实代理诊断、默认自动和空源失败关闭。私人托管配置把真实节点装入 `[Proxy]`；日常路径由带显式 `REJECT` 的 `url-test` 自动选优。关联文件缺失、地区无匹配节点或测试全部失败时，不允许以 `DIRECT/SUBSTITUTE` 替代。这个边界只覆盖仓库内可审计行为，无法证明私人节点、上游 DNS、操作系统或第三方规则绝对可信。
 
 ## 私密信息
 
-公开配置只允许保留下面的无效占位地址。
-
-```text
-https://example.invalid/REPLACE_WITH_SUB_STORE_URL
-```
-
-不要提交真实订阅、Sub-Store 地址、令牌、设备日志、节点名称或个人域名。私人副本应放在仓库之外；凭据泄露后应立即在服务端撤销和轮换。
+公开主配置只允许引用固定本地文件名 `Private-Proxies.conf`，不得包含该文件、其托管 URL 或任何节点行。不要提交真实订阅、Sub-Store 地址、令牌、设备日志、节点名称或个人域名。私人文件应只保存在 Surge 的本地配置区；凭据泄露后应立即在服务端撤销和轮换。
 
 ## 自动、诊断与失败关闭边界
 
-- `[Proxy]` 保持为空，禁止本机 `Diagnostics` 回环、静态拒绝别名或公开真实节点。外置节点不能被全局网络诊断直接测试，代理与 UDP 两行空白是预期边界。
-- `NodePool` 保持手动 `select`，第一项为内建 `REJECT`，其余成员只来自私人 `policy-path`。
+- 公开 `[Proxy]` 只允许 `#!include Private-Proxies.conf`。该私人托管配置必须含真实 `[Proxy]` 段；禁止本机 `Diagnostics` 回环、静态拒绝别名或公开真实节点。
+- `NodePool` 保持手动 `select`，第一项为内建 `REJECT`，其余成员通过 `include-all-proxies=true` 来自关联的真实代理。
+- 全局代理诊断必须显示真实 HTTP 探针结果；UDP 诊断必须显示真实成功或明确失败。两段空白表示关联文件没有生效，不能再视为正常。
+- `Scripts/SubStore-Surge-Profile.js` 只有在明确传入 `surge-profile=1` 且目标为 Surge 时才包装输出。它拒绝空输出、仅 DIRECT/REJECT 的输出和额外 INI 段，防止生成假诊断或配置注入。
 - `Auto`、五个地区组和四个受限服务组共十个 `url-test`，都显式列出 `REJECT`，并保持首次使用前评估、600 秒有效期和 100 ms 容差。
 - 地区组只导入名称匹配的 `NodePool` 节点；ChatGPT、Claude、Gemini 与 TikTok 只递归导入日本、新加坡、台湾、美国。
 - Smart 组完全禁止。真机已证明空 Smart 会被 Surge 改成 `DIRECT/SUBSTITUTE`，这与失败关闭目标冲突。
@@ -47,7 +43,7 @@ https://example.invalid/REPLACE_WITH_SUB_STORE_URL
 
 ## 已知限制与真机验证
 
-静态审计不能证明订阅节点在线、节点没有 DNS 泄漏、服务端支持 UDP、运营商没有劫持，也看不到未随仓库提供的模块改写。`url-test` 的低延迟结果不保证每个站点体验都最佳。升级后至少在 Wi-Fi 和蜂窝各验证一次，检查国内 BiliBili、ChatGPT、APNs、IPv4/IPv6 出口、DNS 和具体真实节点的 UDP。全局代理/UDP 诊断空白不代表节点故障。
+静态审计不能证明订阅节点在线、节点没有 DNS 泄漏、服务端支持 UDP、运营商没有劫持，也看不到未随仓库提供的模块改写。`url-test` 的低延迟结果不保证每个站点体验都最佳。升级后至少在 Wi-Fi 和蜂窝各验证一次，检查国内 BiliBili、ChatGPT、APNs、IPv4/IPv6 出口、DNS 和具体真实节点的 UDP。全局代理/UDP 诊断若仍为空白，应先检查 `Private-Proxies.conf` 的文件名、内容和关联状态。
 
 ## 报告问题
 
