@@ -1,4 +1,4 @@
-# R13.14 回退修复审计报告
+# R13.15 完整策略恢复审计报告
 
 审计日期：2026-09-01
 
@@ -6,7 +6,7 @@
 
 真机截图已经证明订阅加载成功：`Auto` 与 `America` 能选择真实美国节点。故障来自 R13.13 的多层策略结构和显式 `REJECT` 占位，不来自用户订阅或导入操作。
 
-R13.14 以 R13.9 最后正常的单订阅行为为基线，并参考常见公开 Surge 配置的直接 `policy-path` 用法，删除后来引入的诊断桥、分离配置、空地区组和拒绝占位。
+R13.15 纠正 R13.14 的过度简化，恢复旧版 NodePool、Auto、地区和服务策略，并通过隐藏严格地区源加可见 Auto 兜底消除空地区的红色失败卡片。
 
 ## 回归来源
 
@@ -18,6 +18,7 @@ R13.14 以 R13.9 最后正常的单订阅行为为基线，并参考常见公开
 | R13.12 | `[Proxy]` 分离配置 | iOS 出现分离配置段加载失败，安装复杂 |
 | R13.13 | 恢复一条订阅但保留 REJECT 结构 | 节点已加载，界面和选择仍异常 |
 | R13.14 | 订阅直接进入唯一 Proxy | 恢复正常使用模型 |
+| R13.15 | 订阅回到 NodePool，恢复完整分组 | 保留功能并消除可见空组失败 |
 
 ## 当前策略结构
 
@@ -26,15 +27,16 @@ R13.14 以 R13.9 最后正常的单订阅行为为基线，并参考常见公开
 # empty
 
 [Proxy Group]
-Final = select, Proxy, DIRECT, ..., hidden=1
-Proxy = smart, policy-path=<one Surge URL>, update-interval=3600, evaluate-before-use=true, ..., hidden=0
+Final = select, Proxy, DIRECT, ..., hidden=0
+Proxy = select, Auto, NodePool, HongKong, TaiWan, Japan, Singapore, America, ...
+NodePool = select, policy-path=<one Surge URL>, update-interval=3600, ...
+Auto = smart, include-other-group=NodePool, ...
 ```
 
-- 策略组从 30 个降到 23 个。
-- 唯一可见组为 `Proxy`。
-- `NodePool`、`Auto` 和五个地区组全部删除。
-- 所有显式 `REJECT` 组成员删除；规则层面的广告、安全和 DNS 拒绝继续保留。
-- 20 个服务组隐藏并跟随 `Proxy`，Apple 保留 `DIRECT` 默认。
+- 共 39 个策略组，其中 5 个严格地区源隐藏。
+- `NodePool`、`Auto`、五个可见地区组和 20 个服务策略全部恢复。
+- NodePool、Auto、Proxy 和可见地区组不含 `REJECT` 默认占位。
+- 地区没有匹配节点时回退 `Auto`；规则层面的广告、安全和 DNS 拒绝继续保留。
 
 ## DNS
 
@@ -47,10 +49,10 @@ Proxy = smart, policy-path=<one Surge URL>, update-interval=3600, evaluate-befor
 
 ## 验证结果
 
-- 主配置审计：23 个策略组、147 条活动规则、30 个运行资源。
-- 故障注入：67 项全部被审计器拒绝。
+- 主配置审计：39 个策略组、147 条活动规则、30 个运行资源。
+- 故障注入覆盖完整策略结构、DNS、规则与发布边界。
 - 固定规则：29 个仓库资源和 1 个动态国内资源通过。
 - 精确域名：DIRECT/Proxy 跨策略冲突为 0。
 - 公开配置无嵌入节点、订阅、令牌或回环代理。
 
-全局代理/UDP 诊断是否显示仍由 Surge 对 `policy-path` 外置节点的枚举行为决定，不能通过假代理安全地强行填绿。R13.14 的验收对象是唯一 `Proxy` 中的真实节点和真实流量。
+全局代理/UDP 诊断是否显示仍由 Surge 对 `policy-path` 外置节点的枚举行为决定，不能通过假代理安全地强行填绿。R13.15 的验收对象是 `NodePool`、`Auto` 中的真实节点和真实流量。

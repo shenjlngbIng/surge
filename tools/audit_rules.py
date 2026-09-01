@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.14 rule snapshots, locks and optional online resources."""
+"""Validate R13.15 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 28 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 29 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -382,6 +382,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.14 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"PASS R13.15 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
     f"local_rule_files=29 rules=147 embedded_rule_contents=0"
 )

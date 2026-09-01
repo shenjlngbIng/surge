@@ -1,27 +1,28 @@
-# Surge iOS Privacy + Push R13.14
+# Surge iOS Privacy + Push R13.15
 
-R13.14 回到正常的一条订阅地址用法。订阅直接放进唯一可见的 `Proxy` 策略组，不再经过 `NodePool → Auto → 地区组`，也不再用 `REJECT` 填充空组。
+R13.15 恢复旧版完整策略结构，同时仍然只维护一条订阅地址。节点由 `NodePool` 从 Sub-Store 加载，`Auto` 自动选择，Proxy、地区与服务策略重新可见。
 
 ## 使用
 
 1. 下载或导入 `Surge.conf`。
 2. 进入文本模式，搜索 `REPLACE_WITH_SURGE_SUBSCRIPTION_URL`。
 3. 把完整占位地址替换为自己的 Surge 格式订阅地址，只替换这一处。
-4. 保存并重新加载。打开“策略”，应只看到一个主要入口 `Proxy`，其中直接显示或选择真实节点。
+4. 保存并重新加载。打开“策略”，应看到 `Proxy`、`NodePool`、`Auto`、地区组和服务策略。
 
 配置中的订阅入口只有一行：
 
 ```ini
-Proxy = smart, policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, update-interval=3600, evaluate-before-use=true, no-alert=0, hidden=0, include-all-proxies=0
+NodePool = select, policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, update-interval=3600, no-alert=0, hidden=0, include-all-proxies=0
 ```
 
 Sub-Store 输出必须选择 Surge 格式。不要把 Clash、Mihomo、Shadowrocket 或通用 Base64 输出放进 `policy-path`。
 
 ## 本版修复
 
-- 以 R13.9 之前的单订阅可用行为为基线，撤回 R13.10 的本机 SOCKS5 诊断桥、R13.12 的分离配置以及 R13.13 的显式 `REJECT` 占位。
-- 删除可见的 `NodePool`、`Auto`、香港、台湾、日本、新加坡、美国空组。服务分流仍然存在，但全部隐藏并跟随 `Proxy`。
-- `Final` 隐藏并默认跟随 `Proxy`，不再在策略页显示红色 `REJECT` 卡片。
+- 恢复 `NodePool → Auto → Proxy`，并恢复香港、台湾、日本、新加坡、美国与全部服务策略。
+- `NodePool` 不再把 `REJECT` 设为默认节点；订阅成功后直接显示真实节点。
+- 每个地区使用隐藏的严格筛选源；订阅没有该地区节点时，可见地区组自动回退到 `Auto`，不再显示红色失败卡片。
+- 保留 Smart 自动选点；需要固定出口时可在 `NodePool` 手动选择真实节点。
 - 保留 APNs、国内 BiliBili、AI、流媒体、Telegram、广告与 Pegasus、STUN、UDP/QUIC 和双栈兜底规则。
 
 ## DNS 防泄漏
@@ -44,7 +45,7 @@ Sub-Store 输出必须选择 Surge 格式。不要把 Clash、Mihomo、Shadowroc
 
 导入后确认：
 
-1. `Proxy` 显示真实节点名称和延迟，不出现 `NodePool`、空地区组或成排红色 `REJECT`。
+1. `NodePool` 显示真实节点，`Auto` 自动选点；可见地区组没有红色 `REJECT` 占位。
 2. 常用网页、ChatGPT、Telegram、流媒体和国内应用可正常访问。
 3. DNS 泄漏检测只显示 Cloudflare、Quad9 或代理出口附近解析器，不出现运营商 DNS。
 4. Surge 事件中没有 `DIRECT/SUBSTITUTE`、循环代理或分离配置加载失败。
@@ -60,7 +61,7 @@ python3 tools/audit_rules.py
 python3 tools/audit_precise_domains.py
 python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
-python3 tools/package_release.py --output ../Surge-R13.14-Complete-No-Embedded-20260901.zip
+python3 tools/package_release.py --output ../Surge-R13.15-Complete-No-Embedded-20260901.zip
 ```
 
 公开仓库不包含私人订阅、节点、令牌或日志。规则来源、许可、发布边界和迁移说明见仓库内对应文档。
