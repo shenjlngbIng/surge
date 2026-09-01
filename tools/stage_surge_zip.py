@@ -26,7 +26,7 @@ def normalized_target(name: str) -> PurePosixPath | None:
     if source.is_absolute() or ".." in source.parts:
         raise ValueError(f"unsafe archive path: {name!r}")
     parts = list(source.parts)
-    if parts and parts[0] in {"Surge", "Surge-R10-Candidate", "Surge-R12-Candidate", "Surge-R12.14-Candidate", "Surge-R12.15-Candidate", "Surge-R12.16-Candidate", "Surge-R12.17-Candidate", "Surge-R13.1-Candidate", "Surge-R13.2-Candidate", "Surge-R13.3-Candidate", "Surge-R13.4-Candidate", "Surge-R13.5-Candidate", "Surge-R13.6-Candidate", "Surge-R13.7-Candidate", "Surge-R13.8-Candidate", "Surge-R13.9-Candidate", "Surge-R13.10-Candidate", "Surge-R13.11-Candidate"}:
+    if parts and parts[0] in {"Surge", "Surge-R10-Candidate", "Surge-R12-Candidate", "Surge-R12.14-Candidate", "Surge-R12.15-Candidate", "Surge-R12.16-Candidate", "Surge-R12.17-Candidate", "Surge-R13.1-Candidate", "Surge-R13.2-Candidate", "Surge-R13.3-Candidate", "Surge-R13.4-Candidate", "Surge-R13.5-Candidate", "Surge-R13.6-Candidate", "Surge-R13.7-Candidate", "Surge-R13.8-Candidate", "Surge-R13.9-Candidate", "Surge-R13.10-Candidate", "Surge-R13.11-Candidate", "Surge-R13.12-Candidate"}:
         parts.pop(0)
     if not parts:
         return None
@@ -38,6 +38,8 @@ def normalized_target(name: str) -> PurePosixPath | None:
     if len(target.parts) == 2 and target.parts[0] == "Rules" and target.suffix == ".list":
         return target
     if len(target.parts) == 2 and target.parts[0] == "THIRD_PARTY_LICENSES" and target.suffix == ".txt":
+        return target
+    if len(target.parts) == 2 and target.parts[0] == "Scripts" and target.suffix == ".js":
         return target
     raise ValueError(f"file is outside the import allowlist: {name!r}")
 

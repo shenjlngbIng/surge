@@ -1,21 +1,22 @@
 # 贡献与维护
 
-R13.11 把主配置、固定快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何行为变化都要同步更新这些边界，并完成本页的全套验证。
+R13.12 把主配置、Sub-Store 转换器、固定快照、来源锁、运行锁、审计器、故障注入、发布清单和安装工作流视为一个整体。任何行为变化都要同步更新这些边界，并完成本页的全套验证。
 
 ## 必须保持的边界
 
-- 公开 `Surge.conf` 只能保留 `https://example.invalid/REPLACE_WITH_SUB_STORE_URL`，不能提交真实订阅或令牌。
+- 公开 `Surge.conf` 只能通过 `#!include Private-Proxies.conf` 引用本机私人托管配置，不能提交该文件、真实订阅、节点或令牌。
 - 29 个远程资源固定到完整提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1`；唯一动态资源是精确 URL `https://ruleset.skk.moe/List/non_ip/domestic.conf`。
 - 主配置不得加载动态 `reject.conf` 或 `reject_phishing.conf`，不得使用分支、标签、raw `main` 或其他可变 URL。
 - 运行时资源固定为 29 个不可变资源加 1 个动态国内补充；本地 `.list` 文件固定为 29 个，主配置不得嵌入规则快照。
 - `Pegasus.list` 与 `Ads.list` 固定指向内建 `REJECT`；STUN 固定指向 `Proxy`；WeChat、Direct、BiliBili、China、动态国内补充与 `GEOIP,CN` 固定指向内建 `DIRECT`。
-- `[Proxy]` 必须保持为空。不得加入静态拒绝别名、本机回环诊断桥、真实节点或其他会污染全局网络诊断的代理。
-- `NodePool` 必须保持手动 `select`，显式第一项为内建 `REJECT`，私人订阅只允许从这一组的 `policy-path` 导入。
+- 公开 `[Proxy]` 必须只含一个 `#!include Private-Proxies.conf`。不得加入静态拒绝别名、本机回环诊断桥或公开真实节点。
+- `NodePool` 必须保持手动 `select`，显式第一项为内建 `REJECT`，并只通过 `include-all-proxies=true` 复用关联 `[Proxy]` 中的真实节点；禁止恢复 `policy-path`。
 - `Auto` 和五个地区组必须为可见 `url-test`，显式第一项为 `REJECT`，并保持 `interval=600`、`tolerance=100`、`evaluate-before-use=true`、`hidden=0`、`include-all-proxies=0` 和唯一 `NodePool` 来源。
 - `Proxy` 默认 `Auto`，第二项为手动 `NodePool`，末项保留内建 `REJECT`。ChatGPT、Claude、Gemini 与 TikTok 必须为带显式 `REJECT` 的可见 `url-test`，只递归导入日本、新加坡、台湾、美国；Bahamut 保持台湾、香港的手动顺序。
 - 禁止恢复任何 Smart、load-balance、本机 `Diagnostics` 或第二套自动总入口。自动组不得删除显式 `REJECT`，也不得加入 `DIRECT`。
 - `Smart`、`AllServer`、`AdBlock`、`Security`、`UDP` 和 `Domestic` 必须保持删除。
-- 全局网络诊断的代理与 UDP 两行应为空白。具体真实节点的 UDP 支持只能在节点策略上验证；`udp-policy-not-supported-behaviour` 必须保持 `REJECT`。
+- 正确关联私人配置后，全局网络诊断的代理行必须显示真实探针结果，UDP 行必须显示真实成功或明确失败；两行整段空白属于回归。`udp-policy-not-supported-behaviour` 必须保持 `REJECT`。
+- `Scripts/SubStore-Surge-Profile.js` 必须保持显式参数门控，拒绝空输出、仅 DIRECT/REJECT 输出和额外 INI 段，并由 `test_substore_surge_profile.py` 执行验证。
 - 国内 BiliBili 固定规则必须使用 `DIRECT`；退役国际版不得恢复专用策略组或规则文件，七条历史兼容域名只走通用 `Proxy`。
 - 九条已审阅的功能域名护栏必须位于 Ads 前，防止 BiliBili、Spotify、Google 更新与 OpenAI 遥测依赖被固定广告表误杀。
 - 除 Ads 外的固定运行资源必须启用 `extended-matching`；动态国内补充也必须启用。
@@ -59,13 +60,14 @@ python3 tools/audit_rules.py --check-dynamic
 python3 tools/audit_rules.py --check-runtime-remote
 python3 tools/audit_precise_domains.py
 python3 tools/test_audit_config.py
+python3 tools/test_substore_surge_profile.py
 python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
 python3 tools/generate_release_manifest.py
 python3 tools/generate_checksums.py
 sha256sum -c SHA256SUMS.txt
 cmp --silent SHA256SUMS.txt SHA256SUMS_fixed.txt
-python3 tools/package_release.py --output ../Surge-R13.11-Complete-No-Embedded-20260831.zip
+python3 tools/package_release.py --output ../Surge-R13.12-Complete-No-Embedded-20260901.zip
 ```
 
 固定远程校验要求快照提交已推送并可从 jsDelivr 读取。生成清单和哈希后再次运行本地审计，确保生成物没有掩盖未同步变化。
@@ -77,4 +79,4 @@ python3 tools/package_release.py --output ../Surge-R13.11-Complete-No-Embedded-2
 - 没有 `.env`、日志、缓存、临时文件、额外压缩包或符号链接。
 - 文档里的版本、日期、数量、命令和包名与脚本一致。
 - 私有订阅、令牌、设备日志和个人域名没有进入差异。
-- 真机已完成 Wi-Fi、蜂窝、BiliBili、AI、APNs、DNS、双栈和 UDP 验收。
+- 真机已完成 Wi-Fi、蜂窝、BiliBili、AI、APNs、DNS、双栈、全局真实代理诊断和 UDP 验收。

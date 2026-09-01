@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.11 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.12 profile."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from convert_to_remote_rules import (
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "Surge.conf"
 LOCK = ROOT / "Rules" / "r10.lock.json"
-PLACEHOLDER = "https://example.invalid/REPLACE_WITH_SUB_STORE_URL"
+LINKED_PROXY_PROFILE = "Private-Proxies.conf"
 REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
 RESTRICTED_AUTO = {
     "ChatGPT": ("Japan", "Singapore", "TaiWan", "America"),
@@ -172,21 +172,23 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.08.31",
-    "# > Surge iOS Privacy + Push R13.11 Fail-Closed Auto | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Update Date: 2026.09.01",
+    "# > Surge iOS Privacy + Push R13.12 Real Proxy Diagnostics | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
     "# > Auto, regional and restricted-service groups use url-test with an explicit REJECT safety member.",
-    "# > External policy-path nodes cannot populate global Network Diagnosis; test UDP on a real NodePool policy.",
+    "# > A linked managed profile loads private nodes into [Proxy], so Network Diagnosis tests real policies.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
     f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
-    "# > REQUIRED: replace NodePool.policy-path locally; never publish subscription tokens.",
+    "# > REQUIRED: install the private managed profile as Private-Proxies.conf; never publish its URL or tokens.",
 ]
 if text.splitlines()[:11] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
 if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF):
     fail("runtime snapshot must be a full lowercase Git SHA")
-if text.count(PLACEHOLDER) != 1:
-    fail("public subscription placeholder must appear exactly once")
+if "policy-path=" in text:
+    fail("policy-path imports cannot populate global Network Diagnosis")
+if text.count(f"#!include {LINKED_PROXY_PROFILE}") != 1:
+    fail("private linked [Proxy] profile must appear exactly once")
 for marker in ("@main/Rules/", "raw.githubusercontent.com", "reject_phishing.conf", "/domainset/reject.conf"):
     if marker in text:
         fail(f"mutable or mobile-heavy runtime source is forbidden: {marker}")
@@ -251,7 +253,13 @@ if hosts != {
 
 proxies = key_values(sections["Proxy"], "Proxy")
 if proxies:
-    fail("[Proxy] must stay empty; real policies are imported only by NodePool")
+    fail("public [Proxy] must not contain embedded policies or credentials")
+proxy_includes = [
+    line.strip() for line in sections["Proxy"]
+    if line.strip().startswith("#!include")
+]
+if proxy_includes != [f"#!include {LINKED_PROXY_PROFILE}"]:
+    fail("[Proxy] must use exactly one local linked managed profile")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
 if tuple(groups) != GROUP_ORDER or len(groups) != 30:
@@ -278,10 +286,9 @@ for name in set(groups) - {"ApplePush", "Auto", "NodePool", *REGIONS, *RESTRICTE
 
 node_parts = group_parts(groups, "NodePool")
 if node_parts[0] != "select" or group_members(groups, "NodePool") != ["REJECT"]:
-    fail("NodePool must place REJECT before its private policy-path")
+    fail("NodePool must place REJECT before linked real proxy policies")
 require_exact_options(node_parts, "NodePool", (
-    f"policy-path={PLACEHOLDER}", "update-interval=3600", "no-alert=0",
-    "hidden=0", "include-all-proxies=0",
+    "no-alert=0", "hidden=0", "include-all-proxies=true",
 ))
 
 auto_parts = group_parts(groups, "Auto")
@@ -482,7 +489,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 25 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 26 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -490,7 +497,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.11 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.12 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

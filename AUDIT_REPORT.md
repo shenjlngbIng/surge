@@ -1,20 +1,20 @@
-# R13.11 全盘分流与失败关闭审计报告
+# R13.12 真实代理诊断与失败关闭审计报告
 
-审计日期为 2026-08-31。审计对象包括 `Surge.conf`、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP、GitHub Actions，以及用户提供的 Surge 真机网络诊断和事件截图。
+审计日期为 2026-09-01。审计对象包括 `Surge.conf`、Sub-Store 响应转换器、29 份本地规则、四份锁文件、维护脚本、发布清单、ZIP、GitHub Actions，以及用户提供的 Surge iOS 真机网络诊断截图。
 
 ## 结论
 
 本次是全配置复核，不是只改 UDP。30 个策略组、142 条活动规则、DNS、UDP、APNs、Telegram、国内 BiliBili、AI/流媒体地区、Ads/Pegasus、双栈兜底、外部资源和发布链均已检查。
 
-R13.10 的 `Diagnostics` 回环方案被真机证伪并已全部撤回。R13.11 没有静态 `[Proxy]` 策略，也没有 Smart 组。10 个自动组统一改为带显式 `REJECT` 的 `url-test`；订阅为空、资源失败或地区无匹配节点时不能再被 Surge 替换为 `DIRECT`。
+R13.10 的 `Diagnostics` 回环方案继续禁止。R13.12 通过 `#!include Private-Proxies.conf` 把私人托管配置中的真实代理装入 `[Proxy]`，解决 R13.11 全局代理/UDP 诊断空白；公开仓库仍不含节点或凭据。10 个自动组继续使用带显式 `REJECT` 的 `url-test`，没有 Smart 组。
 
 ## 真机发现与修复
 
-| 严重度 | 发现 | 影响 | R13.11 处理 |
+| 严重度 | 发现 | 影响 | R13.12 处理 |
 | --- | --- | --- | --- |
 | 严重 | `Diagnostics` 指向 Surge 本机 SOCKS5，服务不支持 UDP relay | UDP 诊断固定报 `The SOCKS proxy server doesn't support UDP relay` | 删除代理、端口依赖和回环探针规则 |
 | 严重 | `Smart` 没有可用子策略时变为 `SUBSTITUTE/DIRECT` | 代理诊断或业务流量可能直连，绿色 TCP 结果不可信 | 删除全部 Smart；自动组显式加入 `REJECT` |
-| 高 | 外置 `policy-path` 节点不会进入主配置 `[Proxy]` | 全局网络诊断无法直接选择真实节点 | 接受代理/UDP 两行空白；只测试具体真实节点 |
+| 高 | 外置 `policy-path` 节点不会进入主配置 `[Proxy]` | 全局代理/UDP 诊断整段空白 | 改为关联 `Private-Proxies.conf` 的真实 `[Proxy]`；`NodePool` 复用全部代理 |
 | 高 | 把 UDP 不支持回退改成 DIRECT 可以制造假绿 | UDP 绕过代理并泄漏真实出口 | 继续锁定 `udp-policy-not-supported-behaviour=REJECT` |
 | 中 | `include-all-networks=true` 触发兼容性警告 | 可能影响 AirDrop、Xcode 或 USB Dashboard | 为 APNs/防旁路保留并明确披露，不误判为节点故障 |
 | 中 | 自动入口只按固定测速 URL 可能选到业务质量一般的节点 | 低延迟不等于所有站点体验最佳 | 使用 600 秒有效期、100 ms 容差；保留手动 `NodePool` 固定节点入口 |
@@ -25,11 +25,11 @@ R13.10 的 `Diagnostics` 回环方案被真机证伪并已全部撤回。R13.11 
 
 [URL Test 文档](https://manual.nssurge.com/policy-groups/url-test.html)说明，`url-test` 会从测试通过的成员中选择最低延迟策略；`evaluate-before-use=true` 会在第一次请求前等待测试，评估失败时请求直接报错。
 
-[策略导入文档](https://manual.nssurge.com/policy-groups/policy-including.html)说明，显式成员排在导入成员之前，且 `policy-regex-filter` 只过滤 `policy-path`、`include-all-proxies` 和 `include-other-group` 的导入成员，不过滤显式成员。因此 R13.11 的设计是可验证的。
+[策略导入文档](https://manual.nssurge.com/policy-groups/policy-including.html)说明，显式成员排在导入成员之前，且 `policy-regex-filter` 只过滤 `policy-path`、`include-all-proxies` 和 `include-other-group` 的导入成员，不过滤显式成员。因此 R13.12 的设计是可验证的。
 
 ```ini
 Auto = url-test, REJECT, interval=600, tolerance=100, evaluate-before-use=true, ..., include-other-group=NodePool
-NodePool = select, REJECT, policy-path=<private-url>, ...
+NodePool = select, REJECT, ..., include-all-proxies=true
 HongKong = url-test, REJECT, policy-regex-filter=<reviewed-regex>, ..., include-other-group=NodePool
 ```
 
@@ -54,7 +54,7 @@ ApplePush 是唯一刻意保留的可用性例外，顺序仍为 `Proxy → DIRE
 | [Thoseyearsbrian/Aegis](https://github.com/Thoseyearsbrian/Aegis) | 安全基线、UDP 探针、外置节点 | 安全开关与审计思路 | 探针参数不能给不支持 UDP 的服务端增加能力 |
 | [blackmatrix7 规则库](https://github.com/blackmatrix7/ios_rule_script/tree/master/rule) | 大量按服务分类的规则 | 服务域名对照与来源追踪 | 规则库不负责节点装载、空组行为或 UDP 服务端能力 |
 
-公开配置普遍接受全局代理/UDP 诊断空白，没有用本机 SOCKS5 回环伪造真实代理。R13.11 回到这一诚实边界，同时额外加入显式 `REJECT` 解决空源直连风险。
+这些公开配置说明 `policy-path` 适合节点池，却不能满足全局诊断。R13.12 采用 Surge 官方配置分离能力，把私人 `[Proxy]` 与公开规则分开管理；这同时解决诊断空白、凭据公开和本机回环假绿三个问题。
 
 ## 国内外软件分流
 
@@ -94,16 +94,16 @@ ApplePush 是唯一刻意保留的可用性例外，顺序仍为 `Proxy → DIRE
 
 ## 网络诊断边界
 
-主配置 `[Proxy]` 为空，真实节点只由 `NodePool.policy-path` 导入。Surge 全局网络诊断只寻找主配置代理实体，因此代理和 UDP 两行保持空白。DNS 与直连测试仍正常。
+主配置 `[Proxy]` 关联本机 `Private-Proxies.conf`。该私人托管配置提供真实代理实体，`NodePool` 通过 `include-all-proxies=true` 复用它们。全局网络诊断因此应显示真实代理 HTTP 探针，以及真实 UDP 成功或失败结果。
 
-R13.11 禁止以下“修复”。
+R13.12 禁止以下回归。
 
 - 禁止重新加入 `Fail-Closed = reject` 让全局诊断固定超时。
 - 禁止重新加入本机 SOCKS5 `Diagnostics` 让 TCP 假绿、UDP必败。
 - 禁止把 UDP 不支持行为改为 DIRECT。
-- 禁止声称空白诊断代表真实节点失效。
+- 禁止把代理/UDP 两段空白解释为正常；它表示关联文件未生效或没有真实节点。
 
-要获得全局诊断对真实节点的支持，只能把真实节点定义放进 `[Proxy]`，例如通过用户私有的配置分离/托管节点段。公开仓库不能保存订阅和令牌，因此不能在单一公开文件中安全地替用户完成这一步。
+Sub-Store 普通 Surge 输出只有代理行，不能直接作为配置分离文件。随包的 `SubStore-Surge-Profile.js` 只在 `surge-profile=1` 时补充自更新 `#!MANAGED-CONFIG` 与 `[Proxy]` 段，并拒绝空输出、仅 DIRECT/REJECT 输出和额外配置段。7 项执行测试覆盖正常旁路、目标限制、空输出、假代理、段注入、BOM/CRLF 和已有 `[Proxy]`。
 
 ## 供应链与发布
 
@@ -118,15 +118,16 @@ R13.11 禁止以下“修复”。
 ## 自动验证
 
 - 30 个策略组、142 条活动规则、30 个运行资源与唯一 FINAL。
-- 10 个带显式 `REJECT` 的 `url-test`，0 个 Smart，0 个静态代理。
+- 10 个带显式 `REJECT` 的 `url-test`，0 个 Smart，0 个公开嵌入代理，1 个私人关联 `[Proxy]` 来源。
 - `Proxy → Auto` 默认、`NodePool → REJECT` 首项、五个地区过滤和四个服务地区边界。
 - DNS、UDP `REJECT`、APNs、STUN、QUIC、双栈和 BiliBili 顺序。
 - 29 个固定资源、1 个动态资源、29 个本地规则文件和零嵌入规则。
 - 133 项故障注入，覆盖 General、空源失败关闭、Smart/Diagnostics 回归、DIRECT 泄漏、策略循环、DNS/规则顺序和供应链边界。
+- 7 项 Sub-Store 管理配置转换器执行测试。
 - 发布目录、ZIP 路径穿越、重复文件、符号链接、编码和清单校验。
 
 ## 剩余限制
 
 静态配置不能证明私人订阅在线、节点标签真实、服务端支持 UDP、远端递归 DNS 不泄漏、运营商链路稳定，也看不到未随仓库提供的模块改写。`url-test` 选择最低测试延迟，不等同于对每个网站都有 Smart 的站点记忆；需要时可在 `NodePool` 固定表现更好的节点。
 
-`include-all-networks=true` 的 AirDrop/Xcode 兼容性警告仍存在。若关闭它，可能改变 APNs 与全网络防旁路覆盖，因此 R13.11 不擅自修改。最终仍需在真实设备的 Wi-Fi 和蜂窝网络完成验收。
+`include-all-networks=true` 的 AirDrop/Xcode 兼容性警告仍存在。若关闭它，可能改变 APNs 与全网络防旁路覆盖，因此 R13.12 不擅自修改。最终仍需在真实设备的 Wi-Fi 和蜂窝网络完成验收。
