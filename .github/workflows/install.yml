@@ -1,4 +1,4 @@
-name: Install and audit Surge R13.15 Restored Groups
+name: Install and audit Surge R13.16 Fail-Closed Sentinel
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       archive_sha256:
-        description: "Out-of-band SHA-256 of Surge-R13.15-Complete-No-Embedded-20260901.zip"
+        description: "Out-of-band SHA-256 of Surge-R13.16-Complete-No-Embedded-20260901.zip"
         required: true
         type: string
 
@@ -35,7 +35,7 @@ jobs:
           EXPECTED_ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
         run: |
           set -euo pipefail
-          archive="Surge-R13.15-Complete-No-Embedded-20260901.zip"
+          archive="Surge-R13.16-Complete-No-Embedded-20260901.zip"
           if [[ ! "${EXPECTED_ARCHIVE_SHA256}" =~ ^[0-9A-Fa-f]{64}$ ]]; then
             echo "::error::archive_sha256 must be exactly 64 hexadecimal characters"
             exit 1
@@ -51,10 +51,10 @@ jobs:
           import stat
           import zipfile
 
-          archive = Path("Surge-R13.15-Complete-No-Embedded-20260901.zip")
+          archive = Path("Surge-R13.16-Complete-No-Embedded-20260901.zip")
           stage = Path(".surge-install")
           if not archive.is_file():
-              raise SystemExit("Surge-R13.15-Complete-No-Embedded-20260901.zip was not found in the repository root")
+              raise SystemExit("Surge-R13.16-Complete-No-Embedded-20260901.zip was not found in the repository root")
           if stage.exists():
               shutil.rmtree(stage)
           stage.mkdir()
@@ -177,11 +177,11 @@ jobs:
       - name: Commit installed files
         shell: bash
         run: |
-          rm -f Surge-R13.15-Complete-No-Embedded-20260901.zip
+          rm -f Surge-R13.16-Complete-No-Embedded-20260901.zip
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.15 Restored Groups"
+          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.16 Fail-Closed Sentinel"
           git push origin HEAD:main
 
   audit:

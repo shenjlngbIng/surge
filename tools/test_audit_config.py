@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.15 configuration auditor."""
+"""Fault-injection regression tests for the R13.16 configuration auditor."""
 
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.15 Restored Groups", "R13.14 Restored Simple"),
+    ("version", "R13.16 Fail-Closed Sentinel", "R13.15 Restored Groups"),
     ("date", "# > Update Date: 2026.09.01", "# > Update Date: 2026.08.31"),
-    ("layout_claim", "# > Restores NodePool, Auto, region and service groups without visible REJECT placeholders.\n", ""),
+    ("layout_claim", "# > Restores NodePool, Auto, region, service groups and the hidden fail-closed sentinel.\n", ""),
     ("subscription_claim", "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.\n", ""),
     ("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", ""),
     ("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
@@ -84,6 +84,9 @@ for name, old, new in (
     ("quad9_bootstrap", "dns.quad9.net = 9.9.9.9, 149.112.112.112, 2620:fe::fe, 2620:fe::9", "dns.quad9.net = 8.8.8.8"),
     ("embedded_reject", "[Proxy]\n", "[Proxy]\nFail-Closed = reject\n"),
     ("loopback_diagnostics", "[Proxy]\n", "[Proxy]\nDiagnostics = socks5, 127.0.0.1, 6153, udp-relay=true\n"),
+    ("sentinel_address", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.2, 1, no-error-alert=true"),
+    ("sentinel_port", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.1, 2, no-error-alert=true"),
+    ("sentinel_alert", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=false"),
     ("final_members", "Final = select, Proxy, DIRECT,", "Final = select, Proxy, REJECT,"),
     ("final_hidden", "Final = select, Proxy, DIRECT, no-alert=0, hidden=0", "Final = select, Proxy, DIRECT, no-alert=0, hidden=1"),
     ("applepush_order", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy"),
@@ -103,6 +106,7 @@ for name, group, old, new in (
     ("nodepool_hidden", "NodePool", "hidden=0", "hidden=1"),
     ("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1"),
     ("auto_select", "Auto", "smart", "select"),
+    ("auto_without_sentinel", "Auto", "smart, Fail-Closed,", "smart,"),
     ("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false"),
     ("auto_hidden", "Auto", "hidden=0", "hidden=1"),
     ("auto_wrong_source", "Auto", "include-other-group=NodePool", "include-other-group=America"),
@@ -159,4 +163,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.15 mutations={len(MUTATIONS)}")
+print(f"PASS R13.16 mutations={len(MUTATIONS)}")

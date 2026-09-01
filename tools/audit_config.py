@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.15 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.16 profile."""
 
 from __future__ import annotations
 
@@ -186,8 +186,8 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.09.01",
-    "# > Surge iOS Privacy + Push R13.15 Restored Groups | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Restores NodePool, Auto, region and service groups without visible REJECT placeholders.",
+    "# > Surge iOS Privacy + Push R13.16 Fail-Closed Sentinel | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Restores NodePool, Auto, region, service groups and the hidden fail-closed sentinel.",
     "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
@@ -209,9 +209,6 @@ for marker in ("@main/Rules/", "raw.githubusercontent.com", "reject_phishing.con
 sections = parse(text)
 if list(sections) != ["General", "Host", "Proxy", "Proxy Group", "Rule"]:
     fail(f"section order or inventory mismatch: {list(sections)}")
-if re.search(r"(?m)^Fail-Closed\s*=", text):
-    fail("user-defined Fail-Closed proxies are forbidden because diagnostics may select them")
-
 general = key_values(sections["General"], "General")
 expected_general = {
     "loglevel": "notify",
@@ -266,14 +263,14 @@ if hosts != {
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
 proxies = key_values(sections["Proxy"], "Proxy")
-if proxies:
-    fail("public [Proxy] must not contain embedded policies or credentials")
+if proxies != {"Fail-Closed": "http, 127.0.0.1, 1, no-error-alert=true"}:
+    fail("[Proxy] must contain exactly the reviewed unreachable Fail-Closed sentinel")
 proxy_includes = [
     line.strip() for line in sections["Proxy"]
     if line.strip().startswith("#!include")
 ]
 if proxy_includes:
-    fail("[Proxy] must stay empty in the single-subscription profile")
+    fail("[Proxy] must not use detached or remote includes")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
 if tuple(groups) != GROUP_ORDER or len(groups) != 39:
@@ -303,8 +300,8 @@ require_exact_options(node_pool, "NodePool", (
 ))
 
 auto = group_parts(groups, "Auto")
-if auto[0] != "smart" or group_members(groups, "Auto") or included_groups(groups, "Auto") != ["NodePool"]:
-    fail("Auto must use every real NodePool policy")
+if auto[0] != "smart" or group_members(groups, "Auto") != ["Fail-Closed"] or included_groups(groups, "Auto") != ["NodePool"]:
+    fail("Auto must use Fail-Closed plus every real NodePool policy")
 require_exact_options(auto, "Auto", (
     "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0",
     "include-other-group=NodePool",
@@ -354,7 +351,7 @@ builtins = {"DIRECT", "REJECT", "REJECT-DROP"}
 for name in groups:
     unknown = [
         member for member in [*group_members(groups, name), *included_groups(groups, name)]
-        if member not in groups and member not in builtins
+        if member not in groups and member not in proxies and member not in builtins
     ]
     if unknown:
         fail(f"{name} contains unknown policy members: {unknown}")
@@ -492,7 +489,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 29 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 30 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -500,7 +497,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.15 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.16 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

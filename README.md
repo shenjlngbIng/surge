@@ -1,6 +1,6 @@
-# Surge iOS Privacy + Push R13.15
+# Surge iOS Privacy + Push R13.16
 
-R13.15 恢复旧版完整策略结构，同时仍然只维护一条订阅地址。节点由 `NodePool` 从 Sub-Store 加载，`Auto` 自动选择，Proxy、地区与服务策略重新可见。
+R13.16 恢复旧版完整策略结构和 `Fail-Closed` 哨兵，同时仍然只维护一条订阅地址。节点由 `NodePool` 从 Sub-Store 加载，`Auto` 自动选择，Proxy、地区与服务策略均保留。
 
 ## 使用
 
@@ -21,6 +21,7 @@ Sub-Store 输出必须选择 Surge 格式。不要把 Clash、Mihomo、Shadowroc
 
 - 恢复 `NodePool → Auto → Proxy`，并恢复香港、台湾、日本、新加坡、美国与全部服务策略。
 - `NodePool` 不再把 `REJECT` 设为默认节点；订阅成功后直接显示真实节点。
+- `[Proxy]` 恢复唯一的 `Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true` 哨兵；它只作为 `Auto` 的失败兜底，不直接放入 NodePool、Proxy 或可见地区组。
 - 每个地区使用隐藏的严格筛选源；订阅没有该地区节点时，可见地区组自动回退到 `Auto`，不再显示红色失败卡片。
 - 保留 Smart 自动选点；需要固定出口时可在 `NodePool` 手动选择真实节点。
 - 保留 APNs、国内 BiliBili、AI、流媒体、Telegram、广告与 Pegasus、STUN、UDP/QUIC 和双栈兜底规则。
@@ -61,7 +62,7 @@ python3 tools/audit_rules.py
 python3 tools/audit_precise_domains.py
 python3 tools/test_release_inventory.py
 python3 tools/test_stage_surge_zip.py
-python3 tools/package_release.py --output ../Surge-R13.15-Complete-No-Embedded-20260901.zip
+python3 tools/package_release.py --output ../Surge-R13.16-Complete-No-Embedded-20260901.zip
 ```
 
 公开仓库不包含私人订阅、节点、令牌或日志。规则来源、许可、发布边界和迁移说明见仓库内对应文档。
