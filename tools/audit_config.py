@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.14 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.15 profile."""
 
 from __future__ import annotations
 
@@ -31,16 +31,43 @@ PROFILE = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "Surge.co
 LOCK = ROOT / "Rules" / "r10.lock.json"
 SUBSCRIPTION_PLACEHOLDER = "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL"
 GROUP_ORDER = (
-    "Final", "Proxy", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
+    "Final", "Proxy", "ApplePush", "AdBlock", "Security", "UDP", "Domestic",
+    "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
     "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games",
+    "Microsoft", "Games", "NodePool", "Auto",
+    "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes", "Singapore-Nodes", "America-Nodes",
+    "HongKong", "TaiWan", "Japan", "Singapore", "America",
 )
-REMOVED_GROUPS = {
-    "Auto", "NodePool", "HongKong", "TaiWan", "Japan", "Singapore", "America",
-    "AllServer", "AdBlock", "Security", "UDP", "Domestic",
+SERVICE_GROUPS = (
+    "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX", "Disney+",
+    "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut", "Spotify", "Streaming",
+    "Telegram", "X", "Apple", "Google", "Microsoft", "Games",
+)
+SERVICE_MEMBERS = {
+    "ChatGPT": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
+    "Claude": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
+    "Gemini": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
+    "GitHub": ["Proxy", "HongKong", "Japan", "Singapore", "America", "Auto"],
+    "YouTube": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "NETFLIX": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Disney+": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "HBO": ["Proxy", "America", "Singapore", "Japan", "HongKong", "TaiWan", "Auto"],
+    "PrimeVideo": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
+    "Emby": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "TikTok": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Bahamut": ["TaiWan", "Proxy", "HongKong", "Japan", "Auto"],
+    "Spotify": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Streaming": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Telegram": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "X": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Apple": ["DIRECT", "Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Google": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Microsoft": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
+    "Games": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
 }
-HIDDEN_SELECT_OPTIONS = ("no-alert=0", "hidden=1", "include-all-proxies=0")
+REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
+VISIBLE_SELECT_OPTIONS = ("no-alert=0", "hidden=0", "include-all-proxies=0")
 
 
 def fail(message: str) -> None:
@@ -159,13 +186,13 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.09.01",
-    "# > Surge iOS Privacy + Push R13.14 Restored Simple | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Restores the pre-diagnostics one-subscription layout: one visible Proxy group, no REJECT placeholders.",
-    "# > Put one Surge-format subscription URL directly in Proxy; no linked profile or helper script is required.",
+    "# > Surge iOS Privacy + Push R13.15 Restored Groups | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Restores NodePool, Auto, region and service groups without visible REJECT placeholders.",
+    "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
     f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
-    "# > REQUIRED: replace only Proxy.policy-path locally; never publish subscription tokens.",
+    "# > REQUIRED: replace only NodePool.policy-path locally; never publish subscription tokens.",
 ]
 if text.splitlines()[:11] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
@@ -249,10 +276,10 @@ if proxy_includes:
     fail("[Proxy] must stay empty in the single-subscription profile")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
-if tuple(groups) != GROUP_ORDER or len(groups) != 23:
+if tuple(groups) != GROUP_ORDER or len(groups) != 39:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
-if REMOVED_GROUPS & groups.keys():
-    fail("removed nested, regional or stateful helper group returned")
+if "AllServer" in groups:
+    fail("retired duplicate automatic group returned")
 for name in groups:
     option_keys = [part.split("=", 1)[0] for part in group_parts(groups, name)[1:] if "=" in part]
     if len(option_keys) != len(set(option_keys)):
@@ -260,14 +287,27 @@ for name in groups:
 
 if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "DIRECT"]:
     fail("Final policy changed")
-require_exact_options(group_parts(groups, "Final"), "Final", HIDDEN_SELECT_OPTIONS)
+require_exact_options(group_parts(groups, "Final"), "Final", VISIBLE_SELECT_OPTIONS)
 
 proxy_parts = group_parts(groups, "Proxy")
-if proxy_parts[0] != "smart" or group_members(groups, "Proxy"):
-    fail("Proxy must directly import real subscription policies without nested groups")
-require_exact_options(proxy_parts, "Proxy", (
+if proxy_parts[0] != "select" or group_members(groups, "Proxy") != ["Auto", "NodePool", *REGIONS]:
+    fail("Proxy must expose Auto, NodePool and the five visible region groups")
+require_exact_options(proxy_parts, "Proxy", VISIBLE_SELECT_OPTIONS)
+
+node_pool = group_parts(groups, "NodePool")
+if node_pool[0] != "select" or group_members(groups, "NodePool"):
+    fail("NodePool must import subscription policies directly without placeholder members")
+require_exact_options(node_pool, "NodePool", (
     f"policy-path={SUBSCRIPTION_PLACEHOLDER}", "update-interval=3600",
+    "no-alert=0", "hidden=0", "include-all-proxies=0",
+))
+
+auto = group_parts(groups, "Auto")
+if auto[0] != "smart" or group_members(groups, "Auto") or included_groups(groups, "Auto") != ["NodePool"]:
+    fail("Auto must use every real NodePool policy")
+require_exact_options(auto, "Auto", (
     "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0",
+    "include-other-group=NodePool",
 ))
 
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
@@ -276,20 +316,38 @@ require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
     "interval=60", "evaluate-before-use=true", "no-alert=0", "hidden=1",
 ))
 
-service_groups = set(groups) - {"Final", "Proxy", "ApplePush"}
-for name in service_groups:
-    expected_members = ["DIRECT", "Proxy"] if name == "Apple" else ["Proxy"]
-    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != expected_members:
-        fail(f"{name} must be a hidden alias of the restored Proxy path")
-    require_exact_options(group_parts(groups, name), name, HIDDEN_SELECT_OPTIONS)
+for name in SERVICE_GROUPS:
+    parts = group_parts(groups, name)
+    if parts[0] != "select" or group_members(groups, name) != SERVICE_MEMBERS[name]:
+        fail(f"{name} visible service policy membership changed")
+    require_exact_options(parts, name, VISIBLE_SELECT_OPTIONS)
+
+for name in REGIONS:
+    source = f"{name}-Nodes"
+    source_parts = group_parts(groups, source)
+    if source_parts[0] != "url-test" or group_members(groups, source):
+        fail(f"{source} must contain only filtered NodePool policies")
+    require_options(source_parts, source, (
+        "interval=600", "tolerance=100", "evaluate-before-use=true",
+        "no-alert=0", "hidden=1", "include-all-proxies=0", "include-other-group=NodePool",
+    ))
+    if not any(part.startswith("policy-regex-filter=") for part in source_parts):
+        fail(f"{source} missing regional policy filter")
+    visible = group_parts(groups, name)
+    if visible[0] != "fallback" or group_members(groups, name) != [source, "Auto"]:
+        fail(f"{name} must fall back from its strict source to Auto")
+    require_exact_options(visible, name, (
+        "interval=600", "evaluate-before-use=true", "no-alert=0", "hidden=0",
+    ))
 
 automatic = {
     name: group_parts(groups, name)[0]
     for name in groups
     if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}
 }
-if automatic != {"Proxy": "smart"}:
-    fail(f"only the visible Proxy group may select nodes automatically: {automatic}")
+expected_automatic = {"Auto": "smart", **{f"{name}-Nodes": "url-test" for name in REGIONS}}
+if automatic != expected_automatic:
+    fail(f"automatic node-source inventory changed: {automatic}")
 
 # Validate group references and reject cycles.
 builtins = {"DIRECT", "REJECT", "REJECT-DROP"}
@@ -434,7 +492,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 28 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 29 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -442,7 +500,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.14 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.15 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

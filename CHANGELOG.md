@@ -1,5 +1,14 @@
 # 更新日志
 
+## 2026-09-01 R13.15 恢复完整策略分组
+
+- 修正 R13.14 过度简化，恢复 `NodePool`、`Auto`、五个地区组、20 个服务策略以及 AdBlock、Security、UDP、Domestic。
+- 唯一订阅地址回到 `NodePool.policy-path`，继续直接使用 Sub-Store 的 Surge 格式输出；不需要关联配置或脚本。
+- NodePool、Auto、Proxy 不再使用 `REJECT` 默认占位。
+- 五个可见地区组通过隐藏的严格筛选源选择匹配节点；没有匹配节点时回退 `Auto`，避免显示红色失败卡片。
+- 保留 R13.14 的 Cloudflare/Quad9 加密 DNS、DOH/DOH3/DOQ/DOT/DNS 代理路由、147 条规则和 30 个运行资源。
+- 运行锁升级到 schema 29，完整包为 `Surge-R13.15-Complete-No-Embedded-20260901.zip`。
+
 ## 2026-09-01 R13.14 回退到正常单订阅
 
 - 根据真机策略页确认订阅与真实美国节点已经加载，根因是 R13.13 的 `NodePool → Auto/地区组` 嵌套和显式 `REJECT` 占位，不是用户导入失败。

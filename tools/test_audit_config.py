@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.14 configuration auditor."""
+"""Fault-injection regression tests for the R13.15 configuration auditor."""
 
 from __future__ import annotations
 
@@ -37,15 +37,15 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.14 Restored Simple", "R13.13 Simple Subscription"),
+    ("version", "R13.15 Restored Groups", "R13.14 Restored Simple"),
     ("date", "# > Update Date: 2026.09.01", "# > Update Date: 2026.08.31"),
-    ("layout_claim", "# > Restores the pre-diagnostics one-subscription layout: one visible Proxy group, no REJECT placeholders.\n", ""),
-    ("subscription_claim", "# > Put one Surge-format subscription URL directly in Proxy; no linked profile or helper script is required.\n", ""),
+    ("layout_claim", "# > Restores NodePool, Auto, region and service groups without visible REJECT placeholders.\n", ""),
+    ("subscription_claim", "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.\n", ""),
     ("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", ""),
     ("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
-    ("token_warning", "# > REQUIRED: replace only Proxy.policy-path locally; never publish subscription tokens.\n", ""),
+    ("token_warning", "# > REQUIRED: replace only NodePool.policy-path locally; never publish subscription tokens.\n", ""),
     ("missing_policy_path", "policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, ", ""),
-    ("duplicate_policy_path", "Proxy = smart, policy-path=", "Proxy = smart, policy-path=https://example.invalid/SECOND, policy-path="),
+    ("duplicate_policy_path", "NodePool = select, policy-path=", "NodePool = select, policy-path=https://example.invalid/SECOND, policy-path="),
     ("wrong_placeholder", "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL", "https://example.invalid/WRONG_SUBSCRIPTION_URL"),
 ):
     replace_once(name, old, new)
@@ -77,7 +77,7 @@ for name, old, new in (
 ):
     replace_once(name, old, new)
 
-# Host, static proxy and restored single-control architecture.
+# Host, static proxy and restored full-group architecture.
 for name, old, new in (
     ("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1"),
     ("cloudflare_bootstrap", "cloudflare-dns.com = 1.1.1.1, 1.0.0.1, 2606:4700:4700::1111, 2606:4700:4700::1001", "cloudflare-dns.com = 8.8.8.8"),
@@ -85,23 +85,33 @@ for name, old, new in (
     ("embedded_reject", "[Proxy]\n", "[Proxy]\nFail-Closed = reject\n"),
     ("loopback_diagnostics", "[Proxy]\n", "[Proxy]\nDiagnostics = socks5, 127.0.0.1, 6153, udp-relay=true\n"),
     ("final_members", "Final = select, Proxy, DIRECT,", "Final = select, Proxy, REJECT,"),
-    ("final_visible", "Final = select, Proxy, DIRECT, no-alert=0, hidden=1", "Final = select, Proxy, DIRECT, no-alert=0, hidden=0"),
+    ("final_hidden", "Final = select, Proxy, DIRECT, no-alert=0, hidden=0", "Final = select, Proxy, DIRECT, no-alert=0, hidden=1"),
     ("applepush_order", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy"),
     ("apple_order", "Apple = select, DIRECT, Proxy,", "Apple = select, Proxy, DIRECT,"),
-    ("unexpected_nodepool", "# Service policies stay hidden", "NodePool = select, REJECT, policy-path=https://example.invalid/another\n# Service policies stay hidden"),
+    ("unexpected_allserver", "# Subscription. This is the only URL the user changes.\n", "AllServer = smart, include-other-group=NodePool\n# Subscription. This is the only URL the user changes.\n"),
 ):
     replace_once(name, old, new)
 
 for name, group, old, new in (
-    ("proxy_select", "Proxy", "smart", "select"),
-    ("proxy_reject", "Proxy", "Proxy = smart,", "Proxy = smart, REJECT,"),
-    ("proxy_update", "Proxy", "update-interval=3600", "update-interval=7200"),
-    ("proxy_no_evaluate", "Proxy", "evaluate-before-use=true", "evaluate-before-use=false"),
+    ("proxy_smart", "Proxy", "select", "smart"),
+    ("proxy_reject", "Proxy", "Proxy = select,", "Proxy = select, REJECT,"),
+    ("proxy_missing_auto", "Proxy", "Auto, ", ""),
     ("proxy_hidden", "Proxy", "hidden=0", "hidden=1"),
     ("proxy_include_all", "Proxy", "include-all-proxies=0", "include-all-proxies=1"),
-    ("chatgpt_visible", "ChatGPT", "hidden=1", "hidden=0"),
+    ("nodepool_reject", "NodePool", "NodePool = select,", "NodePool = select, REJECT,"),
+    ("nodepool_update", "NodePool", "update-interval=3600", "update-interval=7200"),
+    ("nodepool_hidden", "NodePool", "hidden=0", "hidden=1"),
+    ("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1"),
+    ("auto_select", "Auto", "smart", "select"),
+    ("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false"),
+    ("auto_hidden", "Auto", "hidden=0", "hidden=1"),
+    ("auto_wrong_source", "Auto", "include-other-group=NodePool", "include-other-group=America"),
+    ("region_source_visible", "HongKong-Nodes", "hidden=1", "hidden=0"),
+    ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=NodePool", "include-other-group=Auto"),
+    ("region_fallback_deleted", "HongKong", "HongKong-Nodes, Auto", "HongKong-Nodes"),
+    ("chatgpt_hidden", "ChatGPT", "hidden=0", "hidden=1"),
     ("chatgpt_direct", "ChatGPT", "select, Proxy,", "select, DIRECT, Proxy,"),
-    ("bahamut_region", "Bahamut", "select, Proxy,", "select, TaiWan, Proxy,"),
+    ("bahamut_no_proxy", "Bahamut", "TaiWan, Proxy,", "TaiWan,"),
     ("telegram_auto", "Telegram", "select", "url-test"),
 ):
     replace_group_fragment(name, group, old, new)
@@ -149,4 +159,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.14 mutations={len(MUTATIONS)}")
+print(f"PASS R13.15 mutations={len(MUTATIONS)}")

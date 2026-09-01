@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.14 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.15 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.14 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.15 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,7 +83,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 28,
+    "schema": 29,
     "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
