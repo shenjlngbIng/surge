@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single strict inventory for every R13.12 release producer and verifier."""
+"""Single strict inventory for every R13.13 release producer and verifier."""
 
 from __future__ import annotations
 
@@ -44,13 +44,10 @@ TOOL_FILES = {
     "generate_checksums.py", "generate_release_manifest.py", "package_release.py",
     "release_inventory.py", "stage_surge_zip.py", "test_audit_config.py",
     "test_release_inventory.py", "test_stage_surge_zip.py",
-    "test_substore_surge_profile.py",
     "update_external_resources.py", "update_service_rules.py",
 }
 
-SCRIPT_FILES = {
-    "SubStore-Surge-Profile.js",
-}
+SCRIPT_FILES: set[str] = set()
 
 LICENSE_FILES = {
     "AmnestyTech-NOTICE.txt",
@@ -94,6 +91,7 @@ TRANSIENT_ARCHIVES = {
     PurePosixPath("Surge-R13.10-Complete-No-Embedded-20260831.zip"),
     PurePosixPath("Surge-R13.11-Complete-No-Embedded-20260831.zip"),
     PurePosixPath("Surge-R13.12-Complete-No-Embedded-20260901.zip"),
+    PurePosixPath("Surge-R13.13-Complete-No-Embedded-20260901.zip"),
 }
 IGNORED_DIRECTORY_NAMES = {".git", "__pycache__"}
 ALLOWED_DIRECTORIES = frozenset(

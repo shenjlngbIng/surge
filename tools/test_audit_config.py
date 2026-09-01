@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.12 configuration auditor."""
+"""Fault-injection regression tests for the R13.13 configuration auditor."""
 
 from __future__ import annotations
 
@@ -36,14 +36,16 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 
 # Header, snapshot and public-source boundary.
-replace_once("version", "R13.12 Real Proxy Diagnostics", "R13.11 Fail-Closed Auto")
+replace_once("version", "R13.13 Simple Subscription", "R13.12 Real Proxy Diagnostics")
 replace_once("date", "# > Update Date: 2026.09.01", "# > Update Date: 2026.08.31")
 replace_once("auto_claim", "# > Auto, regional and restricted-service groups use url-test with an explicit REJECT safety member.\n", "")
-replace_once("diagnostics_claim", "# > A linked managed profile loads private nodes into [Proxy], so Network Diagnosis tests real policies.\n", "")
+replace_once("subscription_claim", "# > Put one Surge-format subscription URL in NodePool; no linked profile or helper script is required.\n", "")
 replace_once("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", "")
 replace_once("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4")
-replace_once("token_warning", "# > REQUIRED: install the private managed profile as Private-Proxies.conf; never publish its URL or tokens.\n", "")
-replace_once("linked_profile_filename", "#!include Private-Proxies.conf", "#!include Wrong-Private-Proxies.conf")
+replace_once("token_warning", "# > REQUIRED: replace only NodePool.policy-path locally; never publish subscription tokens.\n", "")
+replace_once("missing_policy_path", "policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, ", "")
+replace_once("duplicate_policy_path", "NodePool = select, REJECT, policy-path=", "NodePool = select, REJECT, policy-path=https://example.invalid/SECOND, policy-path=")
+replace_once("wrong_subscription_placeholder", "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL", "https://example.invalid/WRONG_SUBSCRIPTION_URL")
 replace_once("mutable_main", "# Repository-hosted remote rule sets\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Ads.list,REJECT,no-resolve\n# Repository-hosted remote rule sets\n")
 replace_once("mobile_dynamic_ads", "# Artificial intelligence\n", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n# Artificial intelligence\n")
 
@@ -115,8 +117,8 @@ replace_group_fragment("nodepool_automatic", "NodePool", "select", "smart")
 replace_group_fragment("nodepool_no_reject", "NodePool", "select, REJECT,", "select,")
 replace_group_fragment("nodepool_direct", "NodePool", "select, REJECT,", "select, DIRECT,")
 replace_group_fragment("nodepool_hidden", "NodePool", "hidden=0", "hidden=1")
-replace_group_fragment("nodepool_unexpected_update_interval", "NodePool", "hidden=0, include-all-proxies=true", "hidden=0, update-interval=7200, include-all-proxies=true")
-replace_group_fragment("nodepool_include_all", "NodePool", "include-all-proxies=true", "include-all-proxies=false")
+replace_group_fragment("nodepool_update_interval", "NodePool", "update-interval=3600", "update-interval=7200")
+replace_group_fragment("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1")
 replace_group_fragment("hongkong_smart", "HongKong", "url-test", "smart")
 replace_group_fragment("hongkong_no_reject", "HongKong", "url-test, REJECT,", "url-test,")
 replace_group_fragment("hongkong_interval", "HongKong", "interval=600", "interval=1800")
@@ -183,7 +185,7 @@ replace_once("china_policy", "/Rules/China.list,DIRECT,extended-matching", "/Rul
 replace_once("geoip_policy", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Domestic,no-resolve")
 replace_once("ipv6_direct", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve")
 
-EXPECTED_MUTATIONS = 133
+EXPECTED_MUTATIONS = 135
 if len(MUTATIONS) != EXPECTED_MUTATIONS:
     raise RuntimeError(f"expected {EXPECTED_MUTATIONS} mutations, built {len(MUTATIONS)}")
 
@@ -206,4 +208,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.12 mutations={len(MUTATIONS)}")
+print(f"PASS R13.13 mutations={len(MUTATIONS)}")
