@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.12 rule snapshots, locks and optional online resources."""
+"""Validate R13.13 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -101,7 +101,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 26 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 27 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -124,7 +124,7 @@ expected_invariants = {
     "hidden_function_groups": ["ApplePush"],
     "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer", "Smart"],
     "visible_control_groups": ["Final", "Proxy", "Auto", "NodePool"],
-    "linked_proxy_profile": "Private-Proxies.conf",
+    "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
     "public_embedded_proxy_policies": 0,
     "mobile_dynamic_reject_sources": [],
@@ -157,8 +157,9 @@ if architecture.get("proxy") != {
     fail("Proxy architecture invariant mismatch")
 if architecture.get("node_pool") != {
     "mode": "select", "hidden": False,
-    "source": "include-all-proxies-from-linked-managed-profile",
-    "explicit_members": ["REJECT"], "include_all_proxies": True,
+    "source": "external-policy-path",
+    "explicit_members": ["REJECT"], "include_all_proxies": False,
+    "update_interval_seconds": 3600,
     "automatic_fallback": False,
 }:
     fail("NodePool architecture invariant mismatch")
@@ -227,11 +228,11 @@ if invariants.get("udp_quic") != {
 }:
     fail("UDP/QUIC invariant mismatch")
 if invariants.get("network_diagnostics") != {
-    "proxy_policy_source": "Private-Proxies.conf/[Proxy]",
-    "global_proxy_row": "real-policy-result",
-    "global_udp_row": "real-policy-result-when-protocol-supports-udp",
+    "proxy_policy_source": "NodePool/policy-path",
+    "global_proxy_row": "not-enumerated-for-external-policies",
+    "global_udp_row": "not-enumerated-for-external-policies",
     "loopback_bridge": False,
-    "policy_path": False,
+    "policy_path": True,
     "real_policy_udp_test": "apple.com@1.1.1.1",
     "udp_requires_policy_and_server_support": True,
 }:
@@ -411,6 +412,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.12 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"PASS R13.13 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
     f"local_rule_files=29 rules=142 embedded_rule_contents=0"
 )

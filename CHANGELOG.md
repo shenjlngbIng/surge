@@ -1,5 +1,14 @@
 # 更新日志
 
+## 2026-09-01 R13.13 单订阅正常安装
+
+- 撤回 R13.12 的 `Private-Proxies.conf` 双配置安装流程。主配置 `[Proxy]` 恢复为空，`NodePool` 恢复唯一的 `policy-path`，用户只需替换一个 Surge 格式订阅 URL。
+- 删除 `Scripts/SubStore-Surge-Profile.js` 和对应测试。Sub-Store 直接使用复制出的下载地址并指定 `target=Surge`，不再安装 Response Transformer 或使用 `surge-profile=1`。
+- 对照 Rabbit-Spec、Lucky 和本仓库 R13.11 的公开单订阅架构，保留 `NodePool` 第一项 `REJECT`，以及 10 个自动组的显式 `REJECT`、600 秒间隔、100 ms 容差和首次使用前评估。
+- 明确接受 `policy-path` 外置节点无法填充 Surge iOS 全局代理/UDP 诊断的显示边界；继续禁止本机 SOCKS5 回环和静态假代理制造绿色结果。
+- DNS、APNs、国内 BiliBili、AI/TikTok 地区边界、Ads/Pegasus、STUN、UDP 不支持时拒绝、142 条规则和 30 个运行资源保持不变。
+- 运行锁升级到 schema 27，安装工作流、发布清单、校验和、迁移说明和 135 项故障注入测试同步更新。完整包改为 `Surge-R13.13-Complete-No-Embedded-20260901.zip`。
+
 ## 2026-09-01 R13.12 真实代理全局诊断
 
 - 根据 R13.11 真机截图确认，DNS 与直连测试正常，但“测试代理策略”和“UDP 代理转发”仍整段空白。根因是 `policy-path` 只向外置策略组提供成员，不会把节点定义放入主配置 `[Proxy]`。

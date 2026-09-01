@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.12 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.13 immutable-rules-plus-domestic-dynamic lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.12 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.13 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,7 +83,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 26,
+    "schema": 27,
     "mode": "immutable-rules-plus-domestic-dynamic",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -107,7 +107,7 @@ lock = {
         "hidden_function_groups": ["ApplePush"],
         "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer", "Smart"],
         "visible_control_groups": ["Final", "Proxy", "Auto", "NodePool"],
-        "linked_proxy_profile": "Private-Proxies.conf",
+        "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
         "loglevel": "notify",
         "public_embedded_proxy_policies": 0,
         "policy_architecture": {
@@ -122,8 +122,9 @@ lock = {
             },
             "node_pool": {
                 "mode": "select", "hidden": False,
-                "source": "include-all-proxies-from-linked-managed-profile",
-                "explicit_members": ["REJECT"], "include_all_proxies": True,
+                "source": "external-policy-path",
+                "explicit_members": ["REJECT"], "include_all_proxies": False,
+                "update_interval_seconds": 3600,
                 "automatic_fallback": False,
             },
             "proxy": {
@@ -206,11 +207,11 @@ lock = {
         "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
         "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
         "network_diagnostics": {
-            "proxy_policy_source": "Private-Proxies.conf/[Proxy]",
-            "global_proxy_row": "real-policy-result",
-            "global_udp_row": "real-policy-result-when-protocol-supports-udp",
+            "proxy_policy_source": "NodePool/policy-path",
+            "global_proxy_row": "not-enumerated-for-external-policies",
+            "global_udp_row": "not-enumerated-for-external-policies",
             "loopback_bridge": False,
-            "policy_path": False,
+            "policy_path": True,
             "real_policy_udp_test": "apple.com@1.1.1.1",
             "udp_requires_policy_and_server_support": True,
         },

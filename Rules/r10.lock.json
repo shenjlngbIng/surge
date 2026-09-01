@@ -1,11 +1,11 @@
 {
-  "schema": 26,
+  "schema": 27,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.12 Real Proxy Diagnostics",
+  "profile": "Surge iOS Privacy + Push R13.13 Simple Subscription",
   "generated": "2026-09-01",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "1afd92ec32dacaee62b54a91e4c6a2f26d3822eb8769b354e418ca929ff3b816",
-  "profile_lines": 370,
+  "profile_sha256": "b03ba03f3516d69df55f2ee99bcfbd5eae45a5b9eeb9541bf2fe0b2267a05b92",
+  "profile_lines": 369,
   "active_rules": 142,
   "runtime_resources": 30,
   "immutable_repository_resources": 29,
@@ -37,7 +37,7 @@
       "Auto",
       "NodePool"
     ],
-    "linked_proxy_profile": "Private-Proxies.conf",
+    "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
     "public_embedded_proxy_policies": 0,
     "policy_architecture": {
@@ -59,11 +59,12 @@
       "node_pool": {
         "mode": "select",
         "hidden": false,
-        "source": "include-all-proxies-from-linked-managed-profile",
+        "source": "external-policy-path",
         "explicit_members": [
           "REJECT"
         ],
-        "include_all_proxies": true,
+        "include_all_proxies": false,
+        "update_interval_seconds": 3600,
         "automatic_fallback": false
       },
       "proxy": {
@@ -273,11 +274,11 @@
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
     "network_diagnostics": {
-      "proxy_policy_source": "Private-Proxies.conf/[Proxy]",
-      "global_proxy_row": "real-policy-result",
-      "global_udp_row": "real-policy-result-when-protocol-supports-udp",
+      "proxy_policy_source": "NodePool/policy-path",
+      "global_proxy_row": "not-enumerated-for-external-policies",
+      "global_udp_row": "not-enumerated-for-external-policies",
       "loopback_bridge": false,
-      "policy_path": false,
+      "policy_path": true,
       "real_policy_udp_test": "apple.com@1.1.1.1",
       "udp_requires_policy_and_server_support": true
     },
