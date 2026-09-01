@@ -1,5 +1,15 @@
 # 更新日志
 
+## 2026-09-01 R13.14 回退到正常单订阅
+
+- 根据真机策略页确认订阅与真实美国节点已经加载，根因是 R13.13 的 `NodePool → Auto/地区组` 嵌套和显式 `REJECT` 占位，不是用户导入失败。
+- 以 R13.9 最后正常的单订阅行为为基线，订阅唯一 `policy-path` 直接移动到唯一可见的 `Proxy = smart`；删除 `NodePool`、`Auto` 和香港、台湾、日本、新加坡、美国五个空地区组。
+- `Final` 与 20 个服务组隐藏，全部跟随 `Proxy`；Apple 保留历史 `DIRECT` 默认。策略组由 30 个降至 23 个，界面不再显示成排红色失败卡片。
+- 撤回 R13.10 本机 SOCKS5 诊断桥、R13.12 分离配置和 R13.11/13.13 失败占位，不再用回环、拒绝或假代理制造网络诊断结果。
+- DNS 改用 Cloudflare 与 Quad9 DoH，开启 `encrypted-dns-follow-outbound-mode=true`，并把 Surge 自身的 DOH/DOH3/DOQ/DOT/DNS 和已知应用内 DoH/DoT 端点固定到 `Proxy`。
+- `hijack-dns=*:53`、53/853/8853 拒绝、证书校验、UDP 不支持时拒绝、APNs、国内 BiliBili、AI/流媒体、Ads/Pegasus、STUN、QUIC 与双栈兜底保持。
+- 活动规则增至 147，运行锁升级到 schema 28，67 项故障注入、固定规则审计和精确域名冲突检查全部通过。完整包为 `Surge-R13.14-Complete-No-Embedded-20260901.zip`。
+
 ## 2026-09-01 R13.13 单订阅正常安装
 
 - 撤回 R13.12 的 `Private-Proxies.conf` 双配置安装流程。主配置 `[Proxy]` 恢复为空，`NodePool` 恢复唯一的 `policy-path`，用户只需替换一个 Surge 格式订阅 URL。

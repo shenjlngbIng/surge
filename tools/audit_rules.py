@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.13 rule snapshots, locks and optional online resources."""
+"""Validate R13.14 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from convert_to_remote_rules import (
     REPOSITORY_RULES,
     RETIRED_BILIBILI_INTL_GUARDS,
     RULE_SNAPSHOT_TAG,
+    SURGE_DNS_PROTOCOL_RULES,
     expected_remote_order,
 )
 
@@ -101,7 +102,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 27 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 28 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -109,7 +110,7 @@ counts = tuple(lock.get(key) for key in (
     "active_rules", "runtime_resources", "immutable_repository_resources",
     "dynamic_runtime_resources", "local_rule_files",
 ))
-if counts != (142, 30, 29, 1, 29):
+if counts != (147, 30, 29, 1, 29):
     fail(f"runtime lock counts mismatch: {counts}")
 
 invariants = dict(lock.get("required_invariants", {}))
@@ -121,9 +122,17 @@ expected_invariants = {
     "dynamic_runtime_resource_count": 1,
     "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
-    "hidden_function_groups": ["ApplePush"],
-    "removed_stateful_groups": ["AdBlock", "Security", "UDP", "Domestic", "AllServer", "Smart"],
-    "visible_control_groups": ["Final", "Proxy", "Auto", "NodePool"],
+    "hidden_function_groups": [
+        "Final", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
+        "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby",
+        "TikTok", "Bahamut", "Spotify", "Streaming", "Telegram", "X",
+        "Apple", "Google", "Microsoft", "Games",
+    ],
+    "removed_stateful_groups": [
+        "Auto", "NodePool", "HongKong", "TaiWan", "Japan", "Singapore",
+        "America", "AdBlock", "Security", "UDP", "Domestic", "AllServer",
+    ],
+    "visible_control_groups": ["Proxy"],
     "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
     "public_embedded_proxy_policies": 0,
@@ -141,57 +150,16 @@ for key, expected in expected_invariants.items():
 architecture = dict(invariants.get("policy_architecture", {}))
 if architecture.get("automatic_empty_group_behavior") != "DIRECT/SUBSTITUTE":
     fail("automatic empty-group behavior invariant mismatch")
-if architecture.get("smart_groups") != []:
-    fail("Smart groups must stay removed to prevent empty-source DIRECT substitution")
-if architecture.get("auto") != {
-    "mode": "url-test", "hidden": False, "source": "NodePool",
-    "explicit_members": ["REJECT"], "interval_seconds": 600,
-    "tolerance_milliseconds": 100, "evaluate_before_use": True,
-    "empty_source_behavior": "REJECT/error",
-    "direct_substitution_prevented": True,
-}:
-    fail("fail-closed Auto architecture invariant mismatch")
+if architecture.get("smart_groups") != ["Proxy"]:
+    fail("restored Proxy Smart architecture invariant mismatch")
 if architecture.get("proxy") != {
-    "mode": "select", "default": "Auto", "manual_fail_closed_entry": "REJECT",
+    "mode": "smart", "hidden": False, "source": "external-policy-path",
+    "explicit_members": [], "include_all_proxies": False,
+    "update_interval_seconds": 3600, "evaluate_before_use": True,
 }:
     fail("Proxy architecture invariant mismatch")
-if architecture.get("node_pool") != {
-    "mode": "select", "hidden": False,
-    "source": "external-policy-path",
-    "explicit_members": ["REJECT"], "include_all_proxies": False,
-    "update_interval_seconds": 3600,
-    "automatic_fallback": False,
-}:
-    fail("NodePool architecture invariant mismatch")
-regions = dict(architecture.get("regions", {}))
-if regions != {
-    "mode": "url-test", "source": "NodePool",
-    "explicit_members": ["REJECT"], "interval_seconds": 600,
-    "tolerance_milliseconds": 100, "evaluate_before_use": True,
-    "empty_source_behavior": "REJECT/error",
-    "names": ["HongKong", "TaiWan", "Japan", "Singapore", "America"],
-}:
-    fail("region architecture invariant mismatch")
-if architecture.get("restricted_service_auto") != {
-    "mode": "url-test",
-    "source_mode": "recursive-include-other-group",
-    "explicit_members": ["REJECT"],
-    "evaluate_before_use": True,
-    "interval_seconds": 600,
-    "tolerance_milliseconds": 100,
-    "empty_source_behavior": "REJECT/error",
-    "groups": {
-        "ChatGPT": ["Japan", "Singapore", "TaiWan", "America"],
-        "Claude": ["Japan", "Singapore", "TaiWan", "America"],
-        "Gemini": ["Japan", "Singapore", "TaiWan", "America"],
-        "TikTok": ["Japan", "Singapore", "TaiWan", "America"],
-    },
-}:
-    fail("restricted-service fail-closed Auto architecture invariant mismatch")
-if architecture.get("restricted_service_select") != {
-    "Bahamut": ["TaiWan", "HongKong"],
-}:
-    fail("restricted-service select architecture invariant mismatch")
+if architecture.get("visible_groups") != ["Proxy"] or architecture.get("reject_placeholder_members") != 0:
+    fail("restored visible-group or REJECT-placeholder invariant mismatch")
 if invariants.get("domestic_resources") != {
     "dynamic_supplement": "domestic.conf",
     "pinned_precise_set": "China.list",
@@ -203,22 +171,24 @@ if invariants.get("domestic_resources") != {
     fail("domestic resource invariant mismatch")
 if invariants.get("dns") != {
     "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-    "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
-    "follow_outbound_mode": False,
+    "encrypted_dns_server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
+    "follow_outbound_mode": True,
     "certificate_verification": True,
+    "surge_dns_protocol_rules": list(SURGE_DNS_PROTOCOL_RULES),
     "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
     "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
-    "domestic_resolver_policy": "DIRECT",
+    "domestic_resolver_policy": "Proxy",
     "foreign_resolver_policy": "Proxy",
     "unmatched_domains_force_local_resolution": False,
     "proxy_hostname_uses_remote_resolution": True,
     "static_bootstrap": {
-        "dns.alidns.com": [
-            "223.5.5.5", "223.6.6.6", "2400:3200::1",
-            "2400:3200:baba::1",
+        "cloudflare-dns.com": [
+            "1.1.1.1", "1.0.0.1", "2606:4700:4700::1111",
+            "2606:4700:4700::1001",
         ],
+        "dns.quad9.net": ["9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9"],
     },
-    "dynamic_hostname_bootstrap": ["doh.pub"],
+    "dynamic_hostname_bootstrap": [],
 }:
     fail("DNS invariant mismatch")
 if invariants.get("udp_quic") != {
@@ -228,7 +198,7 @@ if invariants.get("udp_quic") != {
 }:
     fail("UDP/QUIC invariant mismatch")
 if invariants.get("network_diagnostics") != {
-    "proxy_policy_source": "NodePool/policy-path",
+    "proxy_policy_source": "Proxy/policy-path",
     "global_proxy_row": "not-enumerated-for-external-policies",
     "global_udp_row": "not-enumerated-for-external-policies",
     "loopback_bridge": False,
@@ -412,6 +382,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.13 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
-    f"local_rule_files=29 rules=142 embedded_rule_contents=0"
+    f"PASS R13.14 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"local_rule_files=29 rules=147 embedded_rule_contents=0"
 )

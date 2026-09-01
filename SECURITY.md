@@ -1,30 +1,24 @@
-# Security Policy
+# 安全边界
 
-R13.13 的公开配置不包含真实订阅、节点、令牌或私人日志。用户只在本机把 `NodePool.policy-path` 占位 URL 替换为自己的 Surge 格式订阅地址。
+R13.14 的公开配置不包含真实订阅、节点、令牌或私人日志。用户只在本机把 `Proxy.policy-path` 的占位 URL 替换为自己的 Surge 格式订阅地址。
 
-## 必须保持的边界
+## 节点与策略
 
-- `[Proxy]` 保持为空，不加入静态节点、本机回环或伪诊断代理。
-- `NodePool` 是唯一包含 `policy-path` 的策略组，第一项为内建 `REJECT`，订阅更新间隔为 3,600 秒。
-- `Auto`、五个地区组以及 ChatGPT、Claude、Gemini、TikTok 都使用带显式 `REJECT` 的 `url-test`，禁止加入 `DIRECT`。
-- `Proxy` 默认选择 `Auto`，同时保留手动 `NodePool`、五个地区入口和 `REJECT`。
-- `udp-policy-not-supported-behaviour=REJECT`，不允许用 `DIRECT` 掩盖节点不支持 UDP 的问题。
-- 禁止恢复 `Diagnostics = socks5, 127.0.0.1,...`。本机回环不能证明真实节点 TCP 或 UDP 可用。
-- 29 个仓库规则资源固定到完整提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1`；唯一动态资源为审阅过的 `domestic.conf`。
+- `Proxy` 是唯一可见策略组，也是唯一含 `policy-path` 的组。
+- 不允许在公开 `[Proxy]` 中嵌入节点、凭据、本机回环诊断代理或自定义拒绝代理。
+- 不允许恢复 `NodePool`、`Auto`、地区空组或显式 `REJECT` 占位。
+- 服务组隐藏并只跟随 `Proxy`；Apple 保留历史 `DIRECT` 默认。
+- UDP 不支持时使用 `REJECT`，不得回退 `DIRECT` 伪造可用。
 
-## 私人数据
+## DNS
 
-不要把以下内容提交到仓库、Issue、Release 或公开截图：
+- Cloudflare 与 Quad9 DoH 开启证书校验并跟随规则和出口模式。
+- Surge 自身的加密 DNS 协议及已知应用内 DoH/DoT 域名固定进入 `Proxy`。
+- 53 端口 DNS 被接管，53、853、8853 未审阅出口被拒绝。
+- Cloudflare 与 Quad9 的固定引导地址来自各自官方文档。
 
-- 真实订阅 URL 与访问令牌；
-- 节点服务器、端口、用户名、密码与证书；
-- Sub-Store 私人下载标识；
-- 设备日志、节点名称、个人域名和可识别网络信息。
+## 供应链
 
-凭据泄露后应立即在服务商或 Sub-Store 中撤销并重新生成。公开模板始终保留 `example.invalid` 占位地址。
+29 个仓库规则资源固定到完整提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1`。唯一动态资源是经过审阅的国内补充表。移动端不加载大型动态广告或钓鱼拒绝表。
 
-## 能证明与不能证明的内容
-
-仓库审计可以验证配置结构、规则顺序、固定资源、空源失败关闭、DNS/UDP 边界和发布包完整性。它不能证明私人节点在线、服务端支持 UDP、远端递归 DNS 不泄漏、运营商没有劫持或所有第三方服务永远稳定。
-
-使用 `policy-path` 时，Surge iOS 的全局代理和 UDP 诊断可能无法枚举外置节点。该空白是诊断显示边界，不应被伪代理填充，也不代表真实节点一定失败。升级后应在 Wi-Fi 和蜂窝网络分别验证真实节点、ChatGPT、国内 BiliBili、Telegram、APNs、IPv4/IPv6 出口和 DNS。
+安全问题请提交不含订阅 URL、令牌、节点凭据和私人日志的最小复现。

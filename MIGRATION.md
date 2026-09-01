@@ -1,26 +1,22 @@
-# R13.12 到 R13.13 单订阅迁移说明
+# R13.13 到 R13.14 回退修复说明
 
-R13.13 撤回 R13.12 的双配置安装流程。升级后不再需要 `Private-Proxies.conf`、Sub-Store `Response Transformer` 或 `surge-profile=1` 参数。
+R13.14 撤回 R13.10 至 R13.13 的诊断和失败占位架构，恢复一条订阅地址直接进入主策略组的用法。
 
-## 迁移步骤
+## 升级
 
-1. 导入完整的 R13.13 `Surge.conf`。
-2. 进入文本模式，搜索 `REPLACE_WITH_SURGE_SUBSCRIPTION_URL`。
-3. 将完整占位 URL 替换为自己的 Surge 格式订阅地址。Sub-Store 地址建议附加 `?target=Surge`；若原地址已有查询参数则附加 `&target=Surge`。
-4. 保存并重新加载配置。
-5. 打开 `NodePool`，确认第一项是 `REJECT`，后面能看到真实节点；`Proxy` 选择 `Auto`。
-6. 确认 R13.13 正常工作后，可以从 Surge 配置列表删除旧的 `Private-Proxies.conf`。删除旧文件不会影响 R13.13。
+1. 导入完整的 R13.14 `Surge.conf`。
+2. 搜索 `REPLACE_WITH_SURGE_SUBSCRIPTION_URL`，替换为现有 Surge 格式订阅 URL。
+3. 保存并重新加载配置。
+4. 打开策略页，确认只显示主要入口 `Proxy`，并能看到真实节点名称和延迟。
+5. 删除旧配置副本即可；不需要重建 Sub-Store 订阅，也不需要 `Private-Proxies.conf` 或转换脚本。
 
-## 行为变化
+| 项目 | R13.13 | R13.14 |
+|---|---|---|
+| 节点来源 | `NodePool.policy-path` | `Proxy.policy-path` |
+| 可见控制 | Proxy、Auto、NodePool、五地区 | 仅 Proxy |
+| 空组 | 显式 REJECT，显示红色失败 | 删除 |
+| 服务组 | 可见并递归地区组 | 隐藏并跟随 Proxy |
+| DNS 出口 | 加密 DNS 默认直连 | 加密 DNS 与已知 DoH/DoT 跟随 Proxy |
+| 安装文件 | 一个配置 | 一个配置 |
 
-| 项目 | R13.12 | R13.13 |
-| --- | --- | --- |
-| 用户操作 | 先装私人配置，再装主配置 | 只改一个订阅 URL |
-| 节点来源 | `[Proxy]` 关联文件 | `NodePool.policy-path` |
-| Sub-Store 自定义脚本 | 必需 | 不需要 |
-| 导入顺序 | 严格要求 | 无额外顺序 |
-| 全局代理/UDP 诊断 | 可枚举 `[Proxy]` 节点 | 外置节点可能不显示 |
-| 日常代理、分流和自动测速 | 支持 | 支持 |
-| 空源失败关闭 | `REJECT` | `REJECT` |
-
-全局诊断空白不作为真实节点 UDP 成功或失败的结论。请在 `NodePool` 中测试具体节点，或使用真实 UDP 流量验收。不要恢复 R13.10 的本机 SOCKS5 回环诊断桥。
+全局网络诊断不一定枚举 `policy-path` 外置节点。请以 `Proxy` 中真实节点延迟、实际网页和真实 UDP 流量验收；配置不会使用回环或假代理伪造结果。
