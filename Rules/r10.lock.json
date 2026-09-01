@@ -1,10 +1,10 @@
 {
-  "schema": 25,
+  "schema": 26,
   "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.11 Fail-Closed Auto",
-  "generated": "2026-08-31",
+  "profile": "Surge iOS Privacy + Push R13.12 Real Proxy Diagnostics",
+  "generated": "2026-09-01",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "7e4292f1a636d3aea5268c1e0b03de64e28f790ab0c7a038c71c28d9bddaac9d",
+  "profile_sha256": "1afd92ec32dacaee62b54a91e4c6a2f26d3822eb8769b354e418ca929ff3b816",
   "profile_lines": 370,
   "active_rules": 142,
   "runtime_resources": 30,
@@ -37,9 +37,9 @@
       "Auto",
       "NodePool"
     ],
-    "public_subscription_placeholder": "https://example.invalid/REPLACE_WITH_SUB_STORE_URL",
+    "linked_proxy_profile": "Private-Proxies.conf",
     "loglevel": "notify",
-    "user_defined_proxy_policies": 0,
+    "public_embedded_proxy_policies": 0,
     "policy_architecture": {
       "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
       "smart_groups": [],
@@ -59,10 +59,11 @@
       "node_pool": {
         "mode": "select",
         "hidden": false,
-        "source": "policy-path",
+        "source": "include-all-proxies-from-linked-managed-profile",
         "explicit_members": [
           "REJECT"
         ],
+        "include_all_proxies": true,
         "automatic_fallback": false
       },
       "proxy": {
@@ -272,10 +273,11 @@
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
     "network_diagnostics": {
-      "static_proxy_policies": 0,
-      "global_proxy_and_udp_rows": "blank",
+      "proxy_policy_source": "Private-Proxies.conf/[Proxy]",
+      "global_proxy_row": "real-policy-result",
+      "global_udp_row": "real-policy-result-when-protocol-supports-udp",
       "loopback_bridge": false,
-      "reason": "policy-path policies are scoped to NodePool",
+      "policy_path": false,
       "real_policy_udp_test": "apple.com@1.1.1.1",
       "udp_requires_policy_and_server_support": true
     },
@@ -676,7 +678,7 @@
       "sha256": "56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa",
       "source_mode": "reviewed-dynamic-runtime",
       "update_interval": 86400,
-      "release_audited": "2026-08-31"
+      "release_audited": "2026-09-01"
     }
   ]
 }
