@@ -1,4 +1,4 @@
-name: Install and audit Surge R13.11 Fail-Closed Auto
+name: Install and audit Surge R13.12 Real Proxy Diagnostics
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       archive_sha256:
-        description: "Out-of-band SHA-256 of Surge-R13.11-Complete-No-Embedded-20260831.zip"
+        description: "Out-of-band SHA-256 of Surge-R13.12-Complete-No-Embedded-20260901.zip"
         required: true
         type: string
 
@@ -35,7 +35,7 @@ jobs:
           EXPECTED_ARCHIVE_SHA256: ${{ inputs.archive_sha256 }}
         run: |
           set -euo pipefail
-          archive="Surge-R13.11-Complete-No-Embedded-20260831.zip"
+          archive="Surge-R13.12-Complete-No-Embedded-20260901.zip"
           if [[ ! "${EXPECTED_ARCHIVE_SHA256}" =~ ^[0-9A-Fa-f]{64}$ ]]; then
             echo "::error::archive_sha256 must be exactly 64 hexadecimal characters"
             exit 1
@@ -51,10 +51,10 @@ jobs:
           import stat
           import zipfile
 
-          archive = Path("Surge-R13.11-Complete-No-Embedded-20260831.zip")
+          archive = Path("Surge-R13.12-Complete-No-Embedded-20260901.zip")
           stage = Path(".surge-install")
           if not archive.is_file():
-              raise SystemExit("Surge-R13.11-Complete-No-Embedded-20260831.zip was not found in the repository root")
+              raise SystemExit("Surge-R13.12-Complete-No-Embedded-20260901.zip was not found in the repository root")
           if stage.exists():
               shutil.rmtree(stage)
           stage.mkdir()
@@ -100,6 +100,7 @@ jobs:
                       (len(path.parts) == 1 and path.name in allowed_top_level)
                       or (len(path.parts) == 2 and path.parts[0] == "Rules" and (path.suffix == ".list" or path.name in {"maintained_sources.lock.json", "r10.lock.json", "resources.lock.json", "upstreams.lock.json"}))
                       or (len(path.parts) == 2 and path.parts[0] == "tools" and path.suffix == ".py")
+                      or (len(path.parts) == 2 and path.parts[0] == "Scripts" and path.suffix == ".js")
                       or (len(path.parts) == 2 and path.parts[0] == "THIRD_PARTY_LICENSES" and path.suffix == ".txt")
                       or (path.as_posix() == ".github/workflows/install.yml")
                   )
@@ -112,6 +113,7 @@ jobs:
 
           required = {
               "Surge.conf",
+              "Scripts/SubStore-Surge-Profile.js",
               "README.md",
               "AUDIT_REPORT.md",
               "RELEASE_MANIFEST.txt",
@@ -148,6 +150,7 @@ jobs:
             python3 tools/audit_rules.py --check-runtime-remote
             python3 tools/audit_precise_domains.py
             python3 tools/test_audit_config.py
+            python3 tools/test_substore_surge_profile.py
             python3 tools/test_release_inventory.py
             python3 tools/test_stage_surge_zip.py
           )
@@ -177,11 +180,11 @@ jobs:
       - name: Commit installed files
         shell: bash
         run: |
-          rm -f Surge-R13.11-Complete-No-Embedded-20260831.zip
+          rm -f Surge-R13.12-Complete-No-Embedded-20260901.zip
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.11 Fail-Closed Auto"
+          git diff --cached --quiet || git commit -m "Deploy Surge iOS Privacy + Push R13.12 Real Proxy Diagnostics"
           git push origin HEAD:main
 
   audit:
@@ -256,6 +259,10 @@ jobs:
       - name: Run mutation tests
         if: steps.release.outputs.ready == 'true'
         run: python tools/test_audit_config.py
+
+      - name: Test Sub-Store managed-profile transformer
+        if: steps.release.outputs.ready == 'true'
+        run: python tools/test_substore_surge_profile.py
 
       - name: Test ZIP staging
         if: steps.release.outputs.ready == 'true'
