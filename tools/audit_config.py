@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.16 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.17 profile."""
 
 from __future__ import annotations
 
@@ -27,7 +27,11 @@ from convert_to_remote_rules import (
 
 
 ROOT = Path(__file__).resolve().parent.parent
-PROFILE = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else ROOT / "Surge.conf"
+READY_MODE = "--ready" in sys.argv[1:]
+POSITIONAL = [argument for argument in sys.argv[1:] if not argument.startswith("--")]
+if len(POSITIONAL) > 1 or any(argument != "--ready" for argument in sys.argv[1:] if argument.startswith("--")):
+    raise SystemExit("usage: audit_config.py [PROFILE] [--ready]")
+PROFILE = Path(POSITIONAL[0]).resolve() if POSITIONAL else ROOT / "Surge.conf"
 LOCK = ROOT / "Rules" / "r10.lock.json"
 SUBSCRIPTION_PLACEHOLDER = "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL"
 GROUP_ORDER = (
@@ -185,9 +189,9 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.09.01",
-    "# > Surge iOS Privacy + Push R13.16 Fail-Closed Sentinel | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Restores NodePool, Auto, region, service groups and the hidden fail-closed sentinel.",
+    "# > Update Date: 2026.09.02",
+    "# > Surge iOS Privacy + Push R13.17 Connectivity Recovery | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > Removes the loopback pseudo-proxy that deadlocked DNS, node tests and resource updates.",
     "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
@@ -234,8 +238,8 @@ expected_general = {
     "exclude-simple-hostnames": "true",
     "always-raw-tcp-hosts": "149.154.*, 91.108.*, *.push.apple.com:443, *push-apple.com.akadns.net:443, *.apple.com.edgekey.net:443",
     "dns-server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-    "encrypted-dns-server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
-    "encrypted-dns-follow-outbound-mode": "true",
+    "encrypted-dns-server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
+    "encrypted-dns-follow-outbound-mode": "false",
     "encrypted-dns-skip-cert-verification": "false",
     "hijack-dns": "*:53",
     "allow-dns-svcb": "false",
@@ -257,14 +261,13 @@ if set(general) != set(expected_general):
 hosts = key_values(sections["Host"], "Host")
 if hosts != {
     "sub.store": "127.0.0.1",
-    "cloudflare-dns.com": "1.1.1.1, 1.0.0.1, 2606:4700:4700::1111, 2606:4700:4700::1001",
-    "dns.quad9.net": "9.9.9.9, 149.112.112.112, 2620:fe::fe, 2620:fe::9",
+    "dns.alidns.com": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
 }:
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
 proxies = key_values(sections["Proxy"], "Proxy")
-if proxies != {"Fail-Closed": "http, 127.0.0.1, 1, no-error-alert=true"}:
-    fail("[Proxy] must contain exactly the reviewed unreachable Fail-Closed sentinel")
+if proxies:
+    fail("[Proxy] must stay empty; real policies come only from NodePool")
 proxy_includes = [
     line.strip() for line in sections["Proxy"]
     if line.strip().startswith("#!include")
@@ -294,14 +297,24 @@ require_exact_options(proxy_parts, "Proxy", VISIBLE_SELECT_OPTIONS)
 node_pool = group_parts(groups, "NodePool")
 if node_pool[0] != "select" or group_members(groups, "NodePool"):
     fail("NodePool must import subscription policies directly without placeholder members")
+policy_paths = [part for part in node_pool[1:] if part.startswith("policy-path=")]
+if len(policy_paths) != 1:
+    fail("NodePool must contain exactly one policy-path")
+if READY_MODE:
+    subscription = policy_paths[0].split("=", 1)[1]
+    if not subscription.startswith("https://") or "example.invalid" in subscription:
+        fail("ready profile must contain one real HTTPS subscription URL")
+else:
+    if policy_paths[0] != f"policy-path={SUBSCRIPTION_PLACEHOLDER}":
+        fail("public profile must contain the reviewed subscription placeholder")
 require_exact_options(node_pool, "NodePool", (
-    f"policy-path={SUBSCRIPTION_PLACEHOLDER}", "update-interval=3600",
+    policy_paths[0], "update-interval=3600",
     "no-alert=0", "hidden=0", "include-all-proxies=0",
 ))
 
 auto = group_parts(groups, "Auto")
-if auto[0] != "smart" or group_members(groups, "Auto") != ["Fail-Closed"] or included_groups(groups, "Auto") != ["NodePool"]:
-    fail("Auto must use Fail-Closed plus every real NodePool policy")
+if auto[0] != "smart" or group_members(groups, "Auto") or included_groups(groups, "Auto") != ["NodePool"]:
+    fail("Auto must use only the real policies resolved from NodePool")
 require_exact_options(auto, "Auto", (
     "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0",
     "include-other-group=NodePool",
@@ -378,7 +391,7 @@ if len(rules) != 147 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FI
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
     fail("runtime resource order differs from reviewed inventory")
-if len(external) != 30:
+if len(external) != 29:
     fail("runtime resource count changed")
 
 for kind, filename, _label, policy in REPOSITORY_RULES:
@@ -388,9 +401,8 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
     if f"@{RELEASE_REF}/Rules/{filename}" not in line:
         fail(f"immutable resource is not pinned: {filename}")
 
-dynamic_line = "RULE-SET,https://ruleset.skk.moe/List/non_ip/domestic.conf,DIRECT,extended-matching,no-resolve,update-interval=86400"
-if external.count(dynamic_line) != 1 or len(DYNAMIC_RULES) != 1:
-    fail("dynamic domestic supplement boundary changed")
+if DYNAMIC_RULES:
+    fail("R13.17 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -410,6 +422,7 @@ if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "
     fail("international compatibility guard must precede domestic BiliBili parent suffixes")
 
 stun = index("PROTOCOL,STUN,Proxy")
+resource_transport = index("DOMAIN-SUFFIX,jsdelivr.net,Proxy")
 surge_dns_start = index(SURGE_DNS_PROTOCOL_RULES[0])
 if rules[surge_dns_start:surge_dns_start + len(SURGE_DNS_PROTOCOL_RULES)] != list(SURGE_DNS_PROTOCOL_RULES):
     fail("Surge encrypted-DNS protocol routing changed")
@@ -418,7 +431,7 @@ if rules[domestic_dns_start:domestic_dns_start + len(DOMESTIC_DNS_RULES)] != lis
     fail("mainland application DNS proxy block changed")
 port_rules = ["DEST-PORT,53,REJECT", "DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
 port_start = index(port_rules[0])
-if rules[port_start:port_start + 3] != port_rules or not stun < surge_dns_start < domestic_dns_start < port_start:
+if rules[port_start:port_start + 3] != port_rules or not stun < resource_transport < surge_dns_start < domestic_dns_start < port_start:
     fail("STUN, encrypted DNS, application DNS and public DNS-port order changed")
 foreign_start = index(FOREIGN_DNS_RULES[0])
 if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES) or foreign_start <= port_start:
@@ -450,8 +463,8 @@ shared_domestic = (
 shared_start = index(shared_domestic[0])
 if rules[shared_start:shared_start + len(shared_domestic)] != list(shared_domestic):
     fail("bounded domestic fallback block changed")
-if not shared_start < index(dynamic_line) < index(repository_line("DOMAIN-SET", "China.list", "DIRECT")):
-    fail("domestic fixed/dynamic precedence changed")
+if not shared_start < index(repository_line("DOMAIN-SET", "China.list", "DIRECT")):
+    fail("domestic fixed/snapshot precedence changed")
 
 tail = [
     DOMESTIC_GEOIP_RULE,
@@ -484,12 +497,12 @@ for rule in rules:
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (147, 30, 29, 1, 29)
+    expected_counts = (147, 29, 29, 0, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 30 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+    if lock.get("schema") != 31 or lock.get("mode") != "immutable-rules-only":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -497,7 +510,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.16 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
+    f"PASS R13.17 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
     f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

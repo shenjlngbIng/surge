@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.16 rule snapshots, locks and optional online resources."""
+"""Validate R13.17 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 30 or lock.get("mode") != "immutable-rules-plus-domestic-dynamic":
+if lock.get("schema") != 31 or lock.get("mode") != "immutable-rules-only":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -110,29 +110,31 @@ counts = tuple(lock.get(key) for key in (
     "active_rules", "runtime_resources", "immutable_repository_resources",
     "dynamic_runtime_resources", "local_rule_files",
 ))
-if counts != (147, 30, 29, 1, 29):
+if counts != (147, 29, 29, 0, 29):
     fail(f"runtime lock counts mismatch: {counts}")
 
 invariants = dict(lock.get("required_invariants", {}))
 expected_invariants = {
     "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
     "rule_snapshot_commit": RELEASE_REF,
-    "runtime_resource_count": 30,
+    "runtime_resource_count": 29,
     "immutable_repository_resource_count": 29,
-    "dynamic_runtime_resource_count": 1,
+    "dynamic_runtime_resource_count": 0,
     "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
-        "Final", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
-        "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby",
-        "TikTok", "Bahamut", "Spotify", "Streaming", "Telegram", "X",
-        "Apple", "Google", "Microsoft", "Games",
+        "ApplePush", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
+        "Singapore-Nodes", "America-Nodes",
     ],
-    "removed_stateful_groups": [
-        "Auto", "NodePool", "HongKong", "TaiWan", "Japan", "Singapore",
-        "America", "AdBlock", "Security", "UDP", "Domestic", "AllServer",
+    "removed_stateful_groups": ["AllServer"],
+    "visible_control_groups": [
+        "Final", "Proxy", "AdBlock", "Security", "UDP", "Domestic",
+        "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
+        "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
+        "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
+        "Microsoft", "Games", "NodePool", "Auto", "HongKong", "TaiWan",
+        "Japan", "Singapore", "America",
     ],
-    "visible_control_groups": ["Proxy"],
     "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
     "public_embedded_proxy_policies": 0,
@@ -148,20 +150,23 @@ for key, expected in expected_invariants.items():
         fail(f"runtime invariant mismatch: {key}")
 
 architecture = dict(invariants.get("policy_architecture", {}))
-if architecture.get("automatic_empty_group_behavior") != "DIRECT/SUBSTITUTE":
+if architecture.get("automatic_empty_group_behavior") != "native-fail-closed":
     fail("automatic empty-group behavior invariant mismatch")
-if architecture.get("smart_groups") != ["Proxy"]:
-    fail("restored Proxy Smart architecture invariant mismatch")
-if architecture.get("proxy") != {
-    "mode": "smart", "hidden": False, "source": "external-policy-path",
+if architecture.get("smart_groups") != ["Auto"]:
+    fail("Auto Smart architecture invariant mismatch")
+if architecture.get("node_pool") != {
+    "mode": "select", "hidden": False, "source": "external-policy-path",
     "explicit_members": [], "include_all_proxies": False,
-    "update_interval_seconds": 3600, "evaluate_before_use": True,
+    "update_interval_seconds": 3600,
 }:
-    fail("Proxy architecture invariant mismatch")
-if architecture.get("visible_groups") != ["Proxy"] or architecture.get("reject_placeholder_members") != 0:
-    fail("restored visible-group or REJECT-placeholder invariant mismatch")
+    fail("NodePool architecture invariant mismatch")
+if architecture.get("auto") != {
+    "mode": "smart", "source": "NodePool", "explicit_members": [],
+    "include_all_proxies": False, "evaluate_before_use": True,
+} or architecture.get("loopback_or_reject_proxy_members") != 0:
+    fail("Auto source or pseudo-proxy invariant mismatch")
 if invariants.get("domestic_resources") != {
-    "dynamic_supplement": "domestic.conf",
+    "dynamic_supplement": None,
     "pinned_precise_set": "China.list",
     "policy": "DIRECT",
     "geoip": DOMESTIC_GEOIP_RULE,
@@ -171,8 +176,8 @@ if invariants.get("domestic_resources") != {
     fail("domestic resource invariant mismatch")
 if invariants.get("dns") != {
     "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-    "encrypted_dns_server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
-    "follow_outbound_mode": True,
+    "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
+    "follow_outbound_mode": False,
     "certificate_verification": True,
     "surge_dns_protocol_rules": list(SURGE_DNS_PROTOCOL_RULES),
     "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
@@ -182,11 +187,10 @@ if invariants.get("dns") != {
     "unmatched_domains_force_local_resolution": False,
     "proxy_hostname_uses_remote_resolution": True,
     "static_bootstrap": {
-        "cloudflare-dns.com": [
-            "1.1.1.1", "1.0.0.1", "2606:4700:4700::1111",
-            "2606:4700:4700::1001",
+        "dns.alidns.com": [
+            "223.5.5.5", "223.6.6.6", "2400:3200::1",
+            "2400:3200:baba::1",
         ],
-        "dns.quad9.net": ["9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9"],
     },
     "dynamic_hostname_bootstrap": [],
 }:
@@ -198,7 +202,7 @@ if invariants.get("udp_quic") != {
 }:
     fail("UDP/QUIC invariant mismatch")
 if invariants.get("network_diagnostics") != {
-    "proxy_policy_source": "Proxy/policy-path",
+    "proxy_policy_source": "NodePool/policy-path",
     "global_proxy_row": "not-enumerated-for-external-policies",
     "global_udp_row": "not-enumerated-for-external-policies",
     "loopback_bridge": False,
@@ -246,15 +250,8 @@ if seen_remote != set(expected_sources):
     fail("immutable runtime inventory is incomplete")
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
-if len(dynamic_sources) != 1:
-    fail("expected one reviewed dynamic runtime source")
-for expected, raw in zip(DYNAMIC_RULES, dynamic_sources, strict=True):
-    item = dict(raw)
-    for key, value in expected.items():
-        if item.get(key) != value:
-            fail(f"dynamic release observation mismatch for {expected['name']}: {key}")
-    if item.get("source_mode") != "reviewed-dynamic-runtime" or item.get("update_interval") != 86400:
-        fail("dynamic source control metadata mismatch")
+if dynamic_sources or DYNAMIC_RULES:
+    fail("R13.17 must not declare dynamic runtime sources")
 
 if list(lock.get("runtime_order", [])) != expected_remote_order():
     fail("runtime order in lock is stale")
@@ -354,21 +351,7 @@ def download(url: str, limit: int = 8 * 1024 * 1024) -> bytes:
 
 
 if CHECK_DYNAMIC:
-    source = DYNAMIC_RULES[0]
-    payload = download(str(source["url"]), 2 * 1024 * 1024)
-    try:
-        text_dynamic = payload.decode("utf-8-sig")
-    except UnicodeDecodeError as exc:
-        fail(f"dynamic domestic resource is not UTF-8: {exc}")
-    rows = [line.strip() for line in text_dynamic.splitlines() if line.strip() and not line.lstrip().startswith(("#", ";", "//"))]
-    if len(rows) < 100 or len(rows) != len(set(rows)):
-        fail("dynamic domestic resource is empty, too small or duplicated")
-    for row in rows:
-        validate_rule_row("domestic.conf", row)
-    print(
-        f"PASS dynamic domestic.conf entries={len(rows)} bytes={len(payload)} "
-        f"sha256={hashlib.sha256(payload).hexdigest()}"
-    )
+    print("PASS dynamic runtime resources=0")
 
 if CHECK_RUNTIME_REMOTE:
     checked = 0
@@ -382,6 +365,6 @@ if CHECK_RUNTIME_REMOTE:
     print(f"PASS immutable CDN copies={checked} commit={RELEASE_REF}")
 
 print(
-    f"PASS R13.16 runtime_sources=30 immutable_sources=29 dynamic_sources=1 "
+    f"PASS R13.17 runtime_sources=29 immutable_sources=29 dynamic_sources=0 "
     f"local_rule_files=29 rules=147 embedded_rule_contents=0"
 )

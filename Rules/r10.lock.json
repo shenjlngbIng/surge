@@ -1,28 +1,43 @@
 {
-  "schema": 30,
-  "mode": "immutable-rules-plus-domestic-dynamic",
-  "profile": "Surge iOS Privacy + Push R13.16 Fail-Closed Sentinel",
-  "generated": "2026-09-01",
+  "schema": 31,
+  "mode": "immutable-rules-only",
+  "profile": "Surge iOS Privacy + Push R13.17 Connectivity Recovery",
+  "generated": "2026-09-02",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "e8de0876b8117f25ac4ae38cc9d0a76dc7b29cdad25e8edc549f8db0cc183943",
-  "profile_lines": 385,
+  "profile_sha256": "b2007dfa332fab104365d0ea3b4b5ac07c0f65e3c166b02f12bde3a1d246e609",
+  "profile_lines": 388,
   "active_rules": 147,
-  "runtime_resources": 30,
+  "runtime_resources": 29,
   "immutable_repository_resources": 29,
-  "dynamic_runtime_resources": 1,
+  "dynamic_runtime_resources": 0,
   "local_rule_files": 29,
   "required_invariants": {
     "final": "FINAL,Final,dns-failed",
     "rule_snapshot_tag": "r12.17-20260825",
     "rule_snapshot_commit": "2b8fa93901061cf0482b079203630bcd11bfe0b1",
-    "runtime_resource_count": 30,
+    "runtime_resource_count": 29,
     "immutable_repository_resource_count": 29,
-    "dynamic_runtime_resource_count": 1,
+    "dynamic_runtime_resource_count": 0,
     "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
-      "Final",
       "ApplePush",
+      "HongKong-Nodes",
+      "TaiWan-Nodes",
+      "Japan-Nodes",
+      "Singapore-Nodes",
+      "America-Nodes"
+    ],
+    "removed_stateful_groups": [
+      "AllServer"
+    ],
+    "visible_control_groups": [
+      "Final",
+      "Proxy",
+      "AdBlock",
+      "Security",
+      "UDP",
+      "Domestic",
       "ChatGPT",
       "Claude",
       "Gemini",
@@ -42,46 +57,39 @@
       "Apple",
       "Google",
       "Microsoft",
-      "Games"
-    ],
-    "removed_stateful_groups": [
-      "Auto",
+      "Games",
       "NodePool",
+      "Auto",
       "HongKong",
       "TaiWan",
       "Japan",
       "Singapore",
-      "America",
-      "AdBlock",
-      "Security",
-      "UDP",
-      "Domestic",
-      "AllServer"
-    ],
-    "visible_control_groups": [
-      "Proxy"
+      "America"
     ],
     "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
     "public_embedded_proxy_policies": 0,
     "policy_architecture": {
-      "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
+      "automatic_empty_group_behavior": "native-fail-closed",
       "smart_groups": [
-        "Proxy"
+        "Auto"
       ],
-      "proxy": {
-        "mode": "smart",
+      "node_pool": {
+        "mode": "select",
         "hidden": false,
         "source": "external-policy-path",
         "explicit_members": [],
         "include_all_proxies": false,
-        "update_interval_seconds": 3600,
+        "update_interval_seconds": 3600
+      },
+      "auto": {
+        "mode": "smart",
+        "source": "NodePool",
+        "explicit_members": [],
+        "include_all_proxies": false,
         "evaluate_before_use": true
       },
-      "visible_groups": [
-        "Proxy"
-      ],
-      "reject_placeholder_members": 0
+      "loopback_or_reject_proxy_members": 0
     },
     "security_resources": [
       {
@@ -142,7 +150,7 @@
       "YouTube.list"
     ],
     "domestic_resources": {
-      "dynamic_supplement": "domestic.conf",
+      "dynamic_supplement": null,
       "pinned_precise_set": "China.list",
       "policy": "DIRECT",
       "geoip": "GEOIP,CN,DIRECT,no-resolve",
@@ -151,8 +159,8 @@
     },
     "dns": {
       "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-      "encrypted_dns_server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
-      "follow_outbound_mode": true,
+      "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
+      "follow_outbound_mode": false,
       "certificate_verification": true,
       "surge_dns_protocol_rules": [
         "PROTOCOL,DOH,Proxy",
@@ -199,17 +207,11 @@
       "unmatched_domains_force_local_resolution": false,
       "proxy_hostname_uses_remote_resolution": true,
       "static_bootstrap": {
-        "cloudflare-dns.com": [
-          "1.1.1.1",
-          "1.0.0.1",
-          "2606:4700:4700::1111",
-          "2606:4700:4700::1001"
-        ],
-        "dns.quad9.net": [
-          "9.9.9.9",
-          "149.112.112.112",
-          "2620:fe::fe",
-          "2620:fe::9"
+        "dns.alidns.com": [
+          "223.5.5.5",
+          "223.6.6.6",
+          "2400:3200::1",
+          "2400:3200:baba::1"
         ]
       },
       "dynamic_hostname_bootstrap": []
@@ -234,7 +236,7 @@
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
     "network_diagnostics": {
-      "proxy_policy_source": "Proxy/policy-path",
+      "proxy_policy_source": "NodePool/policy-path",
       "global_proxy_row": "not-enumerated-for-external-policies",
       "global_udp_row": "not-enumerated-for-external-policies",
       "loopback_bridge": false,
@@ -299,7 +301,6 @@
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@2b8fa93901061cf0482b079203630bcd11bfe0b1/Rules/Game.list,Games,extended-matching,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@2b8fa93901061cf0482b079203630bcd11bfe0b1/Rules/OneDrive.list,Microsoft,extended-matching,no-resolve,update-interval=-1",
     "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@2b8fa93901061cf0482b079203630bcd11bfe0b1/Rules/Microsoft.list,Microsoft,extended-matching,no-resolve,update-interval=-1",
-    "RULE-SET,https://ruleset.skk.moe/List/non_ip/domestic.conf,DIRECT,extended-matching,no-resolve,update-interval=86400",
     "DOMAIN-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@2b8fa93901061cf0482b079203630bcd11bfe0b1/Rules/China.list,DIRECT,extended-matching,update-interval=-1",
     "DOMAIN-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@2b8fa93901061cf0482b079203630bcd11bfe0b1/Rules/Global.list,Proxy,extended-matching,update-interval=-1"
   ],
@@ -625,21 +626,5 @@
       "sha256": "99adfaea6b33faab59b7ab55c7a016e9fa4c8e68ce7feec8666da4719b1225ad"
     }
   ],
-  "dynamic_sources": [
-    {
-      "name": "domestic.conf",
-      "kind": "RULE-SET",
-      "url": "https://ruleset.skk.moe/List/non_ip/domestic.conf",
-      "policy": "DIRECT",
-      "extended_matching": true,
-      "active_entries": 869,
-      "size_bytes": 22632,
-      "last_updated": "2026-08-08T06:31:42.029Z",
-      "content_hash_v1": "T_za7NN7pWO6RMdaJduvv6ssx377hsJAKf_gBeOSZrA",
-      "sha256": "56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa",
-      "source_mode": "reviewed-dynamic-runtime",
-      "update_interval": 86400,
-      "release_audited": "2026-09-01"
-    }
-  ]
+  "dynamic_sources": []
 }

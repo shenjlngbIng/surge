@@ -3,8 +3,8 @@
 
 The package contains the complete repository layout, including ``Rules/`` as
 separate files and ``.github/`` workflows. The profile is checked for the exact
-29 immutable resources, one reviewed dynamic supplement and the absence of
-embedded rule snapshots before the ZIP is written.
+29 immutable resources, zero dynamic supplements and the absence of embedded
+rule snapshots before the ZIP is written.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from release_inventory import validate_release_tree
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.16-Complete-No-Embedded-20260901.zip"
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.17-Complete-No-Embedded-20260902.zip"
 
 
 def active_rule_lines(text: str) -> list[str]:

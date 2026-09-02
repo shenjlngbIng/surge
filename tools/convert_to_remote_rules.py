@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Validate the R13.16 external runtime-rule inventory.
+"""Validate the R13.17 external runtime-rule inventory.
 
-The iOS profile loads 29 repository snapshots from one immutable commit and
-one reviewed dynamic domestic supplement.  Large mutable reject lists are not
-part of the mobile runtime.
+The iOS profile loads 29 repository snapshots from one immutable commit.
+Mutable runtime supplements and large reject lists are not part of the mobile
+runtime, which removes a separate update failure path.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.16 Fail-Closed Sentinel"
-RELEASE_DATE = "2026-09-01"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.17 Connectivity Recovery"
+RELEASE_DATE = "2026-09-02"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
@@ -125,20 +125,7 @@ EXTENDED_MATCH_RESOURCES = frozenset(
     if filename != "Ads.list"
 )
 
-DYNAMIC_RULES: tuple[dict[str, object], ...] = (
-    {
-        "name": "domestic.conf",
-        "kind": "RULE-SET",
-        "url": "https://ruleset.skk.moe/List/non_ip/domestic.conf",
-        "policy": "DIRECT",
-        "extended_matching": True,
-        "active_entries": 869,
-        "size_bytes": 22632,
-        "last_updated": "2026-08-08T06:31:42.029Z",
-        "content_hash_v1": "T_za7NN7pWO6RMdaJduvv6ssx377hsJAKf_gBeOSZrA",
-        "sha256": "56809cd8399666433acb1229c3a472667a32c86fc2a0b9861a5dca54020564aa",
-    },
-)
+DYNAMIC_RULES: tuple[dict[str, object], ...] = ()
 
 
 def repository_line(kind: str, filename: str, policy: str) -> str:
@@ -162,13 +149,10 @@ def dynamic_line(item: dict[str, object]) -> str:
 
 
 def expected_remote_order() -> list[str]:
-    domestic = dynamic_line(DYNAMIC_RULES[0])
-    ordered: list[str] = []
-    for kind, filename, _label, policy in REPOSITORY_RULES:
-        if filename == "China.list":
-            ordered.append(domestic)
-        ordered.append(repository_line(kind, filename, policy))
-    return ordered
+    return [
+        repository_line(kind, filename, policy)
+        for kind, filename, _label, policy in REPOSITORY_RULES
+    ]
 
 
 def expected_remote_lines() -> set[str]:
@@ -190,7 +174,7 @@ def main() -> int:
     rules = active_rule_lines(text)
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.16 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.17 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES
@@ -210,8 +194,8 @@ def main() -> int:
     if any(marker in text for marker in forbidden):
         raise SystemExit("profile contains a mutable, mobile-heavy or unreviewed runtime source")
     print(
-        "PASS: immutable_runtime_resources=29 dynamic_runtime_resources=1 "
-        "embedded_rule_contents=0 reviewed_third_party_runtime_urls=1"
+        "PASS: immutable_runtime_resources=29 dynamic_runtime_resources=0 "
+        "embedded_rule_contents=0 reviewed_third_party_runtime_urls=0"
     )
     return 0
 

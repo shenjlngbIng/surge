@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.16 immutable-rules-plus-domestic-dynamic lock."""
+"""Regenerate the R13.17 immutable-rules-only runtime lock."""
 
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ profile_rules = [
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.16 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.17 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -83,8 +83,8 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 30,
-    "mode": "immutable-rules-plus-domestic-dynamic",
+    "schema": 31,
+    "mode": "immutable-rules-only",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
     "source_repository": "shenjlngbIng/surge",
@@ -99,36 +99,41 @@ lock = {
         "final": "FINAL,Final,dns-failed",
         "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
         "rule_snapshot_commit": RELEASE_REF,
-        "runtime_resource_count": 30,
+        "runtime_resource_count": 29,
         "immutable_repository_resource_count": 29,
-        "dynamic_runtime_resource_count": 1,
+        "dynamic_runtime_resource_count": 0,
         "local_rule_file_count": 29,
         "embedded_rule_contents": 0,
         "hidden_function_groups": [
-            "Final", "ApplePush", "ChatGPT", "Claude", "Gemini", "GitHub",
-            "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby",
-            "TikTok", "Bahamut", "Spotify", "Streaming", "Telegram", "X",
-            "Apple", "Google", "Microsoft", "Games",
+            "ApplePush", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
+            "Singapore-Nodes", "America-Nodes",
         ],
-        "removed_stateful_groups": [
-            "Auto", "NodePool", "HongKong", "TaiWan", "Japan", "Singapore",
-            "America", "AdBlock", "Security", "UDP", "Domestic", "AllServer",
+        "removed_stateful_groups": ["AllServer"],
+        "visible_control_groups": [
+            "Final", "Proxy", "AdBlock", "Security", "UDP", "Domestic",
+            "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
+            "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
+            "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
+            "Microsoft", "Games", "NodePool", "Auto", "HongKong", "TaiWan",
+            "Japan", "Singapore", "America",
         ],
-        "visible_control_groups": ["Proxy"],
         "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
         "loglevel": "notify",
         "public_embedded_proxy_policies": 0,
         "policy_architecture": {
-            "automatic_empty_group_behavior": "DIRECT/SUBSTITUTE",
-            "smart_groups": ["Proxy"],
-            "proxy": {
-                "mode": "smart", "hidden": False,
-                "source": "external-policy-path",
-                "explicit_members": [], "include_all_proxies": False,
-                "update_interval_seconds": 3600, "evaluate_before_use": True,
+            "automatic_empty_group_behavior": "native-fail-closed",
+            "smart_groups": ["Auto"],
+            "node_pool": {
+                "mode": "select", "hidden": False,
+                "source": "external-policy-path", "explicit_members": [],
+                "include_all_proxies": False, "update_interval_seconds": 3600,
             },
-            "visible_groups": ["Proxy"],
-            "reject_placeholder_members": 0,
+            "auto": {
+                "mode": "smart", "source": "NodePool",
+                "explicit_members": [], "include_all_proxies": False,
+                "evaluate_before_use": True,
+            },
+            "loopback_or_reject_proxy_members": 0,
         },
         "security_resources": [
             {"name": "Pegasus.list", "mode": "immutable", "policy": "REJECT", "entries": len(active_rows(RULES / "Pegasus.list"))},
@@ -140,7 +145,7 @@ lock = {
         "functional_guards_before_ads": list(FUNCTIONAL_GUARDS),
         "extended_matching_resources": sorted(EXTENDED_MATCH_RESOURCES),
         "domestic_resources": {
-            "dynamic_supplement": "domestic.conf",
+            "dynamic_supplement": None,
             "pinned_precise_set": "China.list",
             "policy": "DIRECT",
             "geoip": DOMESTIC_GEOIP_RULE,
@@ -149,8 +154,8 @@ lock = {
         },
         "dns": {
             "dns_server": "223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1",
-            "encrypted_dns_server": "https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query",
-            "follow_outbound_mode": True,
+            "encrypted_dns_server": "https://dns.alidns.com/dns-query, https://doh.pub/dns-query",
+            "follow_outbound_mode": False,
             "certificate_verification": True,
             "surge_dns_protocol_rules": list(SURGE_DNS_PROTOCOL_RULES),
             "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
@@ -160,11 +165,10 @@ lock = {
             "unmatched_domains_force_local_resolution": False,
             "proxy_hostname_uses_remote_resolution": True,
             "static_bootstrap": {
-                "cloudflare-dns.com": [
-                    "1.1.1.1", "1.0.0.1", "2606:4700:4700::1111",
-                    "2606:4700:4700::1001",
+                "dns.alidns.com": [
+                    "223.5.5.5", "223.6.6.6", "2400:3200::1",
+                    "2400:3200:baba::1",
                 ],
-                "dns.quad9.net": ["9.9.9.9", "149.112.112.112", "2620:fe::fe", "2620:fe::9"],
             },
             "dynamic_hostname_bootstrap": [],
         },
@@ -184,7 +188,7 @@ lock = {
         "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
         "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
         "network_diagnostics": {
-            "proxy_policy_source": "Proxy/policy-path",
+            "proxy_policy_source": "NodePool/policy-path",
             "global_proxy_row": "not-enumerated-for-external-policies",
             "global_udp_row": "not-enumerated-for-external-policies",
             "loopback_bridge": False,

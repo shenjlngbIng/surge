@@ -1,5 +1,15 @@
 # 更新日志
 
+## 2026-09-02 R13.17 真机故障恢复
+
+- 根据真机截图确认 R13.16 同时造成 NodePool、Auto、地区组失败和 jsDelivr 资源超时。
+- 删除 `Fail-Closed = http, 127.0.0.1, 1` 回环假代理；Smart 只接收 NodePool 的真实节点，无节点时原生失败关闭。
+- Surge 自身加密 DNS 改回 AliDNS DoH 与 DNSPod DoH 的独立直连引导，解除 `DNS → Proxy → Auto → DNS` 启动依赖；应用内 DoH/DoT 代理规则、53 端口接管和 53/853/8853 拒绝保持。
+- 新增 jsDelivr 经 Proxy 更新的本地前置规则，避开中国移动直连超时。
+- 删除动态 `ruleset.skk.moe` 国内补充，运行资源由 30 个降为 29 个固定提交资源；活动规则仍为 147。
+- NodePool、Auto、五地区、20 个服务策略、AdBlock、Security、UDP、Domestic 全部保留。
+- 运行锁升级到 schema 31，完整包为 `Surge-R13.17-Complete-No-Embedded-20260902.zip`。
+
 ## 2026-09-01 R13.16 恢复 Fail-Closed 哨兵
 
 - `[Proxy]` 恢复唯一的 `Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true` 不可达哨兵。

@@ -1,22 +1,24 @@
-# R13.15 到 R13.16 哨兵恢复说明
+# R13.16 到 R13.17 故障恢复说明
 
-R13.16 在 R13.15 完整策略结构上恢复旧版 `Fail-Closed` 哨兵。哨兵只进入 `Auto` 的 Smart 候选，不进入 NodePool、Proxy 或可见地区组，因此正常订阅不会重新出现成排红色失败卡片。
+R13.17 撤回 R13.16 的回环假哨兵。该假代理会污染 Smart 选点并阻断加密 DNS，不能作为失败关闭方案。
 
 ## 升级
 
-1. 导入完整的 R13.16 `Surge.conf`。
-2. 搜索 `REPLACE_WITH_SURGE_SUBSCRIPTION_URL`，替换为现有 Surge 格式订阅 URL。
-3. 保存并重新加载配置。
-4. 打开策略页，确认 `NodePool` 能看到真实节点，`Auto` 能自动选择，地区与服务策略均已恢复。
-5. 删除旧配置副本即可；不需要重建 Sub-Store 订阅，也不需要 `Private-Proxies.conf` 或转换脚本。
+1. 删除手机中的 R13.16 配置或停止使用它。
+2. 导入完整 R13.17 `Surge.conf`。
+3. 搜索 `REPLACE_WITH_SURGE_SUBSCRIPTION_URL`，替换为原来的 Surge 格式 Sub-Store 地址。
+4. 保存、重新加载并更新外部资源。
+5. 在 `NodePool` 确认真实节点，在 `Auto` 执行一次测速。
 
-| 项目 | R13.15 | R13.16 |
+不需要重建 Sub-Store 订阅，不需要 `Private-Proxies.conf`，也不需要转换脚本。
+
+| 项目 | R13.16 | R13.17 |
 |---|---|---|
-| 节点来源 | `NodePool.policy-path` | 保持不变 |
-| 策略分组 | 完整 | 保持不变 |
-| Fail-Closed | 缺失 | 恢复为唯一静态哨兵，仅供 Auto 失败兜底 |
-| 地区空组 | 回退 Auto | 保持不变 |
-| DNS 出口 | 加密 DNS 跟随 Proxy | 保持不变 |
-| 安装文件 | 一个配置 | 一个配置 |
+| 节点来源 | NodePool.policy-path | 保持 |
+| 回环假代理 | 作为 Auto 候选 | 删除 |
+| 失败关闭 | 假节点阻断整个 DNS 链 | 无节点时原生失败 |
+| 加密 DNS | 依赖 Proxy/Auto | 独立直连引导 |
+| 固定规则资源 | 29 | 29 |
+| 动态规则资源 | 1 | 0 |
 
-全局网络诊断不一定枚举 `policy-path` 外置节点。请以 `Proxy` 中真实节点延迟、实际网页和真实 UDP 流量验收；配置不会使用回环或假代理伪造结果。
+全局网络诊断不一定枚举外置节点。请以真实节点延迟和实际流量验收。

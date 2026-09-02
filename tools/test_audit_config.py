@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.16 configuration auditor."""
+"""Fault-injection regression tests for the R13.17 configuration auditor."""
 
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.16 Fail-Closed Sentinel", "R13.15 Restored Groups"),
-    ("date", "# > Update Date: 2026.09.01", "# > Update Date: 2026.08.31"),
-    ("layout_claim", "# > Restores NodePool, Auto, region, service groups and the hidden fail-closed sentinel.\n", ""),
+    ("version", "R13.17 Connectivity Recovery", "R13.16 Fail-Closed Sentinel"),
+    ("date", "# > Update Date: 2026.09.02", "# > Update Date: 2026.09.01"),
+    ("layout_claim", "# > Removes the loopback pseudo-proxy that deadlocked DNS, node tests and resource updates.\n", ""),
     ("subscription_claim", "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.\n", ""),
     ("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", ""),
     ("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
@@ -63,8 +63,8 @@ for name, old, new in (
     ("include_all", "include-all-networks = true", "include-all-networks = false"),
     ("include_apns", "include-apns = true", "include-apns = false"),
     ("dns_server", "dns-server = 223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1", "dns-server = 8.8.8.8"),
-    ("encrypted_dns", "encrypted-dns-server = https://cloudflare-dns.com/dns-query, https://dns.quad9.net/dns-query", "encrypted-dns-server = https://dns.google/dns-query"),
-    ("dns_follow", "encrypted-dns-follow-outbound-mode = true", "encrypted-dns-follow-outbound-mode = false"),
+    ("encrypted_dns", "encrypted-dns-server = https://dns.alidns.com/dns-query, https://doh.pub/dns-query", "encrypted-dns-server = https://dns.google/dns-query"),
+    ("dns_follow", "encrypted-dns-follow-outbound-mode = false", "encrypted-dns-follow-outbound-mode = true"),
     ("dns_cert", "encrypted-dns-skip-cert-verification = false", "encrypted-dns-skip-cert-verification = true"),
     ("hijack_dns", "hijack-dns = *:53", "hijack-dns = 8.8.8.8:53"),
     ("local_host_proxy", "use-local-host-item-for-proxy = false", "use-local-host-item-for-proxy = true"),
@@ -80,13 +80,9 @@ for name, old, new in (
 # Host, static proxy and restored full-group architecture.
 for name, old, new in (
     ("substore_host", "sub.store = 127.0.0.1", "sub.store = 1.1.1.1"),
-    ("cloudflare_bootstrap", "cloudflare-dns.com = 1.1.1.1, 1.0.0.1, 2606:4700:4700::1111, 2606:4700:4700::1001", "cloudflare-dns.com = 8.8.8.8"),
-    ("quad9_bootstrap", "dns.quad9.net = 9.9.9.9, 149.112.112.112, 2620:fe::fe, 2620:fe::9", "dns.quad9.net = 8.8.8.8"),
+    ("alidns_bootstrap", "dns.alidns.com = 223.5.5.5, 223.6.6.6, 2400:3200::1, 2400:3200:baba::1", "dns.alidns.com = 8.8.8.8"),
     ("embedded_reject", "[Proxy]\n", "[Proxy]\nFail-Closed = reject\n"),
     ("loopback_diagnostics", "[Proxy]\n", "[Proxy]\nDiagnostics = socks5, 127.0.0.1, 6153, udp-relay=true\n"),
-    ("sentinel_address", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.2, 1, no-error-alert=true"),
-    ("sentinel_port", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.1, 2, no-error-alert=true"),
-    ("sentinel_alert", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=false"),
     ("final_members", "Final = select, Proxy, DIRECT,", "Final = select, Proxy, REJECT,"),
     ("final_hidden", "Final = select, Proxy, DIRECT, no-alert=0, hidden=0", "Final = select, Proxy, DIRECT, no-alert=0, hidden=1"),
     ("applepush_order", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy"),
@@ -106,7 +102,7 @@ for name, group, old, new in (
     ("nodepool_hidden", "NodePool", "hidden=0", "hidden=1"),
     ("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1"),
     ("auto_select", "Auto", "smart", "select"),
-    ("auto_without_sentinel", "Auto", "smart, Fail-Closed,", "smart,"),
+    ("auto_fake_sentinel", "Auto", "smart,", "smart, Fail-Closed,"),
     ("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false"),
     ("auto_hidden", "Auto", "hidden=0", "hidden=1"),
     ("auto_wrong_source", "Auto", "include-other-group=NodePool", "include-other-group=America"),
@@ -125,6 +121,7 @@ for name, old, new in (
     ("final_deleted", "FINAL,Final,dns-failed\n", ""),
     ("final_duplicate", "FINAL,Final,dns-failed\n", "FINAL,Final,dns-failed\nFINAL,Final,dns-failed\n"),
     ("stun_direct", "PROTOCOL,STUN,Proxy", "PROTOCOL,STUN,DIRECT"),
+    ("resource_transport", "DOMAIN-SUFFIX,jsdelivr.net,Proxy", "DOMAIN-SUFFIX,jsdelivr.net,DIRECT"),
     ("doh_direct", "PROTOCOL,DOH,Proxy", "PROTOCOL,DOH,DIRECT"),
     ("doh3_deleted", "PROTOCOL,DOH3,Proxy\n", ""),
     ("dns_protocol_direct", "PROTOCOL,DNS,Proxy", "PROTOCOL,DNS,DIRECT"),
@@ -163,4 +160,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.16 mutations={len(MUTATIONS)}")
+print(f"PASS R13.17 mutations={len(MUTATIONS)}")
