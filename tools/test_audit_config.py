@@ -152,6 +152,9 @@ replace_once("udp_control", "PROTOCOL,UDP,UDP", "PROTOCOL,UDP,Proxy")
 replace_once("domestic_control", "Rules/China.list,Domestic,", "Rules/China.list,DIRECT,")
 replace_once("sentinel_deleted", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true\n", "")
 
+for auxiliary in ("AdBlock", "Security", "UDP", "Domestic"):
+    replace_group_fragment(f"{auxiliary}_visible", auxiliary, "hidden=1", "hidden=0")
+
 if len(MUTATIONS) < 65:
     raise RuntimeError(f"expected at least 65 mutations, built {len(MUTATIONS)}")
 

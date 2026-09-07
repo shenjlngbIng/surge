@@ -25,6 +25,8 @@
 | UDP | 控制 STUN 和未被前置业务/国内规则命中的 UDP，默认 Proxy |
 | ApplePush | 优先 Proxy，失败后 DIRECT，保留推送可用性的例外 |
 
+AdBlock、Security、UDP、Domestic 四个辅助组默认隐藏，功能、选项和分流保持不变。需要调整时可在文本配置中把对应组的 `hidden=1` 改为 `hidden=0`；节点池、Auto、地区和服务组仍可见。`REJECT` / `REJECT-DROP` 用于拒绝连接，其测速显示失败不表示节点故障。[隐藏参数说明](https://manual.nssurge.com/policy-groups/parameters.html)。
+
 `Fail-Closed` 是刻意不可连接的本机保护项，它单独显示“失败”是预期状态。它使 Smart 始终保留一个代理类型成员，避免空 Smart 被替换为 DIRECT。隐藏订阅源和隐藏地区源另有原生 REJECT 保护。哨兵保护的是应走代理的流量；明确直连的国内/LAN/APNs 例外和用户手动选择的 DIRECT 不属于全局断网保护。
 
 ## DNS 与 UDP
@@ -32,6 +34,8 @@
 Surge 自身使用 AliDNS/DNSPod 独立直连 DoH，开启证书校验，避免解析节点域名时形成代理启动循环。应用内已知解析器仍按规则代理，公共 53/853/8853 边界和 `no-resolve` 保留。DNS 检测不保证显示与代理出口完全相同的运营商；DoH 引导、连通性检测及远端节点 DNS 仍有各自的边界。
 
 订阅导入时统一启用 `udp-relay=true`，补齐 Shadowsocks/SOCKS5 需要的客户端开关。服务端仍必须支持 UDP；不支持或转发失败时不会自动转为直连。TCP 测速成功不等于 UDP 已通过。主配置不包含本机 SOCKS 诊断桥，也不以假成功填充诊断页面。
+
+如果“网络诊断”只显示 `Fail-Closed` 连接被拒绝，而“UDP 代理转发”区域为空，该页面没有提供真实订阅节点的 UDP 测试结果。这个本机哨兵使用不支持 UDP 的 HTTP 代理类型；它的预期失败不能代表真实节点的 UDP 能力。应以实际节点的 UDP 测试结果或 UDP 连接日志定位，不能用普通延迟测速替代。
 
 依据：[Smart](https://manual.nssurge.com/policy-groups/smart.html)、[策略导入](https://manual.nssurge.com/policy-groups/policy-including.html)、[加密 DNS](https://manual.nssurge.com/dns/encrypted-dns.html)、[UDP 转发](https://manual.nssurge.com/policies/udp.html)。外部订阅与规则的基本结构也对照了 [开发者参考配置](https://github.com/Rabbit-Spec/Surge/blob/Master/Conf/Spec/Surge-Developer.conf) 和 [Lucky 配置](https://github.com/As-Lucky/Lucky/blob/main/Lucky-Surge.conf)。
 

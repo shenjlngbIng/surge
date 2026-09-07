@@ -332,7 +332,7 @@ for name, members in {
 }.items():
     if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
         fail(f"{name} control defaults or choices changed")
-    require_exact_options(group_parts(groups, name), name, VISIBLE_SELECT_OPTIONS)
+    require_exact_options(group_parts(groups, name), name, ("no-alert=0", "hidden=1", "include-all-proxies=0"))
 
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
     fail("ApplePush fallback exception changed")

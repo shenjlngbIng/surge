@@ -123,12 +123,13 @@ expected_invariants = {
     "local_rule_file_count": 29,
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
+        "AdBlock", "Security", "UDP", "Domestic",
         "ApplePush", "Subscription", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
         "Singapore-Nodes", "America-Nodes",
     ],
     "removed_stateful_groups": ["AllServer"],
     "visible_control_groups": [
-        "Final", "Proxy", "AdBlock", "Security", "UDP", "Domestic",
+        "Final", "Proxy",
         "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
         "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
         "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
