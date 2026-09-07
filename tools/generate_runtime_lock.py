@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.17 immutable-rules-only runtime lock."""
+"""Regenerate the R13.18 single-file embedded runtime lock."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from convert_to_remote_rules import (
     RULE_SNAPSHOT_TAG,
     SURGE_DNS_PROTOCOL_RULES,
     expected_remote_order,
+    validate_embedded_profile,
 )
 
 
@@ -52,8 +53,9 @@ profile_rules = [
     if row.strip() and not row.lstrip().startswith(("#", ";", "//"))
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
-if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.17 inventory")
+validate_embedded_profile(text)
+if external:
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.18 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -62,13 +64,12 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
     path = RULES / filename
     rows = active_rows(path)
     repository_sources.append({
-        "source_mode": "immutable-repository-snapshot",
+        "source_mode": "embedded-reviewed-snapshot",
         "kind": kind,
         "file": filename,
-        "url": f"{REMOTE_BASE}{filename}",
+        "source_commit": RELEASE_REF,
         "policy": policy,
         "extended_matching": filename in EXTENDED_MATCH_RESOURCES,
-        "update_interval": -1,
         "active_entries": len(rows),
         "sha256": sha256_bytes(path.read_bytes()),
     })
@@ -83,8 +84,8 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 31,
-    "mode": "immutable-rules-only",
+    "schema": 32,
+    "mode": "embedded-rules-single-subscription",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
     "source_repository": "shenjlngbIng/surge",
@@ -92,18 +93,18 @@ lock = {
     "profile_lines": len(text.splitlines()),
     "active_rules": len(profile_rules),
     "runtime_resources": len(external),
-    "immutable_repository_resources": len(repository_sources),
+    "immutable_repository_resources": 0,
     "dynamic_runtime_resources": len(dynamic_sources),
     "local_rule_files": len(local_lists),
     "required_invariants": {
         "final": "FINAL,Final,dns-failed",
         "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
         "rule_snapshot_commit": RELEASE_REF,
-        "runtime_resource_count": 29,
-        "immutable_repository_resource_count": 29,
+        "runtime_resource_count": 0,
+        "immutable_repository_resource_count": 0,
         "dynamic_runtime_resource_count": 0,
         "local_rule_file_count": 29,
-        "embedded_rule_contents": 0,
+        "embedded_rule_contents": 5546,
         "hidden_function_groups": [
             "ApplePush", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
             "Singapore-Nodes", "America-Nodes",
@@ -121,7 +122,7 @@ lock = {
         "loglevel": "notify",
         "public_embedded_proxy_policies": 0,
         "policy_architecture": {
-            "automatic_empty_group_behavior": "native-fail-closed",
+            "automatic_empty_group_behavior": "Smart may use DIRECT/SUBSTITUTE when empty; not a kill switch",
             "smart_groups": ["Auto"],
             "node_pool": {
                 "mode": "select", "hidden": False,
@@ -158,12 +159,14 @@ lock = {
             "follow_outbound_mode": False,
             "certificate_verification": True,
             "surge_dns_protocol_rules": list(SURGE_DNS_PROTOCOL_RULES),
+            "surge_dns_protocol_rules_active": False,
             "domestic_application_resolvers": list(DOMESTIC_DNS_RULES),
             "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
             "domestic_resolver_policy": "Proxy",
             "foreign_resolver_policy": "Proxy",
             "unmatched_domains_force_local_resolution": False,
-            "proxy_hostname_uses_remote_resolution": True,
+            "proxy_destination_can_use_remote_resolution": True,
+            "proxy_server_hostname_resolution": "local independent DoH bootstrap",
             "static_bootstrap": {
                 "dns.alidns.com": [
                     "223.5.5.5", "223.6.6.6", "2400:3200::1",
@@ -189,8 +192,8 @@ lock = {
         "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
         "network_diagnostics": {
             "proxy_policy_source": "NodePool/policy-path",
-            "global_proxy_row": "not-enumerated-for-external-policies",
-            "global_udp_row": "not-enumerated-for-external-policies",
+            "global_proxy_row": "device-dependent; not verified by offline tests",
+            "global_udp_row": "device-dependent; not verified by offline tests",
             "loopback_bridge": False,
             "policy_path": True,
             "real_policy_udp_test": "apple.com@1.1.1.1",
@@ -210,15 +213,17 @@ lock = {
             "international_compatibility_guards": list(RETIRED_BILIBILI_INTL_GUARDS),
         },
     },
-    "runtime_order": external,
-    "embedded_sources": [],
-    "remote_sources": repository_sources,
+    "runtime_order": [],
+    "embedded_order": [item["file"] for item in repository_sources],
+    "embedded_sources": repository_sources,
+    "remote_sources": [],
+    "external_policy_resources": 1,
     "dynamic_sources": dynamic_sources,
 }
 
 LOCK.write_text(json.dumps(lock, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(
-    f"updated {LOCK}: runtime_sources={len(external)} immutable={len(repository_sources)} "
+    f"updated {LOCK}: runtime_sources={len(external)} embedded_sources={len(repository_sources)} "
     f"dynamic={len(dynamic_sources)} local_rule_files={len(local_lists)} "
-    f"rules={len(profile_rules)} embedded_rule_contents=0"
+    f"rules={len(profile_rules)} embedded_rule_contents=5546"
 )

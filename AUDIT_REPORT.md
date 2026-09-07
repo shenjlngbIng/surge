@@ -1,41 +1,33 @@
-# R13.17 真机故障恢复审计报告
+# R13.18 单文件规则审计
 
-审计日期：2026-09-02
+审计日期：2026-09-07。
 
-## 结论
+## 已修复的配置问题
 
-R13.16 不能继续使用。真机截图同时出现 NodePool、Auto、地区组失败，以及所有 jsDelivr 资源超时。根因是不可达的 `Fail-Closed = http, 127.0.0.1, 1` 被放入 Smart，而加密 DNS 又依赖这个 Smart 组，形成启动死锁。
+R13.17 真机反馈显示外部规则持续超时，并显示 NodePool 更新返回 HTTP 500。增加 jsDelivr 代理规则未使用户设备成功更新，不能据此宣称下载链路已修复。
 
-R13.17 删除回环假代理。Auto 只递归导入 NodePool 的真实代理；没有可用节点时没有 DIRECT 替代项，天然失败关闭。
+R13.18 将 29 份快照转为主配置中的普通规则，不再引用外部 RULE-SET 或 DOMAIN-SET。此变更从文件结构上消除了 29 次规则资源下载，但不消除订阅下载或代理服务本身的错误。
 
-## 当前结构
+全部 5,546 条快照规则按原位置展开；结合原有 118 条规则，实际规则数为 5,664。DOMAIN-SET 的点前缀转为 DOMAIN-SUFFIX，无点前缀转为精确 DOMAIN；每条规则继承原策略，域名继承 extended-matching，IP/ASN 继承 no-resolve。规则优先级保持。
 
-```ini
-[Proxy]
-# empty
+39 个策略组保留。五个隐藏地区源增加原生 REJECT 成员，避免地区源为空时被替换为直连。NodePool 和 Auto 不注入假代理。
 
-[Proxy Group]
-Proxy = select, Auto, NodePool, HongKong, TaiWan, Japan, Singapore, America, ...
-NodePool = select, policy-path=<one Surge URL>, ...
-Auto = smart, evaluate-before-use=true, include-other-group=NodePool, ...
-```
+## 已完成验证
 
-- 39 个策略组，NodePool、Auto、五个地区入口和 20 个服务策略完整保留。
-- 5 个严格地区源隐藏；对应可见地区组在无匹配节点时回退 Auto。
-- `[Proxy]` 中没有回环代理、拒绝别名、静态节点或私人凭据。
-- jsDelivr 更新流量在规则表前段明确进入 Proxy。
+- 29 个原始快照与固定提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1` 的源数据保持一致。
+- 逐条比较转换前后 5,664 条规则的顺序、策略、匹配选项和解析选项。
+- 16 个离线分流案例覆盖 BiliBili、ChatGPT、Apple 流媒体、Microsoft、Pegasus 精确匹配及 SNI 匹配。
+- 6 个损坏配置案例验证丢规则、改策略、丢匹配参数及重新引入外部规则会被拒绝。
+- 79 个现有配置故障注入案例、规则来源锁、发布文件清单和 ZIP 检查通过。
 
-## DNS
+这些是仓库级静态和行为模型检查，未运行 Surge 原生解析器或 iPhone 客户端。
 
-- AliDNS DoH 与 DNSPod DoH，证书校验开启。
-- Surge 自身加密 DNS 直连引导，避免 NodePool 尚未建立时循环依赖。
-- 应用内 DoH/DoT、STUN、公开 DNS 端口的代理与拒绝边界保持。
-- 53 端口继续由 `hijack-dns=*:53` 接管。
+## 撤回的结论和待确认项
 
-## 供应链
+前版关于“假哨兵已被确认为所有错误的唯一根因”“Smart 空池天然失败关闭”“PROTOCOL DNS 规则覆盖应用内 DoH”“诊断空白一定只是显示问题”的确定性表述不成立。
 
-- 29 个运行资源全部固定到提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1`。
-- 删除动态 `ruleset.skk.moe` 国内补充，避免独立 HTTP 500/漂移路径。
-- 私人 Sub-Store 地址仍只存在于用户本地 Ready 配置，不进入公开仓库。
+Smart 空组可使用 DIRECT/SUBSTITUTE，不能承诺完整自动断网保护。Surge 自身 DNS 为独立直连 DoH，不保证 DNS 出口与代理出口一致。已知解析器域名规则和 DNS 端口限制继续存在。
 
-全局代理/UDP 诊断是否枚举 `policy-path` 节点仍属于 Surge 的显示边界，不使用假代理伪造结果。
+HTTP 500 的响应内容、Sub-Store 脚本日志、真实节点连接错误和当前订阅有效性尚未取得；不能根据旧到期截图断定用户未续费，也不能把 HTTP 500 归因于某一个未取得日志的服务器。
+
+本次发布可验证的结果是规则无需外部下载和策略结构保留。节点、真实流量和 UDP 是否恢复仍待设备验证。

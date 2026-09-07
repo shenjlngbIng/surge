@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.17 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.18 profile."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ from convert_to_remote_rules import (
     SURGE_DNS_PROTOCOL_RULES,
     expected_remote_order,
     repository_line,
+    validate_embedded_profile,
 )
 
 
@@ -189,9 +190,9 @@ expected_header = [
     "# > Surge Config Make by .ᐣ",
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.09.02",
-    "# > Surge iOS Privacy + Push R13.17 Connectivity Recovery | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > Removes the loopback pseudo-proxy that deadlocked DNS, node tests and resource updates.",
+    "# > Update Date: 2026.09.07",
+    "# > Surge iOS Privacy + Push R13.18 Single File Rules | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > All 29 reviewed rule lists are embedded; only the node subscription is downloaded.",
     "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
@@ -335,8 +336,8 @@ for name in SERVICE_GROUPS:
 for name in REGIONS:
     source = f"{name}-Nodes"
     source_parts = group_parts(groups, source)
-    if source_parts[0] != "url-test" or group_members(groups, source):
-        fail(f"{source} must contain only filtered NodePool policies")
+    if source_parts[0] != "url-test" or group_members(groups, source) != ["REJECT"]:
+        fail(f"{source} must contain a REJECT guard plus filtered NodePool policies")
     require_options(source_parts, source, (
         "interval=600", "tolerance=100", "evaluate-before-use=true",
         "no-alert=0", "hidden=1", "include-all-proxies=0", "include-other-group=NodePool",
@@ -385,7 +386,10 @@ def visit(name: str) -> None:
 for group in groups:
     visit(group)
 
-rules = active(sections["Rule"])
+expanded_rules = active(sections["Rule"])
+rules = active(parse(validate_embedded_profile(text))["Rule"])
+if len(expanded_rules) != 5664:
+    fail("embedded rule count differs from the 29 reviewed snapshots")
 if len(rules) != 147 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
@@ -402,7 +406,7 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.17 must not load mutable runtime supplements")
+    fail("R13.18 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -489,7 +493,7 @@ for line in ("DOMAIN,img-prod-cms-rt-microsoft-com.akamaized.net,Microsoft", "DO
         fail("Microsoft/shared cloud guard must precede Game")
 
 valid_policies = set(groups) | set(proxies) | {"DIRECT", "REJECT", "REJECT-DROP"}
-for rule in rules:
+for rule in expanded_rules:
     fields = [field.strip() for field in rule.split(",")]
     policy = fields[1] if fields[0] == "FINAL" else fields[2]
     if policy not in valid_policies:
@@ -497,12 +501,12 @@ for rule in rules:
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (147, 29, 29, 0, 29)
+    expected_counts = (5664, 0, 0, 0, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 31 or lock.get("mode") != "immutable-rules-only":
+    if lock.get("schema") != 32 or lock.get("mode") != "embedded-rules-single-subscription":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -510,7 +514,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.17 groups={len(groups)} rules={len(rules)} runtime_resources={len(external)} "
-    f"immutable_resources={len(REPOSITORY_RULES)} dynamic_resources={len(DYNAMIC_RULES)} "
-    f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
+    f"PASS R13.18 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=0 "
+    f"embedded_sources={len(REPOSITORY_RULES)} "
+    f"embedded_rule_contents=5546 sha256={hashlib.sha256(payload).hexdigest()}"
 )

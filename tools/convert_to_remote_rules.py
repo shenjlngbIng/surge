@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""Validate the R13.17 external runtime-rule inventory.
+"""Validate the R13.18 embedded rule inventory (legacy command name).
 
-The iOS profile loads 29 repository snapshots from one immutable commit.
-Mutable runtime supplements and large reject lists are not part of the mobile
-runtime, which removes a separate update failure path.
+Former resource references describe provenance and logical ordering only.
+The iOS profile contains the rules and performs no remote rule-list downloads.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
+from embed_runtime_rules import collapse_profile
+
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.17 Connectivity Recovery"
-RELEASE_DATE = "2026-09-02"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.18 Single File Rules"
+RELEASE_DATE = "2026-09-07"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
 REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
@@ -169,12 +170,26 @@ def active_rule_lines(text: str) -> list[str]:
     ]
 
 
+def validate_embedded_profile(text: str, root: Path = ROOT) -> str:
+    collapsed, blocks = collapse_profile(text, root)
+    expected = [(kind, filename, policy) for kind, filename, _label, policy in REPOSITORY_RULES]
+    if [block[:3] for block in blocks] != expected:
+        raise ValueError("embedded rule source order, policy or inventory differs from the reviewed snapshots")
+    logical = active_rule_lines(collapsed)
+    references = [line for line in logical if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
+    if references != expected_remote_order():
+        raise ValueError("embedded rule options or source order differs from reviewed inventory")
+    if any(line.startswith(("RULE-SET,", "DOMAIN-SET,")) for line in active_rule_lines(text)):
+        raise ValueError("single-file profile contains a runtime rule dependency")
+    return collapsed
+
+
 def main() -> int:
     text = PROFILE.read_text(encoding="utf-8")
-    rules = active_rule_lines(text)
+    rules = active_rule_lines(validate_embedded_profile(text))
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.17 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.18 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES
@@ -194,8 +209,8 @@ def main() -> int:
     if any(marker in text for marker in forbidden):
         raise SystemExit("profile contains a mutable, mobile-heavy or unreviewed runtime source")
     print(
-        "PASS: immutable_runtime_resources=29 dynamic_runtime_resources=0 "
-        "embedded_rule_contents=0 reviewed_third_party_runtime_urls=0"
+        "PASS: remote_runtime_rules=0 embedded_sources=29 "
+        "embedded_rule_contents=5546"
     )
     return 0
 

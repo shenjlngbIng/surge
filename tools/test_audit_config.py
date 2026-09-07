@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.17 configuration auditor."""
+"""Fault-injection regression tests for the R13.18 configuration auditor."""
 
 from __future__ import annotations
 
@@ -37,9 +37,9 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.17 Connectivity Recovery", "R13.16 Fail-Closed Sentinel"),
-    ("date", "# > Update Date: 2026.09.02", "# > Update Date: 2026.09.01"),
-    ("layout_claim", "# > Removes the loopback pseudo-proxy that deadlocked DNS, node tests and resource updates.\n", ""),
+    ("version", "R13.18 Single File Rules", "R13.16 Fail-Closed Sentinel"),
+    ("date", "# > Update Date: 2026.09.07", "# > Update Date: 2026.09.01"),
+    ("layout_claim", "# > All 29 reviewed rule lists are embedded; only the node subscription is downloaded.\n", ""),
     ("subscription_claim", "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.\n", ""),
     ("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", ""),
     ("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
@@ -50,7 +50,7 @@ for name, old, new in (
 ):
     replace_once(name, old, new)
 
-replace_once("mutable_main", "# Repository-hosted remote rule sets\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@main/Rules/Ads.list,REJECT,no-resolve\n# Repository-hosted remote rule sets\n")
+replace_once("mutable_main", "# Embedded rule snapshots\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@mainRules/Ads.list|REJECT|no-resolve\n# Embedded rule snapshots\n")
 replace_once("mobile_dynamic_ads", "# Artificial intelligence\n", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n# Artificial intelligence\n")
 
 # General, DNS and access invariants.
@@ -106,6 +106,7 @@ for name, group, old, new in (
     ("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false"),
     ("auto_hidden", "Auto", "hidden=0", "hidden=1"),
     ("auto_wrong_source", "Auto", "include-other-group=NodePool", "include-other-group=America"),
+    ("region_empty_guard", "HongKong-Nodes", "url-test, REJECT,", "url-test,"),
     ("region_source_visible", "HongKong-Nodes", "hidden=1", "hidden=0"),
     ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=NodePool", "include-other-group=Auto"),
     ("region_fallback_deleted", "HongKong", "HongKong-Nodes, Auto", "HongKong-Nodes"),
@@ -128,8 +129,8 @@ for name, old, new in (
     ("domestic_dns_direct", "DOMAIN,dns.alidns.com,Proxy", "DOMAIN,dns.alidns.com,DIRECT"),
     ("dns_port_order", "DEST-PORT,53,REJECT\nDEST-PORT,853,REJECT", "DEST-PORT,853,REJECT\nDEST-PORT,53,REJECT"),
     ("foreign_dns_direct", "DOMAIN,dns.google,Proxy", "DOMAIN,dns.google,DIRECT"),
-    ("pegasus_policy", "/Rules/Pegasus.list,REJECT,extended-matching", "/Rules/Pegasus.list,Proxy,extended-matching"),
-    ("ads_policy", "/Rules/Ads.list,REJECT,no-resolve", "/Rules/Ads.list,Proxy,no-resolve"),
+    ("pegasus_policy", "Rules/Pegasus.list|REJECT|extended-matching", "Rules/Pegasus.list|Proxy|extended-matching"),
+    ("ads_policy", "Rules/Ads.list|REJECT|no-resolve", "Rules/Ads.list|Proxy|no-resolve"),
     ("bilibili_guard", "DOMAIN,httpdns.bilivideo.com,DIRECT\n", ""),
     ("openai_guard", "DOMAIN,rum.browser-intake-datadoghq.com,ChatGPT\n", ""),
     ("intl_guard", "DOMAIN,apiintl.biliapi.net,Proxy", "DOMAIN,apiintl.biliapi.net,DIRECT"),
@@ -160,4 +161,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.17 mutations={len(MUTATIONS)}")
+print(f"PASS R13.18 mutations={len(MUTATIONS)}")
