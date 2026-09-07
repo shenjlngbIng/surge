@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single strict inventory for every R13.18 release producer and verifier."""
+"""Single strict inventory for every R13.19 release producer and verifier."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ RULE_FILES = {
 TOOL_FILES = {
     "audit_config.py", "audit_precise_domains.py", "audit_rules.py",
     "convert_to_remote_rules.py", "generate_runtime_lock.py",
-    "embed_runtime_rules.py", "test_embed_runtime_rules.py",
+    "test_runtime_rules.py", "test_policy_failover.py",
     "generate_checksums.py", "generate_release_manifest.py", "package_release.py",
     "release_inventory.py", "stage_surge_zip.py", "test_audit_config.py",
     "test_release_inventory.py", "test_stage_surge_zip.py",
@@ -95,7 +95,7 @@ TRANSIENT_ARCHIVES = {
     PurePosixPath("Surge-R13.13-Complete-No-Embedded-20260901.zip"),
     PurePosixPath("Surge-R13.16-Complete-No-Embedded-20260901.zip"),
     PurePosixPath("Surge-R13.17-Complete-No-Embedded-20260902.zip"),
-    PurePosixPath("Surge-R13.18-Single-File-20260907.zip"),
+    PurePosixPath("Surge-R13.19-External-Rules-20260907.zip"),
 }
 IGNORED_DIRECTORY_NAMES = {".git", "__pycache__"}
 ALLOWED_DIRECTORIES = frozenset(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.18 single-file embedded runtime lock."""
+"""Regenerate the R13.19 external-rule runtime lock."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from convert_to_remote_rules import (
     RULE_SNAPSHOT_TAG,
     SURGE_DNS_PROTOCOL_RULES,
     expected_remote_order,
-    validate_embedded_profile,
+    validate_remote_profile,
 )
 
 
@@ -53,9 +53,9 @@ profile_rules = [
     if row.strip() and not row.lstrip().startswith(("#", ";", "//"))
 ]
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
-validate_embedded_profile(text)
-if external:
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.18 inventory")
+validate_remote_profile(text)
+if external != expected_remote_order():
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.19 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -64,7 +64,9 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
     path = RULES / filename
     rows = active_rows(path)
     repository_sources.append({
-        "source_mode": "embedded-reviewed-snapshot",
+        "source_mode": "immutable-github-raw",
+        "url": f"{REMOTE_BASE}{filename}",
+        "update_interval": -1,
         "kind": kind,
         "file": filename,
         "source_commit": RELEASE_REF,
@@ -84,8 +86,8 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 32,
-    "mode": "embedded-rules-single-subscription",
+    "schema": 33,
+    "mode": "remote-rules-guarded-single-subscription",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
     "source_repository": "shenjlngbIng/surge",
@@ -93,20 +95,20 @@ lock = {
     "profile_lines": len(text.splitlines()),
     "active_rules": len(profile_rules),
     "runtime_resources": len(external),
-    "immutable_repository_resources": 0,
+    "immutable_repository_resources": 29,
     "dynamic_runtime_resources": len(dynamic_sources),
     "local_rule_files": len(local_lists),
     "required_invariants": {
         "final": "FINAL,Final,dns-failed",
         "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
         "rule_snapshot_commit": RELEASE_REF,
-        "runtime_resource_count": 0,
-        "immutable_repository_resource_count": 0,
+        "runtime_resource_count": 29,
+        "immutable_repository_resource_count": 29,
         "dynamic_runtime_resource_count": 0,
         "local_rule_file_count": 29,
-        "embedded_rule_contents": 5546,
+        "embedded_rule_contents": 0,
         "hidden_function_groups": [
-            "ApplePush", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
+            "ApplePush", "Subscription", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
             "Singapore-Nodes", "America-Nodes",
         ],
         "removed_stateful_groups": ["AllServer"],
@@ -120,27 +122,34 @@ lock = {
         ],
         "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
         "loglevel": "notify",
-        "public_embedded_proxy_policies": 0,
+        "public_embedded_proxy_policies": 1,
         "policy_architecture": {
-            "automatic_empty_group_behavior": "Smart may use DIRECT/SUBSTITUTE when empty; not a kill switch",
+            "automatic_empty_group_behavior": "nonempty local HTTP sentinel; never rely on empty Smart fallback",
             "smart_groups": ["Auto"],
+            "subscription": {
+                "mode": "select", "hidden": True, "source": "external-policy-path",
+                "explicit_members": ["REJECT"], "update_interval_seconds": 3600,
+                "external_policy_modifier": "udp-relay=true",
+                "routed_directly": False,
+            },
             "node_pool": {
-                "mode": "select", "hidden": False,
-                "source": "external-policy-path", "explicit_members": [],
-                "include_all_proxies": False, "update_interval_seconds": 3600,
+                "mode": "select", "hidden": False, "source": "Subscription",
+                "explicit_members": ["Auto"], "include_all_proxies": False,
+                "source_filter": "^(?!REJECT$).+",
             },
             "auto": {
-                "mode": "smart", "source": "NodePool",
-                "explicit_members": [], "include_all_proxies": False,
+                "mode": "smart", "source": "Subscription",
+                "explicit_members": ["Fail-Closed"], "include_all_proxies": False,
                 "evaluate_before_use": True,
             },
-            "loopback_or_reject_proxy_members": 0,
+            "sentinel": "http, 127.0.0.1, 1, no-error-alert=true",
+            "loopback_or_reject_proxy_members": 1,
         },
         "security_resources": [
-            {"name": "Pegasus.list", "mode": "immutable", "policy": "REJECT", "entries": len(active_rows(RULES / "Pegasus.list"))},
+            {"name": "Pegasus.list", "mode": "immutable", "policy": "Security", "entries": len(active_rows(RULES / "Pegasus.list"))},
         ],
         "advertising_resources": [
-            {"name": "Ads.list", "mode": "immutable", "policy": "REJECT", "entries": len(active_rows(RULES / "Ads.list"))},
+            {"name": "Ads.list", "mode": "immutable", "policy": "AdBlock", "entries": len(active_rows(RULES / "Ads.list"))},
         ],
         "mobile_dynamic_reject_sources": [],
         "functional_guards_before_ads": list(FUNCTIONAL_GUARDS),
@@ -148,7 +157,7 @@ lock = {
         "domestic_resources": {
             "dynamic_supplement": None,
             "pinned_precise_set": "China.list",
-            "policy": "DIRECT",
+            "policy": "Domestic",
             "geoip": DOMESTIC_GEOIP_RULE,
             "geoip_resolves_unmatched_domains": False,
             "unmatched_domain_fallback": "Final/Proxy",
@@ -185,13 +194,15 @@ lock = {
             "proxy_test_udp": "apple.com@1.1.1.1",
             "unsupported_behaviour": "REJECT",
             "block_quic": "per-policy",
-            "stun_policy": "Proxy",
+            "stun_policy": "UDP",
+            "unmatched_udp_policy": "UDP",
+            "imported_udp_relay_enabled": True,
             "blocked_public_dns_ports": [53, 853, 8853],
         },
         "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
         "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
         "network_diagnostics": {
-            "proxy_policy_source": "NodePool/policy-path",
+            "proxy_policy_source": "Subscription/policy-path",
             "global_proxy_row": "device-dependent; not verified by offline tests",
             "global_udp_row": "device-dependent; not verified by offline tests",
             "loopback_bridge": False,
@@ -213,17 +224,17 @@ lock = {
             "international_compatibility_guards": list(RETIRED_BILIBILI_INTL_GUARDS),
         },
     },
-    "runtime_order": [],
-    "embedded_order": [item["file"] for item in repository_sources],
-    "embedded_sources": repository_sources,
-    "remote_sources": [],
+    "runtime_order": [line.split(",")[1] for line in expected_remote_order()],
+    "embedded_order": [],
+    "embedded_sources": [],
+    "remote_sources": repository_sources,
     "external_policy_resources": 1,
     "dynamic_sources": dynamic_sources,
 }
 
 LOCK.write_text(json.dumps(lock, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 print(
-    f"updated {LOCK}: runtime_sources={len(external)} embedded_sources={len(repository_sources)} "
+    f"updated {LOCK}: runtime_sources={len(external)} remote_sources={len(repository_sources)} "
     f"dynamic={len(dynamic_sources)} local_rule_files={len(local_lists)} "
-    f"rules={len(profile_rules)} embedded_rule_contents=5546"
+    f"rules={len(profile_rules)} embedded_rule_contents=0"
 )

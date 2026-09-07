@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.18 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.19 profile."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from convert_to_remote_rules import (
     SURGE_DNS_PROTOCOL_RULES,
     expected_remote_order,
     repository_line,
-    validate_embedded_profile,
+    validate_remote_profile,
 )
 
 
@@ -40,7 +40,7 @@ GROUP_ORDER = (
     "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
     "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games", "NodePool", "Auto",
+    "Microsoft", "Games", "Subscription", "NodePool", "Auto",
     "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes", "Singapore-Nodes", "America-Nodes",
     "HongKong", "TaiWan", "Japan", "Singapore", "America",
 )
@@ -191,13 +191,13 @@ expected_header = [
     "# > TG Channel: https://t.me/shenjlngbIng",
     "# > GitHub: https://github.com/shenjlngbIng",
     "# > Update Date: 2026.09.07",
-    "# > Surge iOS Privacy + Push R13.18 Single File Rules | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > All 29 reviewed rule lists are embedded; only the node subscription is downloaded.",
-    "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.",
+    "# > Surge iOS Privacy + Push R13.19 External Rules + Sentinel | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
+    "# > 29 external rule lists use immutable GitHub raw URLs; no rule-list contents are embedded.",
+    "# > Put one Surge-format Sub-Store URL in Subscription; no linked profile or helper script is required.",
     "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
     "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
     f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
-    "# > REQUIRED: replace only NodePool.policy-path locally; never publish subscription tokens.",
+    "# > REQUIRED: replace only Subscription.policy-path locally; never publish subscription tokens.",
 ]
 if text.splitlines()[:11] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
@@ -207,7 +207,7 @@ if text.count("policy-path=") != 1:
     fail("exactly one subscription policy-path is required")
 if "#!include" in text:
     fail("the simple profile must not require a linked configuration")
-for marker in ("@main/Rules/", "raw.githubusercontent.com", "reject_phishing.conf", "/domainset/reject.conf"):
+for marker in ("/surge/main/Rules/", "cdn.jsdelivr.net/gh/", "reject_phishing.conf", "/domainset/reject.conf"):
     if marker in text:
         fail(f"mutable or mobile-heavy runtime source is forbidden: {marker}")
 
@@ -267,8 +267,8 @@ if hosts != {
     fail("Host bootstrap or fail-closed Sub-Store mapping changed")
 
 proxies = key_values(sections["Proxy"], "Proxy")
-if proxies:
-    fail("[Proxy] must stay empty; real policies come only from NodePool")
+if proxies != {"Fail-Closed": "http, 127.0.0.1, 1, no-error-alert=true"}:
+    fail("the only local proxy must be the unavailable Fail-Closed guard")
 proxy_includes = [
     line.strip() for line in sections["Proxy"]
     if line.strip().startswith("#!include")
@@ -277,7 +277,7 @@ if proxy_includes:
     fail("[Proxy] must not use detached or remote includes")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
-if tuple(groups) != GROUP_ORDER or len(groups) != 39:
+if tuple(groups) != GROUP_ORDER or len(groups) != 40:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
 if "AllServer" in groups:
     fail("retired duplicate automatic group returned")
@@ -295,31 +295,44 @@ if proxy_parts[0] != "select" or group_members(groups, "Proxy") != ["Auto", "Nod
     fail("Proxy must expose Auto, NodePool and the five visible region groups")
 require_exact_options(proxy_parts, "Proxy", VISIBLE_SELECT_OPTIONS)
 
-node_pool = group_parts(groups, "NodePool")
-if node_pool[0] != "select" or group_members(groups, "NodePool"):
-    fail("NodePool must import subscription policies directly without placeholder members")
-policy_paths = [part for part in node_pool[1:] if part.startswith("policy-path=")]
+source = group_parts(groups, "Subscription")
+if source[0] != "select" or group_members(groups, "Subscription") != ["REJECT"]:
+    fail("Subscription must contain a native REJECT guard and imported policies")
+policy_paths = [part for part in source[1:] if part.startswith("policy-path=")]
 if len(policy_paths) != 1:
-    fail("NodePool must contain exactly one policy-path")
+    fail("Subscription must contain exactly one policy-path")
 if READY_MODE:
     subscription = policy_paths[0].split("=", 1)[1]
     if not subscription.startswith("https://") or "example.invalid" in subscription:
         fail("ready profile must contain one real HTTPS subscription URL")
-else:
-    if policy_paths[0] != f"policy-path={SUBSCRIPTION_PLACEHOLDER}":
-        fail("public profile must contain the reviewed subscription placeholder")
-require_exact_options(node_pool, "NodePool", (
-    policy_paths[0], "update-interval=3600",
-    "no-alert=0", "hidden=0", "include-all-proxies=0",
+elif policy_paths[0] != f"policy-path={SUBSCRIPTION_PLACEHOLDER}":
+    fail("public profile must contain the reviewed subscription placeholder")
+require_exact_options(source, "Subscription", (
+    policy_paths[0], "update-interval=3600", 'external-policy-modifier="udp-relay=true"',
+    "no-alert=0", "hidden=1", "include-all-proxies=0",
 ))
-
+node_pool = group_parts(groups, "NodePool")
+if node_pool[0] != "select" or group_members(groups, "NodePool") != ["Auto"]:
+    fail("manual NodePool must default to guarded Auto")
+require_exact_options(node_pool, "NodePool", (
+    *VISIBLE_SELECT_OPTIONS, "include-other-group=Subscription", "policy-regex-filter=^(?!REJECT$).+",
+))
 auto = group_parts(groups, "Auto")
-if auto[0] != "smart" or group_members(groups, "Auto") or included_groups(groups, "Auto") != ["NodePool"]:
-    fail("Auto must use only the real policies resolved from NodePool")
+if auto[0] != "smart" or group_members(groups, "Auto") != ["Fail-Closed"] or included_groups(groups, "Auto") != ["Subscription"]:
+    fail("Auto must retain a proxy-policy guard and include the Subscription members")
 require_exact_options(auto, "Auto", (
     "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0",
-    "include-other-group=NodePool",
+    "include-other-group=Subscription",
 ))
+for name, members in {
+    "AdBlock": ["REJECT", "REJECT-DROP", "DIRECT"],
+    "Security": ["REJECT", "REJECT-DROP", "DIRECT"],
+    "UDP": ["Proxy", "NodePool", "REJECT", "DIRECT"],
+    "Domestic": ["DIRECT", "Proxy"],
+}.items():
+    if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
+        fail(f"{name} control defaults or choices changed")
+    require_exact_options(group_parts(groups, name), name, VISIBLE_SELECT_OPTIONS)
 
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
     fail("ApplePush fallback exception changed")
@@ -337,10 +350,10 @@ for name in REGIONS:
     source = f"{name}-Nodes"
     source_parts = group_parts(groups, source)
     if source_parts[0] != "url-test" or group_members(groups, source) != ["REJECT"]:
-        fail(f"{source} must contain a REJECT guard plus filtered NodePool policies")
+        fail(f"{source} must contain a REJECT guard plus filtered Subscription policies")
     require_options(source_parts, source, (
         "interval=600", "tolerance=100", "evaluate-before-use=true",
-        "no-alert=0", "hidden=1", "include-all-proxies=0", "include-other-group=NodePool",
+        "no-alert=0", "hidden=1", "include-all-proxies=0", "include-other-group=Subscription",
     ))
     if not any(part.startswith("policy-regex-filter=") for part in source_parts):
         fail(f"{source} missing regional policy filter")
@@ -387,10 +400,8 @@ for group in groups:
     visit(group)
 
 expanded_rules = active(sections["Rule"])
-rules = active(parse(validate_embedded_profile(text))["Rule"])
-if len(expanded_rules) != 5664:
-    fail("embedded rule count differs from the 29 reviewed snapshots")
-if len(rules) != 147 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
+rules = active(parse(validate_remote_profile(text))["Rule"])
+if len(rules) != 144 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
@@ -402,11 +413,11 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
     line = repository_line(kind, filename, policy)
     if rules.count(line) != 1:
         fail(f"immutable resource line changed: {filename}")
-    if f"@{RELEASE_REF}/Rules/{filename}" not in line:
+    if f"/{RELEASE_REF}/Rules/{filename}" not in line:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.18 must not load mutable runtime supplements")
+    fail("R13.19 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -416,7 +427,7 @@ def index(line: str) -> int:
 guard_start = index(FUNCTIONAL_GUARDS[0])
 if rules[guard_start:guard_start + len(FUNCTIONAL_GUARDS)] != list(FUNCTIONAL_GUARDS):
     fail("functional guards must be complete and contiguous")
-ads_line = repository_line("RULE-SET", "Ads.list", "REJECT")
+ads_line = repository_line("RULE-SET", "Ads.list", "AdBlock")
 if any(index(line) >= index(ads_line) for line in FUNCTIONAL_GUARDS):
     fail("functional guard appears after Ads")
 intl_start = index(RETIRED_BILIBILI_INTL_GUARDS[0])
@@ -425,17 +436,17 @@ if rules[intl_start:intl_start + len(RETIRED_BILIBILI_INTL_GUARDS)] != list(RETI
 if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "BiliBili.list", "DIRECT")):
     fail("international compatibility guard must precede domestic BiliBili parent suffixes")
 
-stun = index("PROTOCOL,STUN,Proxy")
-resource_transport = index("DOMAIN-SUFFIX,jsdelivr.net,Proxy")
-surge_dns_start = index(SURGE_DNS_PROTOCOL_RULES[0])
-if rules[surge_dns_start:surge_dns_start + len(SURGE_DNS_PROTOCOL_RULES)] != list(SURGE_DNS_PROTOCOL_RULES):
-    fail("Surge encrypted-DNS protocol routing changed")
+stun = index("PROTOCOL,STUN,UDP")
+resource_transport = index("DOMAIN,raw.githubusercontent.com,Proxy")
+index("DOMAIN-SUFFIX,jsdelivr.net,Proxy")
+if SURGE_DNS_PROTOCOL_RULES or any(rule.startswith(tuple(f"PROTOCOL,{kind}," for kind in ("DOH", "DOH3", "DOQ", "DOT", "DNS"))) for rule in rules):
+    fail("inactive own-DNS protocol rules must not return")
 domestic_dns_start = index(DOMESTIC_DNS_RULES[0])
 if rules[domestic_dns_start:domestic_dns_start + len(DOMESTIC_DNS_RULES)] != list(DOMESTIC_DNS_RULES):
     fail("mainland application DNS proxy block changed")
 port_rules = ["DEST-PORT,53,REJECT", "DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
 port_start = index(port_rules[0])
-if rules[port_start:port_start + 3] != port_rules or not stun < resource_transport < surge_dns_start < domestic_dns_start < port_start:
+if rules[port_start:port_start + 3] != port_rules or not stun < resource_transport < domestic_dns_start < port_start:
     fail("STUN, encrypted DNS, application DNS and public DNS-port order changed")
 foreign_start = index(FOREIGN_DNS_RULES[0])
 if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES) or foreign_start <= port_start:
@@ -467,16 +478,17 @@ shared_domestic = (
 shared_start = index(shared_domestic[0])
 if rules[shared_start:shared_start + len(shared_domestic)] != list(shared_domestic):
     fail("bounded domestic fallback block changed")
-if not shared_start < index(repository_line("DOMAIN-SET", "China.list", "DIRECT")):
+if not shared_start < index(repository_line("DOMAIN-SET", "China.list", "Domestic")):
     fail("domestic fixed/snapshot precedence changed")
 
 tail = [
     DOMESTIC_GEOIP_RULE,
+    "PROTOCOL,UDP,UDP",
     "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",
     "IP-CIDR6,::/0,Proxy,no-resolve",
     "FINAL,Final,dns-failed",
 ]
-if rules[-4:] != tail:
+if rules[-5:] != tail:
     fail("CN GeoIP, dual-stack public literals or FINAL tail changed")
 
 ordered_overlap_guards = (
@@ -501,12 +513,12 @@ for rule in expanded_rules:
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (5664, 0, 0, 0, 29)
+    expected_counts = (144, 29, 29, 0, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 32 or lock.get("mode") != "embedded-rules-single-subscription":
+    if lock.get("schema") != 33 or lock.get("mode") != "remote-rules-guarded-single-subscription":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -514,7 +526,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.18 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=0 "
-    f"embedded_sources={len(REPOSITORY_RULES)} "
-    f"embedded_rule_contents=5546 sha256={hashlib.sha256(payload).hexdigest()}"
+    f"PASS R13.19 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
+    f"local_sources={len(REPOSITORY_RULES)} "
+    f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

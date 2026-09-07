@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.18 rule snapshots, locks and optional online resources."""
+"""Validate R13.19 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 32 or lock.get("mode") != "embedded-rules-single-subscription":
+if lock.get("schema") != 33 or lock.get("mode") != "remote-rules-guarded-single-subscription":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -110,20 +110,20 @@ counts = tuple(lock.get(key) for key in (
     "active_rules", "runtime_resources", "immutable_repository_resources",
     "dynamic_runtime_resources", "local_rule_files",
 ))
-if counts != (5664, 0, 0, 0, 29):
+if counts != (144, 29, 29, 0, 29):
     fail(f"runtime lock counts mismatch: {counts}")
 
 invariants = dict(lock.get("required_invariants", {}))
 expected_invariants = {
     "rule_snapshot_tag": RULE_SNAPSHOT_TAG,
     "rule_snapshot_commit": RELEASE_REF,
-    "runtime_resource_count": 0,
-    "immutable_repository_resource_count": 0,
+    "runtime_resource_count": 29,
+    "immutable_repository_resource_count": 29,
     "dynamic_runtime_resource_count": 0,
     "local_rule_file_count": 29,
-    "embedded_rule_contents": 5546,
+    "embedded_rule_contents": 0,
     "hidden_function_groups": [
-        "ApplePush", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
+        "ApplePush", "Subscription", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
         "Singapore-Nodes", "America-Nodes",
     ],
     "removed_stateful_groups": ["AllServer"],
@@ -137,7 +137,7 @@ expected_invariants = {
     ],
     "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
     "loglevel": "notify",
-    "public_embedded_proxy_policies": 0,
+    "public_embedded_proxy_policies": 1,
     "mobile_dynamic_reject_sources": [],
     "functional_guards_before_ads": list(FUNCTIONAL_GUARDS),
     "extended_matching_resources": sorted(EXTENDED_MATCH_RESOURCES),
@@ -150,25 +150,30 @@ for key, expected in expected_invariants.items():
         fail(f"runtime invariant mismatch: {key}")
 
 architecture = dict(invariants.get("policy_architecture", {}))
-if architecture.get("automatic_empty_group_behavior") != "Smart may use DIRECT/SUBSTITUTE when empty; not a kill switch":
-    fail("automatic empty-group behavior invariant mismatch")
-if architecture.get("smart_groups") != ["Auto"]:
-    fail("Auto Smart architecture invariant mismatch")
-if architecture.get("node_pool") != {
-    "mode": "select", "hidden": False, "source": "external-policy-path",
-    "explicit_members": [], "include_all_proxies": False,
-    "update_interval_seconds": 3600,
+if architecture != {
+    "automatic_empty_group_behavior": "nonempty local HTTP sentinel; never rely on empty Smart fallback",
+    "smart_groups": ["Auto"],
+    "subscription": {
+        "mode": "select", "hidden": True, "source": "external-policy-path",
+        "explicit_members": ["REJECT"], "update_interval_seconds": 3600,
+        "external_policy_modifier": "udp-relay=true", "routed_directly": False,
+    },
+    "node_pool": {
+        "mode": "select", "hidden": False, "source": "Subscription", "explicit_members": ["Auto"],
+        "include_all_proxies": False, "source_filter": "^(?!REJECT$).+",
+    },
+    "auto": {
+        "mode": "smart", "source": "Subscription", "explicit_members": ["Fail-Closed"],
+        "include_all_proxies": False, "evaluate_before_use": True,
+    },
+    "sentinel": "http, 127.0.0.1, 1, no-error-alert=true",
+    "loopback_or_reject_proxy_members": 1,
 }:
-    fail("NodePool architecture invariant mismatch")
-if architecture.get("auto") != {
-    "mode": "smart", "source": "NodePool", "explicit_members": [],
-    "include_all_proxies": False, "evaluate_before_use": True,
-} or architecture.get("loopback_or_reject_proxy_members") != 0:
-    fail("Auto source or pseudo-proxy invariant mismatch")
+    fail("guarded policy architecture invariant mismatch")
 if invariants.get("domestic_resources") != {
     "dynamic_supplement": None,
     "pinned_precise_set": "China.list",
-    "policy": "DIRECT",
+    "policy": "Domestic",
     "geoip": DOMESTIC_GEOIP_RULE,
     "geoip_resolves_unmatched_domains": False,
     "unmatched_domain_fallback": "Final/Proxy",
@@ -199,12 +204,13 @@ if invariants.get("dns") != {
     fail("DNS invariant mismatch")
 if invariants.get("udp_quic") != {
     "proxy_test_udp": "apple.com@1.1.1.1", "unsupported_behaviour": "REJECT",
-    "block_quic": "per-policy", "stun_policy": "Proxy",
+    "block_quic": "per-policy", "stun_policy": "UDP",
+    "unmatched_udp_policy": "UDP", "imported_udp_relay_enabled": True,
     "blocked_public_dns_ports": [53, 853, 8853],
 }:
     fail("UDP/QUIC invariant mismatch")
 if invariants.get("network_diagnostics") != {
-    "proxy_policy_source": "NodePool/policy-path",
+    "proxy_policy_source": "Subscription/policy-path",
     "global_proxy_row": "device-dependent; not verified by offline tests",
     "global_udp_row": "device-dependent; not verified by offline tests",
     "loopback_bridge": False,
@@ -222,7 +228,9 @@ if invariants.get("public_ip_literals") != {
 
 expected_sources = {
     filename: {
-        "source_mode": "embedded-reviewed-snapshot",
+        "source_mode": "immutable-github-raw",
+        "url": f"{REMOTE_BASE}{filename}",
+        "update_interval": -1,
         "kind": kind,
         "source_commit": RELEASE_REF,
         "policy": policy,
@@ -230,7 +238,7 @@ expected_sources = {
     }
     for kind, filename, _label, policy in REPOSITORY_RULES
 }
-raw_sources = list(lock.get("embedded_sources", []))
+raw_sources = list(lock.get("remote_sources", []))
 if len(raw_sources) != 29:
     fail("expected 29 immutable repository sources")
 seen_remote: set[str] = set()
@@ -252,12 +260,12 @@ if seen_remote != set(expected_sources):
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
 if dynamic_sources or DYNAMIC_RULES:
-    fail("R13.18 must not declare dynamic runtime sources")
+    fail("R13.19 must not declare dynamic runtime sources")
 
-if lock.get("runtime_order") != [] or lock.get("remote_sources") != []:
-    fail("single-file runtime may not declare external rule resources")
-if lock.get("embedded_order") != [item[1] for item in REPOSITORY_RULES]:
-    fail("embedded source order in lock is stale")
+if lock.get("runtime_order") != [line.split(",")[1] for line in expected_remote_order()]:
+    fail("external runtime rule order is stale")
+if lock.get("embedded_order") or lock.get("embedded_sources"):
+    fail("remote-rule profile must not embed source lists")
 if lock.get("external_policy_resources") != 1:
     fail("exactly one external node subscription is required")
 
@@ -348,12 +356,20 @@ if CHECK_DYNAMIC:
     print("PASS dynamic runtime resources=0")
 
 if CHECK_RUNTIME_REMOTE:
-    # Kept for existing callers: no CDN requests exist in this release.
-    if lock["remote_sources"] or lock["runtime_resources"]:
-        fail("unexpected remote runtime rule resources")
-    print("PASS remote runtime rule resources=0; all rule data embedded")
+    from concurrent.futures import ThreadPoolExecutor
 
-print(
-    "PASS R13.18 remote_rule_resources=0 embedded_sources=29 "
-    "local_rule_files=29 rules=5664 embedded_rule_contents=5546"
-)
+    def verify_remote(item: dict) -> str:
+        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.19"})
+        with urllib.request.urlopen(request, timeout=20) as response:
+            if response.status != 200:
+                fail(f"{item['file']} HTTP status {response.status}")
+            payload = response.read(8 * 1024 * 1024 + 1)
+        if len(payload) > 8 * 1024 * 1024 or hashlib.sha256(payload).hexdigest() != item["sha256"]:
+            fail(f"{item['file']} remote bytes differ from the reviewed snapshot")
+        return item["file"]
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        verified = list(pool.map(verify_remote, raw_sources))
+    print(f"PASS live GitHub raw resources={len(verified)} HTTP=200 SHA256=matched")
+
+print("PASS R13.19 remote_rule_resources=29 local_rule_files=29 rules=144 embedded_rule_contents=0")

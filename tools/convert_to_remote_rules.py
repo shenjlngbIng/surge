@@ -1,24 +1,19 @@
 #!/usr/bin/env python3
-"""Validate the R13.18 embedded rule inventory (legacy command name).
-
-Former resource references describe provenance and logical ordering only.
-The iOS profile contains the rules and performs no remote rule-list downloads.
-"""
+"""Validate the R13.19 external rule inventory without embedding rule lists."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from embed_runtime_rules import collapse_profile
 
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.18 Single File Rules"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.19 External Rules + Sentinel"
 RELEASE_DATE = "2026-09-07"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
-REMOTE_BASE = f"https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@{RELEASE_REF}/Rules/"
+REMOTE_BASE = f"https://raw.githubusercontent.com/shenjlngbIng/surge/{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
 
@@ -41,13 +36,8 @@ DOMESTIC_DNS_RULES: tuple[str, ...] = (
     "DOMAIN-SUFFIX,smtcdns.net,Proxy",
 )
 
-SURGE_DNS_PROTOCOL_RULES: tuple[str, ...] = (
-    "PROTOCOL,DOH,Proxy",
-    "PROTOCOL,DOH3,Proxy",
-    "PROTOCOL,DOQ,Proxy",
-    "PROTOCOL,DOT,Proxy",
-    "PROTOCOL,DNS,Proxy",
-)
+# Own encrypted DNS deliberately bypasses outbound rules to avoid a proxy-DNS loop.
+SURGE_DNS_PROTOCOL_RULES: tuple[str, ...] = ()
 
 FOREIGN_DNS_RULES: tuple[str, ...] = (
     "DOMAIN,dns.google,Proxy",
@@ -65,7 +55,7 @@ FOREIGN_DNS_RULES: tuple[str, ...] = (
     "DOMAIN-SUFFIX,nextdns.io,Proxy",
 )
 
-DOMESTIC_GEOIP_RULE = "GEOIP,CN,DIRECT,no-resolve"
+DOMESTIC_GEOIP_RULE = "GEOIP,CN,Domestic,no-resolve"
 
 FUNCTIONAL_GUARDS: tuple[str, ...] = (
     "DOMAIN,httpdns.bilivideo.com,DIRECT",
@@ -90,12 +80,12 @@ RETIRED_BILIBILI_INTL_GUARDS: tuple[str, ...] = (
 )
 
 REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
-    ("DOMAIN-SET", "Pegasus.list", "Pegasus spyware IOC", "REJECT"),
+    ("DOMAIN-SET", "Pegasus.list", "Pegasus spyware IOC", "Security"),
     ("RULE-SET", "APNs.list", "APNs", "ApplePush"),
     ("RULE-SET", "AppleCN.list", "AppleCN · Apple", "Apple"),
     ("RULE-SET", "WeChat.list", "WeChat · DIRECT", "DIRECT"),
     ("RULE-SET", "Direct.list", "Direct · DIRECT", "DIRECT"),
-    ("RULE-SET", "Ads.list", "Ads · REJECT", "REJECT"),
+    ("RULE-SET", "Ads.list", "Ads · AdBlock", "AdBlock"),
     ("RULE-SET", "ChatGPT.list", "ChatGPT", "ChatGPT"),
     ("RULE-SET", "Claude.list", "Claude", "Claude"),
     ("RULE-SET", "Gemini.list", "Gemini", "Gemini"),
@@ -117,7 +107,7 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("RULE-SET", "Game.list", "Game", "Games"),
     ("RULE-SET", "OneDrive.list", "OneDrive", "Microsoft"),
     ("RULE-SET", "Microsoft.list", "Microsoft", "Microsoft"),
-    ("DOMAIN-SET", "China.list", "China domains · precise", "DIRECT"),
+    ("DOMAIN-SET", "China.list", "China domains · precise", "Domestic"),
     ("DOMAIN-SET", "Global.list", "Global domains · precise", "Proxy"),
 )
 
@@ -170,26 +160,22 @@ def active_rule_lines(text: str) -> list[str]:
     ]
 
 
-def validate_embedded_profile(text: str, root: Path = ROOT) -> str:
-    collapsed, blocks = collapse_profile(text, root)
-    expected = [(kind, filename, policy) for kind, filename, _label, policy in REPOSITORY_RULES]
-    if [block[:3] for block in blocks] != expected:
-        raise ValueError("embedded rule source order, policy or inventory differs from the reviewed snapshots")
-    logical = active_rule_lines(collapsed)
-    references = [line for line in logical if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
+def validate_remote_profile(text: str, root: Path = ROOT) -> str:
+    rules = active_rule_lines(text)
+    references = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if references != expected_remote_order():
-        raise ValueError("embedded rule options or source order differs from reviewed inventory")
-    if any(line.startswith(("RULE-SET,", "DOMAIN-SET,")) for line in active_rule_lines(text)):
-        raise ValueError("single-file profile contains a runtime rule dependency")
-    return collapsed
+        raise ValueError("external rule URLs, order, policies or options differ from the reviewed inventory")
+    if "EMBEDDED-RULES" in text or len(rules) != 144:
+        raise ValueError("profile must contain 144 routing rules with 29 external references and no embedded lists")
+    return text
 
 
 def main() -> int:
     text = PROFILE.read_text(encoding="utf-8")
-    rules = active_rule_lines(validate_embedded_profile(text))
+    rules = active_rule_lines(validate_remote_profile(text))
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.18 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.19 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES
@@ -205,12 +191,11 @@ def main() -> int:
         if fields[0] == "RULE-SET" and "no-resolve" not in fields[3:]:
             raise SystemExit(f"runtime RULE-SET may not trigger local DNS: {line}")
 
-    forbidden = ("reject_phishing.conf", "/domainset/reject.conf", "@main/Rules/", "raw.githubusercontent.com")
+    forbidden = ("reject_phishing.conf", "/domainset/reject.conf", "/surge/main/Rules/", "cdn.jsdelivr.net/gh/")
     if any(marker in text for marker in forbidden):
         raise SystemExit("profile contains a mutable, mobile-heavy or unreviewed runtime source")
     print(
-        "PASS: remote_runtime_rules=0 embedded_sources=29 "
-        "embedded_rule_contents=5546"
+        "PASS: remote_runtime_rules=29 embedded_rule_contents=0 rules=144"
     )
     return 0
 

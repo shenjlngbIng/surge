@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.18 configuration auditor."""
+"""Fault-injection regression tests for the R13.19 configuration auditor."""
 
 from __future__ import annotations
 
@@ -37,20 +37,20 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.18 Single File Rules", "R13.16 Fail-Closed Sentinel"),
+    ("version", "R13.19 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
     ("date", "# > Update Date: 2026.09.07", "# > Update Date: 2026.09.01"),
-    ("layout_claim", "# > All 29 reviewed rule lists are embedded; only the node subscription is downloaded.\n", ""),
-    ("subscription_claim", "# > Put one Surge-format Sub-Store URL in NodePool; no linked profile or helper script is required.\n", ""),
+    ("layout_claim", "# > 29 external rule lists use immutable GitHub raw URLs; no rule-list contents are embedded.\n", ""),
+    ("subscription_claim", "# > Put one Surge-format Sub-Store URL in Subscription; no linked profile or helper script is required.\n", ""),
     ("capture_warning", "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.\n", ""),
     ("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
-    ("token_warning", "# > REQUIRED: replace only NodePool.policy-path locally; never publish subscription tokens.\n", ""),
+    ("token_warning", "# > REQUIRED: replace only Subscription.policy-path locally; never publish subscription tokens.\n", ""),
     ("missing_policy_path", "policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, ", ""),
-    ("duplicate_policy_path", "NodePool = select, policy-path=", "NodePool = select, policy-path=https://example.invalid/SECOND, policy-path="),
+    ("duplicate_policy_path", "Subscription = select, REJECT, policy-path=", "Subscription = select, REJECT, policy-path=https://example.invalid/SECOND, policy-path="),
     ("wrong_placeholder", "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL", "https://example.invalid/WRONG_SUBSCRIPTION_URL"),
 ):
     replace_once(name, old, new)
 
-replace_once("mutable_main", "# Embedded rule snapshots\n", "RULE-SET,https://cdn.jsdelivr.net/gh/shenjlngbIng/surge@mainRules/Ads.list|REJECT|no-resolve\n# Embedded rule snapshots\n")
+replace_once("mutable_main", "# External rule snapshots\n", "RULE-SET,https://raw.githubusercontent.com/shenjlngbIng/surge/main/Rules/Ads.list,AdBlock,no-resolve\n# External rule snapshots\n")
 replace_once("mobile_dynamic_ads", "# Artificial intelligence\n", "DOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n# Artificial intelligence\n")
 
 # General, DNS and access invariants.
@@ -87,7 +87,7 @@ for name, old, new in (
     ("final_hidden", "Final = select, Proxy, DIRECT, no-alert=0, hidden=0", "Final = select, Proxy, DIRECT, no-alert=0, hidden=1"),
     ("applepush_order", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy"),
     ("apple_order", "Apple = select, DIRECT, Proxy,", "Apple = select, Proxy, DIRECT,"),
-    ("unexpected_allserver", "# Subscription. This is the only URL the user changes.\n", "AllServer = smart, include-other-group=NodePool\n# Subscription. This is the only URL the user changes.\n"),
+    ("unexpected_allserver", "# Subscription. This is the only URL the user changes.\n", "AllServer = smart, include-other-group=Subscription\n# Subscription. This is the only URL the user changes.\n"),
 ):
     replace_once(name, old, new)
 
@@ -98,17 +98,17 @@ for name, group, old, new in (
     ("proxy_hidden", "Proxy", "hidden=0", "hidden=1"),
     ("proxy_include_all", "Proxy", "include-all-proxies=0", "include-all-proxies=1"),
     ("nodepool_reject", "NodePool", "NodePool = select,", "NodePool = select, REJECT,"),
-    ("nodepool_update", "NodePool", "update-interval=3600", "update-interval=7200"),
+    ("source_update", "Subscription", "update-interval=3600", "update-interval=7200"),
     ("nodepool_hidden", "NodePool", "hidden=0", "hidden=1"),
     ("nodepool_include_all", "NodePool", "include-all-proxies=0", "include-all-proxies=1"),
     ("auto_select", "Auto", "smart", "select"),
-    ("auto_fake_sentinel", "Auto", "smart,", "smart, Fail-Closed,"),
+    ("auto_missing_sentinel", "Auto", "smart, Fail-Closed,", "smart,"),
     ("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false"),
     ("auto_hidden", "Auto", "hidden=0", "hidden=1"),
-    ("auto_wrong_source", "Auto", "include-other-group=NodePool", "include-other-group=America"),
+    ("auto_wrong_source", "Auto", "include-other-group=Subscription", "include-other-group=America"),
     ("region_empty_guard", "HongKong-Nodes", "url-test, REJECT,", "url-test,"),
     ("region_source_visible", "HongKong-Nodes", "hidden=1", "hidden=0"),
-    ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=NodePool", "include-other-group=Auto"),
+    ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=Subscription", "include-other-group=Auto"),
     ("region_fallback_deleted", "HongKong", "HongKong-Nodes, Auto", "HongKong-Nodes"),
     ("chatgpt_hidden", "ChatGPT", "hidden=0", "hidden=1"),
     ("chatgpt_direct", "ChatGPT", "select, Proxy,", "select, DIRECT, Proxy,"),
@@ -121,23 +121,36 @@ for name, group, old, new in (
 for name, old, new in (
     ("final_deleted", "FINAL,Final,dns-failed\n", ""),
     ("final_duplicate", "FINAL,Final,dns-failed\n", "FINAL,Final,dns-failed\nFINAL,Final,dns-failed\n"),
-    ("stun_direct", "PROTOCOL,STUN,Proxy", "PROTOCOL,STUN,DIRECT"),
+    ("stun_direct", "PROTOCOL,STUN,UDP", "PROTOCOL,STUN,DIRECT"),
     ("resource_transport", "DOMAIN-SUFFIX,jsdelivr.net,Proxy", "DOMAIN-SUFFIX,jsdelivr.net,DIRECT"),
-    ("doh_direct", "PROTOCOL,DOH,Proxy", "PROTOCOL,DOH,DIRECT"),
-    ("doh3_deleted", "PROTOCOL,DOH3,Proxy\n", ""),
-    ("dns_protocol_direct", "PROTOCOL,DNS,Proxy", "PROTOCOL,DNS,DIRECT"),
+    ("own_dns_rule_returned", "[Rule]\n", "[Rule]\nPROTOCOL,DOH,DIRECT\n"),
     ("domestic_dns_direct", "DOMAIN,dns.alidns.com,Proxy", "DOMAIN,dns.alidns.com,DIRECT"),
     ("dns_port_order", "DEST-PORT,53,REJECT\nDEST-PORT,853,REJECT", "DEST-PORT,853,REJECT\nDEST-PORT,53,REJECT"),
     ("foreign_dns_direct", "DOMAIN,dns.google,Proxy", "DOMAIN,dns.google,DIRECT"),
-    ("pegasus_policy", "Rules/Pegasus.list|REJECT|extended-matching", "Rules/Pegasus.list|Proxy|extended-matching"),
-    ("ads_policy", "Rules/Ads.list|REJECT|no-resolve", "Rules/Ads.list|Proxy|no-resolve"),
+    ("pegasus_policy", "Rules/Pegasus.list,Security,extended-matching", "Rules/Pegasus.list,Proxy,extended-matching"),
+    ("ads_policy", "Rules/Ads.list,AdBlock,no-resolve", "Rules/Ads.list,Proxy,no-resolve"),
     ("bilibili_guard", "DOMAIN,httpdns.bilivideo.com,DIRECT\n", ""),
     ("openai_guard", "DOMAIN,rum.browser-intake-datadoghq.com,ChatGPT\n", ""),
     ("intl_guard", "DOMAIN,apiintl.biliapi.net,Proxy", "DOMAIN,apiintl.biliapi.net,DIRECT"),
-    ("geoip", "GEOIP,CN,DIRECT,no-resolve", "GEOIP,CN,Proxy,no-resolve"),
+    ("geoip", "GEOIP,CN,Domestic,no-resolve", "GEOIP,CN,Proxy,no-resolve"),
     ("ipv6_tail", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve"),
 ):
     replace_once(name, old, new)
+
+for name, group, old, new in (
+    ("source_empty_guard", "Subscription", "select, REJECT,", "select,"),
+    ("source_udp_flag", "Subscription", "udp-relay=true", "udp-relay=false"),
+    ("source_visible", "Subscription", "hidden=1", "hidden=0"),
+    ("manual_default_guard", "NodePool", "select, Auto,", "select,"),
+    ("manual_cycle", "NodePool", "include-other-group=Subscription", "include-other-group=NodePool"),
+    ("adblock_default", "AdBlock", "select, REJECT,", "select, DIRECT,"),
+    ("security_default", "Security", "select, REJECT,", "select, DIRECT,"),
+):
+    replace_group_fragment(name, group, old, new)
+replace_once("raw_transport", "DOMAIN,raw.githubusercontent.com,Proxy", "DOMAIN,raw.githubusercontent.com,DIRECT")
+replace_once("udp_control", "PROTOCOL,UDP,UDP", "PROTOCOL,UDP,Proxy")
+replace_once("domestic_control", "Rules/China.list,Domestic,", "Rules/China.list,DIRECT,")
+replace_once("sentinel_deleted", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true\n", "")
 
 if len(MUTATIONS) < 65:
     raise RuntimeError(f"expected at least 65 mutations, built {len(MUTATIONS)}")
@@ -161,4 +174,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.18 mutations={len(MUTATIONS)}")
+print(f"PASS R13.19 mutations={len(MUTATIONS)}")
