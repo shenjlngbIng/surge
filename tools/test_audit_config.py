@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.21 configuration auditor."""
+"""Fault-injection regression tests for the R13.22 configuration auditor."""
 
 from __future__ import annotations
 
@@ -39,15 +39,15 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.21 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
+    ("version", "R13.22 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
     ("date", "# 更新 2026.09.08", "# 更新 2026.09.01"),
     ("layout_claim", "29 份外置规则", "内嵌规则"),
-    ("subscription_claim", "Subscription 的订阅地址", "NodePool 的订阅地址"),
+    ("subscription_claim", "桔子 的订阅地址", "NodePool 的订阅地址"),
     ("attribution", "# 作者 .ᐣ", "# 作者 unknown"),
     ("snapshot_ref", "6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
     ("token_warning", "勿公开凭据", "可公开凭据"),
     ("missing_policy_path", "policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, ", ""),
-    ("duplicate_policy_path", "Subscription = select, REJECT, policy-path=", "Subscription = select, REJECT, policy-path=https://example.invalid/SECOND, policy-path="),
+    ("duplicate_policy_path", "桔子 = select, REJECT, policy-path=", "桔子 = select, REJECT, policy-path=https://example.invalid/SECOND, policy-path="),
     ("wrong_placeholder", "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL", "https://example.invalid/WRONG_SUBSCRIPTION_URL"),
 ):
     replace_once(name, old, new)
@@ -98,7 +98,7 @@ for name, old, new in (
     ("final_hidden", "Final = select, Proxy, DIRECT\n", "Final = select, Proxy, DIRECT, hidden=1\n"),
     ("applepush_order", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy"),
     ("apple_order", "Apple = select, DIRECT, Proxy,", "Apple = select, Proxy, DIRECT,"),
-    ("unexpected_allserver", "[Proxy Group]\n", "[Proxy Group]\nAllServer = smart, include-other-group=Subscription\n"),
+    ("unexpected_allserver", "[Proxy Group]\n", "[Proxy Group]\nAllServer = smart, include-other-group=桔子\n"),
 ):
     replace_once(name, old, new)
 
@@ -109,17 +109,17 @@ for name, group, old, new in (
     ("proxy_hidden", "Proxy", "\n", ", hidden=1\n"),
     ("proxy_include_all", "Proxy", "\n", ", include-all-proxies=1\n"),
     ("nodepool_reject", "NodePool", "NodePool = select,", "NodePool = select, REJECT,"),
-    ("source_update", "Subscription", "update-interval=3600", "update-interval=7200"),
+    ("source_update", "桔子", "update-interval=3600", "update-interval=7200"),
     ("nodepool_hidden", "NodePool", "\n", ", hidden=1\n"),
     ("nodepool_include_all", "NodePool", "\n", ", include-all-proxies=1\n"),
     ("auto_select", "Auto", "smart", "select"),
     ("auto_missing_sentinel", "Auto", "smart, Fail-Closed,", "smart,"),
     ("auto_no_evaluate", "Auto", "evaluate-before-use=true", "evaluate-before-use=false"),
     ("auto_hidden", "Auto", "\n", ", hidden=1\n"),
-    ("auto_wrong_source", "Auto", "include-other-group=Subscription", "include-other-group=America"),
+    ("auto_wrong_source", "Auto", "include-other-group=桔子", "include-other-group=America"),
     ("region_empty_guard", "HongKong-Nodes", "url-test, REJECT,", "url-test,"),
     ("region_source_visible", "HongKong-Nodes", "hidden=1", "hidden=0"),
-    ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=Subscription", "include-other-group=Auto"),
+    ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=桔子", "include-other-group=Auto"),
     ("region_fallback_deleted", "HongKong", "HongKong-Nodes, Auto", "HongKong-Nodes"),
     ("chatgpt_hidden", "ChatGPT", "\n", ", hidden=1\n"),
     ("chatgpt_direct", "ChatGPT", "select, Proxy,", "select, DIRECT, Proxy,"),
@@ -158,11 +158,11 @@ MUTATIONS.append(("foreign_dns_before_plaintext_reject", without_foreign.replace
 )))
 
 for name, group, old, new in (
-    ("source_empty_guard", "Subscription", "select, REJECT,", "select,"),
-    ("source_udp_flag", "Subscription", "udp-relay=true", "udp-relay=false"),
-    ("source_visible", "Subscription", "hidden=1", "hidden=0"),
+    ("source_empty_guard", "桔子", "select, REJECT,", "select,"),
+    ("source_udp_flag", "桔子", "udp-relay=true", "udp-relay=false"),
+    ("source_visible", "桔子", "hidden=1", "hidden=0"),
     ("manual_default_guard", "NodePool", "select, Auto,", "select,"),
-    ("manual_cycle", "NodePool", "include-other-group=Subscription", "include-other-group=NodePool"),
+    ("manual_cycle", "NodePool", "include-other-group=桔子", "include-other-group=NodePool"),
     ("adblock_default", "AdBlock", "select, REJECT,", "select, DIRECT,"),
     ("security_default", "Security", "select, REJECT,", "select, DIRECT,"),
 ):
@@ -208,4 +208,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.21 mutations={len(MUTATIONS)}")
+print(f"PASS R13.22 mutations={len(MUTATIONS)}")

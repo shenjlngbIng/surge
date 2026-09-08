@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.21 external rule inventory without embedding rule lists."""
+"""Validate the R13.22 external rule inventory without embedding rule lists."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.21 External Rules + Sentinel"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.22 External Rules + Sentinel"
 RELEASE_DATE = "2026-09-08"
 RULE_SNAPSHOT_TAG = None  # This snapshot is pinned by commit, not a legacy tag.
 RELEASE_REF = "6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51"
@@ -173,7 +173,7 @@ def main() -> int:
     rules = active_rule_lines(validate_remote_profile(text))
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.21 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.22 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES

@@ -68,14 +68,14 @@ def resolve(name: str, nodes: list[str], healthy: set[str], choices: dict[str, s
 
 
 def main() -> int:
-    assert GROUPS["Subscription"][1] == ["REJECT"]
-    assert GROUPS["Subscription"][2]["hidden"] == "1"
-    assert GROUPS["Subscription"][2]["external-policy-modifier"] == '"udp-relay=true"'
+    assert GROUPS["桔子"][1] == ["REJECT"]
+    assert GROUPS["桔子"][2]["hidden"] == "1"
+    assert GROUPS["桔子"][2]["external-policy-modifier"] == '"udp-relay=true"'
     for name, (_kind, explicit, _options) in GROUPS.items():
-        assert "Subscription" not in explicit, f"raw subscription source is routed by {name}"
+        assert "桔子" not in explicit, f"raw subscription source is routed by {name}"
     for row in TEXT.split("[Rule]", 1)[1].splitlines():
         if row.strip() and not row.lstrip().startswith("#"):
-            assert ",Subscription" not in row
+            assert ",桔子" not in row
 
     fixtures = {
         "HongKong": ["🇭🇰 香港-1", "Hong Kong 2", "HKG-3"],
@@ -91,7 +91,7 @@ def main() -> int:
     assert members("NodePool", nodes) == ["Auto", *nodes]
     assert members("Auto", []) == ["Fail-Closed"]
     assert members("NodePool", []) == ["Auto"]
-    assert members("Subscription", []) == ["REJECT"]
+    assert members("桔子", []) == ["REJECT"]
 
     protected = ["Final", "Proxy", "Auto", "NodePool", "UDP", *REGIONS]
     protected += ["ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",

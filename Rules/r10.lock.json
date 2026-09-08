@@ -1,10 +1,10 @@
 {
   "schema": 34,
   "mode": "remote-rules-guarded-single-subscription",
-  "profile": "Surge iOS Privacy + Push R13.21 External Rules + Sentinel",
+  "profile": "Surge iOS Privacy + Push R13.22 External Rules + Sentinel",
   "generated": "2026-09-08",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "100c15b6849a256738b75d3b1a2ab8f07f63ac3e5f40fd3dcd1ef47c2f8fb85c",
+  "profile_sha256": "b287cf999b80be3c699df729256083b047d154bf7a275748ecc7c7eac4c0ea77",
   "profile_lines": 313,
   "active_rules": 142,
   "runtime_resources": 29,
@@ -26,7 +26,7 @@
       "UDP",
       "Domestic",
       "ApplePush",
-      "Subscription",
+      "桔子",
       "HongKong-Nodes",
       "TaiWan-Nodes",
       "Japan-Nodes",
@@ -89,7 +89,7 @@
       "node_pool": {
         "mode": "select",
         "hidden": false,
-        "source": "Subscription",
+        "source": "桔子",
         "explicit_members": [
           "Auto"
         ],
@@ -98,7 +98,7 @@
       },
       "auto": {
         "mode": "smart",
-        "source": "Subscription",
+        "source": "桔子",
         "explicit_members": [
           "Fail-Closed"
         ],
@@ -255,7 +255,7 @@
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
     "network_diagnostics": {
-      "proxy_policy_source": "Subscription/policy-path",
+      "proxy_policy_source": "桔子/policy-path",
       "global_proxy_row": "device-dependent; not verified by offline tests",
       "global_udp_row": "device-dependent; not verified by offline tests",
       "loopback_bridge": false,

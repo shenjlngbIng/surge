@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.21 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.22 profile."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ GROUP_ORDER = (
     "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
     "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games", "Subscription", "NodePool", "Auto",
+    "Microsoft", "Games", "桔子", "NodePool", "Auto",
     "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes", "Singapore-Nodes", "America-Nodes",
     "HongKong", "TaiWan", "Japan", "Singapore", "America",
 )
@@ -191,7 +191,7 @@ expected_header = [
     "# 作者 .ᐣ | https://t.me/shenjlngbIng",
     "# 仓库 https://github.com/shenjlngbIng/surge",
     "# 更新 2026.09.08 | Surge iOS 5.14.6+，建议 5.21.0+ | 规则模式",
-    "# 29 份外置规则；仅替换 Subscription 的订阅地址，勿公开凭据。",
+    "# 29 份外置规则；仅替换 桔子 的订阅地址，勿公开凭据。",
 ]
 if text.splitlines()[:len(expected_header)] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
@@ -284,19 +284,19 @@ if proxy_parts[0] != "select" or group_members(groups, "Proxy") != ["Auto", "Nod
     fail("Proxy must expose Auto, NodePool and the five visible region groups")
 require_exact_options(proxy_parts, "Proxy", VISIBLE_SELECT_OPTIONS)
 
-source = group_parts(groups, "Subscription")
-if source[0] != "select" or group_members(groups, "Subscription") != ["REJECT"]:
-    fail("Subscription must contain a native REJECT guard and imported policies")
+source = group_parts(groups, "桔子")
+if source[0] != "select" or group_members(groups, "桔子") != ["REJECT"]:
+    fail("桔子 must contain a native REJECT guard and imported policies")
 policy_paths = [part for part in source[1:] if part.startswith("policy-path=")]
 if len(policy_paths) != 1:
-    fail("Subscription must contain exactly one policy-path")
+    fail("桔子 must contain exactly one policy-path")
 if READY_MODE:
     subscription = policy_paths[0].split("=", 1)[1]
     if not subscription.startswith("https://") or "example.invalid" in subscription:
         fail("ready profile must contain one real HTTPS subscription URL")
 elif policy_paths[0] != f"policy-path={SUBSCRIPTION_PLACEHOLDER}":
     fail("public profile must contain the reviewed subscription placeholder")
-require_exact_options(source, "Subscription", (
+require_exact_options(source, "桔子", (
     policy_paths[0], "update-interval=3600", 'external-policy-modifier="udp-relay=true"',
     "hidden=1",
 ))
@@ -304,14 +304,14 @@ node_pool = group_parts(groups, "NodePool")
 if node_pool[0] != "select" or group_members(groups, "NodePool") != ["Auto"]:
     fail("manual NodePool must default to guarded Auto")
 require_exact_options(node_pool, "NodePool", (
-    *VISIBLE_SELECT_OPTIONS, "include-other-group=Subscription", "policy-regex-filter=^(?!REJECT$).+",
+    *VISIBLE_SELECT_OPTIONS, "include-other-group=桔子", "policy-regex-filter=^(?!REJECT$).+",
 ))
 auto = group_parts(groups, "Auto")
-if auto[0] != "smart" or group_members(groups, "Auto") != ["Fail-Closed"] or included_groups(groups, "Auto") != ["Subscription"]:
-    fail("Auto must retain a proxy-policy guard and include the Subscription members")
+if auto[0] != "smart" or group_members(groups, "Auto") != ["Fail-Closed"] or included_groups(groups, "Auto") != ["桔子"]:
+    fail("Auto must retain a proxy-policy guard and include the 桔子 members")
 require_exact_options(auto, "Auto", (
     "evaluate-before-use=true",
-    "include-other-group=Subscription",
+    "include-other-group=桔子",
 ))
 for name, members in {
     "AdBlock": ["REJECT", "REJECT-DROP", "DIRECT"],
@@ -339,10 +339,10 @@ for name in REGIONS:
     source = f"{name}-Nodes"
     source_parts = group_parts(groups, source)
     if source_parts[0] != "url-test" or group_members(groups, source) != ["REJECT"]:
-        fail(f"{source} must contain a REJECT guard plus filtered Subscription policies")
+        fail(f"{source} must contain a REJECT guard plus filtered 桔子 policies")
     require_options(source_parts, source, (
         "interval=600", "tolerance=100", "evaluate-before-use=true",
-        "hidden=1", "include-other-group=Subscription",
+        "hidden=1", "include-other-group=桔子",
     ))
     if not any(part.startswith("policy-regex-filter=") for part in source_parts):
         fail(f"{source} missing regional policy filter")
@@ -406,7 +406,7 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.21 must not load mutable runtime supplements")
+    fail("R13.22 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -520,7 +520,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.21 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
+    f"PASS R13.22 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
     f"local_sources={len(REPOSITORY_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

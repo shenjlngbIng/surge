@@ -1,4 +1,4 @@
-# Surge iOS Privacy + Push R13.21
+# Surge iOS Privacy + Push R13.22
 
 面向 Surge iOS 的规则模式配置，采用单订阅入口、外部规则快照和分层策略组。日常使用只需填写一处 Surge 格式订阅地址，随后通过策略组选择出口。本文依据当前 [Surge.conf](Surge.conf) 编写，参数含义对照 Surge 官方手册。
 
@@ -9,7 +9,7 @@
 | 主配置 | 142 条分流指令，其中 29 条引用外部规则 |
 | 外部规则 | 26 份 RULE-SET、3 份 DOMAIN-SET，无内嵌规则列表 |
 | 策略组 | 共 40 个，29 个可见、11 个隐藏 |
-| 节点来源 | 隐藏的 Subscription 组，唯一 `policy-path` |
+| 节点来源 | 隐藏的 桔子 组，唯一 `policy-path` |
 | 自动选点 | Smart、五个地区测速源和地区回退 |
 | 配置内代理 | 仅有本机 Fail-Closed 哨兵，不含私人节点 |
 | HTTPS 解密 | 主配置未配置 MITM、重写或脚本 |
@@ -20,14 +20,14 @@
 
 1. 先备份手机上正在使用的配置，保存当前有效的订阅地址和自行安装的模块。
 2. 在 Surge 中通过 URL 导入 [Surge.conf](https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf)。该链接是公共模板，不含可用节点凭据。
-3. 在文本配置中搜索 `REPLACE_WITH_SURGE_SUBSCRIPTION_URL`，仅将其所在的完整占位 URL 替换为自己的 Surge 格式订阅地址。
-4. 保存后加载订阅与外部规则，确认 Subscription 已获得节点，NodePool 能列出真实节点。
+3. 在文本配置中搜索 `桔子 =`，仅将这一行的完整占位 URL 替换为自己的 Surge 格式订阅地址。
+4. 保存后加载订阅与外部规则，确认 桔子 已获得节点，NodePool 能列出真实节点。
 5. 启用规则模式。首次使用时，Proxy 默认选择 Auto；需要固定节点时，在 NodePool 中选择真实节点，再将 Proxy 切换到 NodePool。
 
 唯一订阅入口如下，保留其余参数即可。
 
 ```ini
-Subscription = select, REJECT, policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, update-interval=3600, external-policy-modifier="udp-relay=true", hidden=1
+桔子 = select, REJECT, policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, update-interval=3600, external-policy-modifier="udp-relay=true", hidden=1
 ```
 
 订阅应返回 Surge 代理定义，或包含有效 `[Proxy]` 段的完整 Surge 配置。网页、错误提示和其他客户端格式均不能直接作为这里的节点来源。订阅刷新间隔设置为 3600 秒，实际下载还受客户端调度和缓存影响。[策略导入说明](https://manual.nssurge.com/policy-groups/policy-including.html)
@@ -47,7 +47,7 @@ Subscription = select, REJECT, policy-path=https://example.invalid/REPLACE_WITH_
 | NodePool | select | 列出订阅节点供手动选择，默认 Auto |
 | Auto | smart | 根据连接表现选择代理，保留 Fail-Closed 哨兵 |
 | HongKong、TaiWan、Japan、Singapore、America | fallback | 优先相应地区的测速组，失效后回退 Auto |
-| Subscription | select，隐藏 | 唯一订阅源，仅向其他组提供成员 |
+| 桔子 | select，隐藏 | 唯一订阅源，仅向其他组提供成员 |
 | 五个 `地区-Nodes` 组 | url-test，隐藏 | 按节点名称筛选地区，设置 600 秒间隔和 100 ms 切换容差 |
 | ApplePush | fallback，隐藏 | APNs 优先 Proxy，失败后允许 DIRECT，间隔设置为 60 秒 |
 
@@ -105,7 +105,7 @@ Final 只处理到达末尾的请求。已命中服务规则、UDP 规则或公�
 
 | 位置 | 保护方式 |
 | --- | --- |
-| Subscription | 显式保留 REJECT，空订阅时仍有成员 |
+| 桔子 | 显式保留 REJECT，空订阅时仍有成员 |
 | Auto | 保留代理类型的 Fail-Closed，防止空 Smart 被替换为 DIRECT |
 | NodePool | 默认 Auto，过滤从订阅源导入的 REJECT 占位 |
 | 地区测速源 | 显式保留 REJECT，外层地区组可回退 Auto |
@@ -178,7 +178,7 @@ UDP 仍依赖节点协议、服务端能力和链路状态。Shadowsocks 与 SOC
 
 ## 外部资源与更新
 
-运行时共有 29 份规则和 1 个 Subscription 订阅资源。规则使用本仓库 [固定提交](https://github.com/shenjlngbIng/surge/tree/6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51/Rules) 的 GitHub raw URL，快照日期为 2026-09-08。本次仅修订 Ads，其余 28 份列表内容沿用上一版。没有使用 jsDelivr 下载规则；配置中的 jsDelivr 域名规则仅保留普通访问分流。
+运行时共有 29 份规则和 1 个 桔子 订阅资源。规则使用本仓库 [固定提交](https://github.com/shenjlngbIng/surge/tree/6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51/Rules) 的 GitHub raw URL，快照日期为 2026-09-08。R13.22 沿用 R13.21 的全部规则文件与固定地址。没有使用 jsDelivr 下载规则；配置中的 jsDelivr 域名规则仅保留普通访问分流。
 
 规则的 `update-interval=-1` 禁止定期刷新，客户端会缓存已下载资源。手动更新同一固定 URL 仍得到同一份快照。上游变化需要维护者复核并发布新快照，再升级主配置才能采用。[外部规则参数](https://manual.nssurge.com/rules/ruleset.html)
 
@@ -188,7 +188,7 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 
 | 现象 | 如何判断与处理 |
 | --- | --- |
-| Subscription 返回 HTTP 500 | 检查 Sub-Store 或订阅服务的响应；修改分流注释无法修复服务端错误 |
+| 桔子 返回 HTTP 500 | 检查 Sub-Store 或订阅服务的响应；修改分流注释无法修复服务端错误 |
 | 规则资源超时 | 先检查可用节点和网络，再更新失败资源；本版规则地址应为 GitHub raw 固定提交 |
 | 某个地区没有节点 | 检查订阅节点名称是否匹配地区；地区组可能回退 Auto |
 | Fail-Closed 或 REJECT 显示失败 | 属于保护项的预期结果，继续检查真实节点 |
@@ -199,7 +199,11 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 | 升级后没有生效 | 确认启用的是新主配置；外部资源更新不替换旧主配置 |
 | 国内流量仍直连 | 属于国内、局域网和明确直连例外的设计行为 |
 
-## R13.21 修正记录
+## R13.22 订阅源简称
+
+订阅源从 `Subscription` 改为 `桔子`，节点池、Auto 和五个地区源的 7 处引用已同步修改。仅缩短名称，订阅地址、更新间隔、节点筛选、隐藏设置及分流行为不变。
+
+### 沿用 R13.21 的修正
 
 - 从 Ads 删除 8 条会匹配正常业务网站的关键词，来源标记改为注释。活动条目从 152 降为 143，保留细分广告和跟踪匹配，不新增整站放行规则。
 - 将境外 DNS 域名例外移到 853/8853 拒绝之前，保留 53 端口限制。主配置仍为 142 条指令，不添加复杂逻辑规则。

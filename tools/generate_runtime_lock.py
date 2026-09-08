@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.21 external-rule runtime lock."""
+"""Regenerate the R13.22 external-rule runtime lock."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ profile_rules = [
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 validate_remote_profile(text)
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.21 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.22 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -109,7 +109,7 @@ lock = {
         "embedded_rule_contents": 0,
         "hidden_function_groups": [
             "AdBlock", "Security", "UDP", "Domestic",
-            "ApplePush", "Subscription", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
+            "ApplePush", "桔子", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
             "Singapore-Nodes", "America-Nodes",
         ],
         "removed_stateful_groups": ["AllServer"],
@@ -134,12 +134,12 @@ lock = {
                 "routed_directly": False,
             },
             "node_pool": {
-                "mode": "select", "hidden": False, "source": "Subscription",
+                "mode": "select", "hidden": False, "source": "桔子",
                 "explicit_members": ["Auto"], "include_all_proxies": False,
                 "source_filter": "^(?!REJECT$).+",
             },
             "auto": {
-                "mode": "smart", "source": "Subscription",
+                "mode": "smart", "source": "桔子",
                 "explicit_members": ["Fail-Closed"], "include_all_proxies": False,
                 "evaluate_before_use": True,
             },
@@ -204,7 +204,7 @@ lock = {
         "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
         "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
         "network_diagnostics": {
-            "proxy_policy_source": "Subscription/policy-path",
+            "proxy_policy_source": "桔子/policy-path",
             "global_proxy_row": "device-dependent; not verified by offline tests",
             "global_udp_row": "device-dependent; not verified by offline tests",
             "loopback_bridge": False,

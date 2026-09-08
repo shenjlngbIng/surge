@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.21 rule snapshots, locks and optional online resources."""
+"""Validate R13.22 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -124,7 +124,7 @@ expected_invariants = {
     "embedded_rule_contents": 0,
     "hidden_function_groups": [
         "AdBlock", "Security", "UDP", "Domestic",
-        "ApplePush", "Subscription", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
+        "ApplePush", "桔子", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
         "Singapore-Nodes", "America-Nodes",
     ],
     "removed_stateful_groups": ["AllServer"],
@@ -160,11 +160,11 @@ if architecture != {
         "external_policy_modifier": "udp-relay=true", "routed_directly": False,
     },
     "node_pool": {
-        "mode": "select", "hidden": False, "source": "Subscription", "explicit_members": ["Auto"],
+        "mode": "select", "hidden": False, "source": "桔子", "explicit_members": ["Auto"],
         "include_all_proxies": False, "source_filter": "^(?!REJECT$).+",
     },
     "auto": {
-        "mode": "smart", "source": "Subscription", "explicit_members": ["Fail-Closed"],
+        "mode": "smart", "source": "桔子", "explicit_members": ["Fail-Closed"],
         "include_all_proxies": False, "evaluate_before_use": True,
     },
     "sentinel": "http, 127.0.0.1, 1, no-error-alert=true",
@@ -212,7 +212,7 @@ if invariants.get("udp_quic") != {
 }:
     fail("UDP/QUIC invariant mismatch")
 if invariants.get("network_diagnostics") != {
-    "proxy_policy_source": "Subscription/policy-path",
+    "proxy_policy_source": "桔子/policy-path",
     "global_proxy_row": "device-dependent; not verified by offline tests",
     "global_udp_row": "device-dependent; not verified by offline tests",
     "loopback_bridge": False,
@@ -262,7 +262,7 @@ if seen_remote != set(expected_sources):
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
 if dynamic_sources or DYNAMIC_RULES:
-    fail("R13.21 must not declare dynamic runtime sources")
+    fail("R13.22 must not declare dynamic runtime sources")
 
 if lock.get("runtime_order") != [line.split(",")[1] for line in expected_remote_order()]:
     fail("external runtime rule order is stale")
@@ -361,7 +361,7 @@ if CHECK_RUNTIME_REMOTE:
     from concurrent.futures import ThreadPoolExecutor
 
     def verify_remote(item: dict) -> str:
-        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.21"})
+        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.22"})
         with urllib.request.urlopen(request, timeout=20) as response:
             if response.status != 200:
                 fail(f"{item['file']} HTTP status {response.status}")
@@ -374,4 +374,4 @@ if CHECK_RUNTIME_REMOTE:
         verified = list(pool.map(verify_remote, raw_sources))
     print(f"PASS live GitHub raw resources={len(verified)} HTTP=200 SHA256=matched")
 
-print("PASS R13.21 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")
+print("PASS R13.22 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")
