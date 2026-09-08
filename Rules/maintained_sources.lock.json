@@ -25,8 +25,8 @@
     },
     {
       "file": "Ads.list",
-      "active_entries": 152,
-      "sha256": "562209616f162e33c9bdd0c8a5fbd17e99a04af5fcc5bcd2da4d58d6ca9f1320",
+      "active_entries": 143,
+      "sha256": "90d04632de1a18ec504bc8cf83fcaa9dae2f3c33f411e145a10d31500f691725",
       "maintenance": "historical-source-plus-repository-curation",
       "sources": [
         {
@@ -36,8 +36,8 @@
         }
       ],
       "license_status": "AGPL-3.0 license copy retained; exact historical input commit is unresolved",
-      "notes": "Do not auto-refresh until the historical source commit and local additions are separately reviewed.",
-      "last_review": "2026-08-25"
+      "notes": "Removed eight whole-business-site keywords (.bitiba., .footlocker., .nimiq., .stenaline., .zoohit., .zooplus., dolce-gusto., seniorliving.) after checking the official sites. Preserved this_rule_set_is_made_by_sukkaw as a comment instead of a routing rule. Tracking-specific rules remain. Do not auto-refresh until the historical source commit and local additions are separately reviewed.",
+      "last_review": "2026-09-08"
     },
     {
       "file": "AppleCN.list",
