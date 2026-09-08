@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.20 configuration auditor."""
+"""Fault-injection regression tests for the R13.21 configuration auditor."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from convert_to_remote_rules import FOREIGN_DNS_RULES
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,12 +39,12 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.20 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
+    ("version", "R13.21 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
     ("date", "# 更新 2026.09.08", "# 更新 2026.09.01"),
     ("layout_claim", "29 份外置规则", "内嵌规则"),
     ("subscription_claim", "Subscription 的订阅地址", "NodePool 的订阅地址"),
     ("attribution", "# 作者 .ᐣ", "# 作者 unknown"),
-    ("snapshot_ref", "2b8fa93901061cf0482b079203630bcd11bfe0b1", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
+    ("snapshot_ref", "6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
     ("token_warning", "勿公开凭据", "可公开凭据"),
     ("missing_policy_path", "policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, ", ""),
     ("duplicate_policy_path", "Subscription = select, REJECT, policy-path=", "Subscription = select, REJECT, policy-path=https://example.invalid/SECOND, policy-path="),
@@ -134,7 +136,7 @@ for name, old, new in (
     ("resource_transport", "DOMAIN-SUFFIX,jsdelivr.net,Proxy", "DOMAIN-SUFFIX,jsdelivr.net,DIRECT"),
     ("own_dns_rule_returned", "[Rule]\n", "[Rule]\nPROTOCOL,DOH,DIRECT\n"),
     ("domestic_dns_direct", "DOMAIN-SUFFIX,alidns.com,Proxy", "DOMAIN-SUFFIX,alidns.com,DIRECT"),
-    ("dns_port_order", "DEST-PORT,53,REJECT\nDEST-PORT,853,REJECT", "DEST-PORT,853,REJECT\nDEST-PORT,53,REJECT"),
+    ("dns_port_order", "DEST-PORT,853,REJECT\nDEST-PORT,8853,REJECT", "DEST-PORT,8853,REJECT\nDEST-PORT,853,REJECT"),
     ("foreign_dns_direct", "DOMAIN,dns.google,Proxy", "DOMAIN,dns.google,DIRECT"),
     ("pegasus_policy", "Rules/Pegasus.list,Security,extended-matching", "Rules/Pegasus.list,Proxy,extended-matching"),
     ("ads_policy", "Rules/Ads.list,AdBlock,no-resolve", "Rules/Ads.list,Proxy,no-resolve"),
@@ -145,6 +147,15 @@ for name, old, new in (
     ("ipv6_tail", "IP-CIDR6,::/0,Proxy,no-resolve", "IP-CIDR6,::/0,DIRECT,no-resolve"),
 ):
     replace_once(name, old, new)
+
+foreign_block = "\n".join(FOREIGN_DNS_RULES) + "\n"
+without_foreign = SOURCE.replace(foreign_block, "", 1)
+MUTATIONS.append(("foreign_dns_after_encrypted_reject", without_foreign.replace(
+    "DEST-PORT,8853,REJECT\n", "DEST-PORT,8853,REJECT\n" + foreign_block, 1,
+)))
+MUTATIONS.append(("foreign_dns_before_plaintext_reject", without_foreign.replace(
+    "DEST-PORT,53,REJECT\n", foreign_block + "DEST-PORT,53,REJECT\n", 1,
+)))
 
 for name, group, old, new in (
     ("source_empty_guard", "Subscription", "select, REJECT,", "select,"),
@@ -174,6 +185,12 @@ if len(MUTATIONS) < 65:
 
 environment = dict(os.environ)
 environment["PYTHONDONTWRITEBYTECODE"] = "1"
+baseline = subprocess.run(
+    [sys.executable, str(AUDITOR)], cwd=ROOT, env=environment,
+    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, check=False,
+)
+if baseline.returncode != 0:
+    raise AssertionError(f"auditor rejected the valid baseline:\n{baseline.stdout}")
 with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
     root = Path(temporary)
     for number, (name, mutated) in enumerate(MUTATIONS, 1):
@@ -191,4 +208,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.20 mutations={len(MUTATIONS)}")
+print(f"PASS R13.21 mutations={len(MUTATIONS)}")

@@ -19,7 +19,7 @@ from release_inventory import validate_release_tree
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.20-External-Rules-20260908.zip"
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.21-External-Rules-20260908.zip"
 
 
 def active_rule_lines(text: str) -> list[str]:

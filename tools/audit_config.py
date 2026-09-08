@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.20 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.21 profile."""
 
 from __future__ import annotations
 
@@ -406,7 +406,7 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.20 must not load mutable runtime supplements")
+    fail("R13.21 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -433,13 +433,18 @@ if SURGE_DNS_PROTOCOL_RULES or any(rule.startswith(tuple(f"PROTOCOL,{kind}," for
 domestic_dns_start = index(DOMESTIC_DNS_RULES[0])
 if rules[domestic_dns_start:domestic_dns_start + len(DOMESTIC_DNS_RULES)] != list(DOMESTIC_DNS_RULES):
     fail("mainland application DNS proxy block changed")
-port_rules = ["DEST-PORT,53,REJECT", "DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
-port_start = index(port_rules[0])
-if rules[port_start:port_start + 3] != port_rules or not stun < resource_transport < domestic_dns_start < port_start:
-    fail("STUN, encrypted DNS, application DNS and public DNS-port order changed")
+port_start = index("DEST-PORT,53,REJECT")
 foreign_start = index(FOREIGN_DNS_RULES[0])
-if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES) or foreign_start <= port_start:
-    fail("foreign application DNS block or order changed")
+encrypted_ports = ["DEST-PORT,853,REJECT", "DEST-PORT,8853,REJECT"]
+encrypted_start = index(encrypted_ports[0])
+if not stun < resource_transport < domestic_dns_start < port_start < foreign_start < encrypted_start:
+    fail("DNS exceptions must follow plaintext rejection and precede encrypted-port rejection")
+if rules[foreign_start:foreign_start + len(FOREIGN_DNS_RULES)] != list(FOREIGN_DNS_RULES):
+    fail("foreign application DNS block changed")
+if foreign_start != port_start + 1 or encrypted_start != foreign_start + len(FOREIGN_DNS_RULES):
+    fail("unexpected rule inserted into the reviewed DNS-port boundary")
+if rules[encrypted_start:encrypted_start + 2] != encrypted_ports:
+    fail("encrypted DNS port rejection block changed")
 
 diagnostics = (
     "DOMAIN-SUFFIX,net.coffee,Proxy", "DOMAIN-SUFFIX,ippure.com,Proxy",
@@ -453,7 +458,7 @@ for line in diagnostics:
 diagnostics_start = index(diagnostics[0])
 if rules[diagnostics_start:diagnostics_start + len(diagnostics)] != list(diagnostics):
     fail("public egress diagnostic block changed")
-if not port_start < diagnostics_start < foreign_start:
+if not foreign_start < encrypted_start < diagnostics_start < index(ads_line):
     fail("public egress diagnostic block order changed")
 
 shared_domestic = (
@@ -507,7 +512,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 33 or lock.get("mode") != "remote-rules-guarded-single-subscription":
+    if lock.get("schema") != 34 or lock.get("mode") != "remote-rules-guarded-single-subscription":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -515,7 +520,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.20 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
+    f"PASS R13.21 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
     f"local_sources={len(REPOSITORY_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.20 external-rule runtime lock."""
+"""Regenerate the R13.21 external-rule runtime lock."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ profile_rules = [
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 validate_remote_profile(text)
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.20 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.21 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -86,7 +86,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 33,
+    "schema": 34,
     "mode": "remote-rules-guarded-single-subscription",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -174,6 +174,7 @@ lock = {
             "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
             "domestic_resolver_policy": "Proxy",
             "foreign_resolver_policy": "Proxy",
+            "rule_order": ["domestic-resolver-exceptions", "reject-53", "foreign-resolver-exceptions", "reject-853-8853"],
             "unmatched_domains_force_local_resolution": False,
             "proxy_destination_can_use_remote_resolution": True,
             "proxy_server_hostname_resolution": "local independent DoH bootstrap",

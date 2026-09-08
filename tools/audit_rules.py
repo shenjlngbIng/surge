@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.20 rule snapshots, locks and optional online resources."""
+"""Validate R13.21 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 33 or lock.get("mode") != "remote-rules-guarded-single-subscription":
+if lock.get("schema") != 34 or lock.get("mode") != "remote-rules-guarded-single-subscription":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -191,6 +191,7 @@ if invariants.get("dns") != {
     "foreign_application_resolvers": list(FOREIGN_DNS_RULES),
     "domestic_resolver_policy": "Proxy",
     "foreign_resolver_policy": "Proxy",
+    "rule_order": ["domestic-resolver-exceptions", "reject-53", "foreign-resolver-exceptions", "reject-853-8853"],
     "unmatched_domains_force_local_resolution": False,
     "proxy_destination_can_use_remote_resolution": True,
     "proxy_server_hostname_resolution": "local independent DoH bootstrap",
@@ -261,7 +262,7 @@ if seen_remote != set(expected_sources):
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
 if dynamic_sources or DYNAMIC_RULES:
-    fail("R13.20 must not declare dynamic runtime sources")
+    fail("R13.21 must not declare dynamic runtime sources")
 
 if lock.get("runtime_order") != [line.split(",")[1] for line in expected_remote_order()]:
     fail("external runtime rule order is stale")
@@ -318,7 +319,7 @@ required_chatgpt = {
 chatgpt_rows = set(active_lines(RULES / "ChatGPT.list"))
 if len(chatgpt_rows) != 63 or not required_chatgpt <= chatgpt_rows:
     fail("ChatGPT official runtime dependencies are incomplete")
-if len(active_lines(RULES / "Ads.list")) != 152 or len(active_lines(RULES / "Pegasus.list")) != 1438:
+if len(active_lines(RULES / "Ads.list")) != 143 or len(active_lines(RULES / "Pegasus.list")) != 1438:
     fail("fixed Ads or Pegasus count changed")
 
 resource_lock = json.loads(RESOURCE_LOCK.read_text(encoding="utf-8"))
@@ -360,7 +361,7 @@ if CHECK_RUNTIME_REMOTE:
     from concurrent.futures import ThreadPoolExecutor
 
     def verify_remote(item: dict) -> str:
-        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.20"})
+        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.21"})
         with urllib.request.urlopen(request, timeout=20) as response:
             if response.status != 200:
                 fail(f"{item['file']} HTTP status {response.status}")
@@ -373,4 +374,4 @@ if CHECK_RUNTIME_REMOTE:
         verified = list(pool.map(verify_remote, raw_sources))
     print(f"PASS live GitHub raw resources={len(verified)} HTTP=200 SHA256=matched")
 
-print("PASS R13.20 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")
+print("PASS R13.21 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")

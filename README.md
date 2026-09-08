@@ -1,4 +1,4 @@
-# Surge iOS Privacy + Push R13.20
+# Surge iOS Privacy + Push R13.21
 
 面向 Surge iOS 的规则模式配置，采用单订阅入口、外部规则快照和分层策略组。日常使用只需填写一处 Surge 格式订阅地址，随后通过策略组选择出口。本文依据当前 [Surge.conf](Surge.conf) 编写，参数含义对照 Surge 官方手册。
 
@@ -122,7 +122,7 @@ Smart 会忽略内置策略和嵌套组，因而不能仅靠向 Smart 填入 REJ
 | --- | --- |
 | 1 | 本地发现放行，其他组播与广播拒绝，局域网和门户检测直连 |
 | 2 | STUN 进入 UDP 组，GitHub raw 与 jsDelivr 域名优先使用 Proxy |
-| 3 | 已知国内应用 DNS 端点代理，剩余公共 DNS 端口拒绝，定位引导、出口检测和境外 DNS 端点分别处理 |
+| 3 | 国内 DNS 例外、53 端口拒绝、境外加密 DNS 例外、853/8853 拒绝，随后处理定位引导与出口检测 |
 | 4 | Pegasus、APNs、Apple 流媒体例外、AppleCN、WeChat、Direct |
 | 5 | 功能域名及 BiliBili 国际站例外优先，随后匹配广告规则 |
 | 6 | AI、共享 Google 资源、视频与音频服务 |
@@ -152,9 +152,12 @@ Surge 自身使用 AliDNS 和 DNSPod 的独立直连 DoH，保留证书校验。
 | `hijack-dns = *:53` | 接管经过 Surge 的普通 DNS 查询 |
 | `allow-dns-svcb = false` | 保持虚拟 IP 所需的解析行为 |
 | `use-local-host-item-for-proxy = false` | 代理请求不因本地 Host 映射而统一改成 IP 连接 |
-| 已知应用 DNS 域名规则 | 应用自行访问这些端点时使用 Proxy |
+| 已列出的国内应用 DNS 域名 | 保留前置 Proxy 例外 |
+| 已列出的境外应用 DNS 域名 | 443、853、8853 端口使用 Proxy，53 端口仍拒绝 |
 | 53、853、8853 端口规则 | 拒绝到达这些规则的剩余流量，保留前置例外 |
 | `no-resolve` | IP 类规则不为匹配而额外触发本地解析 |
+
+这些规则处理 Surge 能识别目标域名的应用请求。境外端点例外位于 53 端口拒绝之后、853/8853 拒绝之前，避免加密 DNS 被端口规则提前拦截，同时保留原有明文 DNS 限制。应用直接访问公共 IP 且无法识别域名时，不会自动获得域名例外。规则放行也不代表每家服务商都提供全部端口。[规则顺序](https://manual.nssurge.com/rules/overview.html)、[Google DoT](https://developers.google.com/speed/public-dns/docs/dns-over-tls)
 
 应用自行访问的未知 HTTPS DNS 端点无法仅靠有限域名列表全部识别。检测网站显示的 DNS 运营商也不保证与代理出口一致。当前方案优先保证独立解析和代理启动，不承诺“零 DNS 泄漏”或检测页面全绿。
 
@@ -175,7 +178,7 @@ UDP 仍依赖节点协议、服务端能力和链路状态。Shadowsocks 与 SOC
 
 ## 外部资源与更新
 
-运行时共有 29 份规则和 1 个 Subscription 订阅资源。规则使用本仓库 [固定提交](https://github.com/shenjlngbIng/surge/tree/2b8fa93901061cf0482b079203630bcd11bfe0b1/Rules) 的 GitHub raw URL，快照日期为 2026-08-29。没有使用 jsDelivr 下载规则；配置中的 jsDelivr 域名规则仅保留普通访问分流。
+运行时共有 29 份规则和 1 个 Subscription 订阅资源。规则使用本仓库 [固定提交](https://github.com/shenjlngbIng/surge/tree/6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51/Rules) 的 GitHub raw URL，快照日期为 2026-09-08。本次仅修订 Ads，其余 28 份列表内容沿用上一版。没有使用 jsDelivr 下载规则；配置中的 jsDelivr 域名规则仅保留普通访问分流。
 
 规则的 `update-interval=-1` 禁止定期刷新，客户端会缓存已下载资源。手动更新同一固定 URL 仍得到同一份快照。上游变化需要维护者复核并发布新快照，再升级主配置才能采用。[外部规则参数](https://manual.nssurge.com/rules/ruleset.html)
 
@@ -196,7 +199,15 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 | 升级后没有生效 | 确认启用的是新主配置；外部资源更新不替换旧主配置 |
 | 国内流量仍直连 | 属于国内、局域网和明确直连例外的设计行为 |
 
-## R13.20 精简记录
+## R13.21 修正记录
+
+- 从 Ads 删除 8 条会匹配正常业务网站的关键词，来源标记改为注释。活动条目从 152 降为 143，保留细分广告和跟踪匹配，不新增整站放行规则。
+- 将境外 DNS 域名例外移到 853/8853 拒绝之前，保留 53 端口限制。主配置仍为 142 条指令，不添加复杂逻辑规则。
+- 新增正常网站、广告和 DNS 端口正反例，并验证恢复旧规则时测试能够报错。
+
+地区组仍允许回退 Auto，服务组的默认出口保持不变。共享的 Cloudflare 验证、Stripe 和 WorkOS 域名仍归入 ChatGPT；手动拆分服务出口时，应同时确认这些共享依赖的出口。此次不更改区域策略或删除登录依赖。
+
+### 沿用 R13.20 的精简
 
 | 删除内容 | 数量 | 行为依据 |
 | --- | --- | --- |
@@ -212,7 +223,7 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 
 ## 验证与维护
 
-本版静态配置检查、102 项故障注入、23 个域名/SNI 分流案例，以及地区筛选、空订阅、全部失效和手动选择模型均已通过。验证结论与运行边界见 [AUDIT_REPORT.md](AUDIT_REPORT.md)。
+本版检查涵盖 104 项配置故障注入、23 个原有域名/SNI 案例、16 个正常网站案例、8 个广告案例、132 个 DNS 端口案例和 10 个行为退化案例。地区筛选、空订阅、全部失效和手动选择模型继续保留。执行结果与验证边界见 [AUDIT_REPORT.md](AUDIT_REPORT.md)。
 
 ```bash
 python3 tools/convert_to_remote_rules.py
