@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.19 external rule inventory without embedding rule lists."""
+"""Validate the R13.20 external rule inventory without embedding rule lists."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.19 External Rules + Sentinel"
-RELEASE_DATE = "2026-09-07"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.20 External Rules + Sentinel"
+RELEASE_DATE = "2026-09-08"
 RULE_SNAPSHOT_TAG = "r12.17-20260825"
 RELEASE_REF = "2b8fa93901061cf0482b079203630bcd11bfe0b1"
 REMOTE_BASE = f"https://raw.githubusercontent.com/shenjlngbIng/surge/{RELEASE_REF}/Rules/"
@@ -18,7 +18,6 @@ UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
 
 DOMESTIC_DNS_RULES: tuple[str, ...] = (
-    "DOMAIN,dns.alidns.com,Proxy",
     "DOMAIN,dns.pub,Proxy",
     "DOMAIN,doh.pub,Proxy",
     "DOMAIN,dot.pub,Proxy",
@@ -42,7 +41,6 @@ SURGE_DNS_PROTOCOL_RULES: tuple[str, ...] = ()
 FOREIGN_DNS_RULES: tuple[str, ...] = (
     "DOMAIN,dns.google,Proxy",
     "DOMAIN,one.one.one.one,Proxy",
-    "DOMAIN,dns.nextdns.io,Proxy",
     "DOMAIN,dns.adguard.com,Proxy",
     "DOMAIN,doh.opendns.com,Proxy",
     "DOMAIN,doh.cleanbrowsing.org,Proxy",
@@ -165,8 +163,8 @@ def validate_remote_profile(text: str, root: Path = ROOT) -> str:
     references = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if references != expected_remote_order():
         raise ValueError("external rule URLs, order, policies or options differ from the reviewed inventory")
-    if "EMBEDDED-RULES" in text or len(rules) != 144:
-        raise ValueError("profile must contain 144 routing rules with 29 external references and no embedded lists")
+    if "EMBEDDED-RULES" in text or len(rules) != 142:
+        raise ValueError("profile must contain 142 routing rules with 29 external references and no embedded lists")
     return text
 
 
@@ -175,7 +173,7 @@ def main() -> int:
     rules = active_rule_lines(validate_remote_profile(text))
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.19 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.20 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES
@@ -195,7 +193,7 @@ def main() -> int:
     if any(marker in text for marker in forbidden):
         raise SystemExit("profile contains a mutable, mobile-heavy or unreviewed runtime source")
     print(
-        "PASS: remote_runtime_rules=29 embedded_rule_contents=0 rules=144"
+        "PASS: remote_runtime_rules=29 embedded_rule_contents=0 rules=142"
     )
     return 0
 

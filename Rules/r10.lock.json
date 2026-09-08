@@ -1,12 +1,12 @@
 {
   "schema": 33,
   "mode": "remote-rules-guarded-single-subscription",
-  "profile": "Surge iOS Privacy + Push R13.19 External Rules + Sentinel",
-  "generated": "2026-09-07",
+  "profile": "Surge iOS Privacy + Push R13.20 External Rules + Sentinel",
+  "generated": "2026-09-08",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "cae1c52395471c38c3bf08bde3833c10faae3e0512ab492bc49fa1cb0f5a2ad3",
-  "profile_lines": 387,
-  "active_rules": 144,
+  "profile_sha256": "6041d8002fe7476c95a31285027104e2ece2c32abfef1335513817c15df0da65",
+  "profile_lines": 311,
+  "active_rules": 142,
   "runtime_resources": 29,
   "immutable_repository_resources": 29,
   "dynamic_runtime_resources": 0,
@@ -182,7 +182,6 @@
       "surge_dns_protocol_rules": [],
       "surge_dns_protocol_rules_active": false,
       "domestic_application_resolvers": [
-        "DOMAIN,dns.alidns.com,Proxy",
         "DOMAIN,dns.pub,Proxy",
         "DOMAIN,doh.pub,Proxy",
         "DOMAIN,dot.pub,Proxy",
@@ -202,7 +201,6 @@
       "foreign_application_resolvers": [
         "DOMAIN,dns.google,Proxy",
         "DOMAIN,one.one.one.one,Proxy",
-        "DOMAIN,dns.nextdns.io,Proxy",
         "DOMAIN,dns.adguard.com,Proxy",
         "DOMAIN,doh.opendns.com,Proxy",
         "DOMAIN,doh.cleanbrowsing.org,Proxy",

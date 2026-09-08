@@ -1,6 +1,6 @@
 # 第三方来源与许可说明
 
-本仓库发布 Surge iOS Privacy + Push R13.19 External Rules + Sentinel 配置、固定规则副本和维护工具。规则与第三方数据的权利归各自作者或项目所有。根目录 MIT License 只覆盖本仓库有权以该许可发布的代码和内容，不改变第三方材料原有的许可或权利状态。
+本仓库发布 Surge iOS Privacy + Push R13.20 External Rules + Sentinel 配置、固定规则副本和维护工具。规则与第三方数据的权利归各自作者或项目所有。根目录 MIT License 只覆盖本仓库有权以该许可发布的代码和内容，不改变第三方材料原有的许可或权利状态。
 
 ## Blackmatrix7 规则来源
 
@@ -10,7 +10,7 @@
 
 ## SukkaW 来源
 
-`Rules/Ads.list` 含有历史 SukkaW 来源和仓库维护内容。准确的历史输入提交尚未确认，因此 `Rules/maintained_sources.lock.json` 明确披露该限制，并禁止未经固定来源与差异审阅的自动刷新。R13.19 将该固定快照的 152 条活动规则作为外部 RULE-SET 引用，交由 AdBlock 策略控制。运行时不再直接引用 SukkaW 动态资源。SukkaW/Surge 采用 AGPL-3.0；许可副本见 `THIRD_PARTY_LICENSES/SukkaW-AGPL-3.0.txt`。
+`Rules/Ads.list` 含有历史 SukkaW 来源和仓库维护内容。准确的历史输入提交尚未确认，因此 `Rules/maintained_sources.lock.json` 明确披露该限制，并禁止未经固定来源与差异审阅的自动刷新。R13.20 将该固定快照的 152 条活动规则作为外部 RULE-SET 引用，交由 AdBlock 策略控制。运行时不再直接引用 SukkaW 动态资源。SukkaW/Surge 采用 AGPL-3.0；许可副本见 `THIRD_PARTY_LICENSES/SukkaW-AGPL-3.0.txt`。
 
 ## Amnesty Tech Pegasus 数据
 
@@ -26,7 +26,7 @@
 
 ## 运行时交付范围
 
-R13.19 通过 GitHub raw URL 引用本仓库固定提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1` 的 29 个规则快照，保留来源内容、顺序和匹配选项。Ads、Pegasus 和 China 分别连接到对应控制组，默认处理方式不变。主配置没有内嵌列表；完整维护包附原始来源文件与许可信息。
+R13.20 通过 GitHub raw URL 引用本仓库固定提交 `2b8fa93901061cf0482b079203630bcd11bfe0b1` 的 29 个规则快照，保留来源内容、顺序和匹配选项。Ads、Pegasus 和 China 分别连接到对应控制组，默认处理方式不变。主配置没有内嵌列表；完整维护包附原始来源文件与许可信息。
 
 下面这些在线系统属于配置依赖或交付基础设施，不属于本地规则数据许可范围。
 

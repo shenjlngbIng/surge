@@ -82,7 +82,7 @@ def main() -> int:
     text = (ROOT / "Surge.conf").read_text()
     validate_remote_profile(text)
     actual = reference_records(text)
-    assert len(actual) == 5661
+    assert len(actual) == 5659
     for kind, value, _policy, _extended, no_resolve in actual:
         if kind in {"IP-CIDR", "IP-CIDR6"}:
             ipaddress.ip_network(value, strict=False)
@@ -104,6 +104,10 @@ def main() -> int:
         ("sub.123tramites.com", "", "Final"),
         ("sub.openai.com", "", "ChatGPT"),
         ("dns.alidns.com", "", "Proxy"),
+        ("alidns.com", "", "Proxy"),
+        ("dns.nextdns.io", "", "Proxy"),
+        ("nextdns.io", "", "Proxy"),
+        ("test.nextdns.io", "", "Proxy"),
         ("unknown.example", "", "Final"),
         ("x-ad.sm.cn", "", "AdBlock"),
         ("www.1688.com", "", "Domestic"),

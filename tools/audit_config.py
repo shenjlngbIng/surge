@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.19 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.20 profile."""
 
 from __future__ import annotations
 
@@ -72,7 +72,7 @@ SERVICE_MEMBERS = {
     "Games": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
 }
 REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
-VISIBLE_SELECT_OPTIONS = ("no-alert=0", "hidden=0", "include-all-proxies=0")
+VISIBLE_SELECT_OPTIONS: tuple[str, ...] = ()
 
 
 def fail(message: str) -> None:
@@ -187,19 +187,13 @@ except UnicodeDecodeError as exc:
     fail(f"profile is not valid UTF-8: {exc}")
 
 expected_header = [
-    "# > Surge Config Make by .ᐣ",
-    "# > TG Channel: https://t.me/shenjlngbIng",
-    "# > GitHub: https://github.com/shenjlngbIng",
-    "# > Update Date: 2026.09.07",
-    "# > Surge iOS Privacy + Push R13.19 External Rules + Sentinel | iOS 5.14.6+ (5.21.0+ recommended) | Rule Mode",
-    "# > 29 external rule lists use immutable GitHub raw URLs; no rule-list contents are embedded.",
-    "# > Put one Surge-format Sub-Store URL in Subscription; no linked profile or helper script is required.",
-    "# > include-all-networks stays enabled for APNs/privacy capture; Surge may warn about AirDrop/Xcode.",
-    "# > Domestic BiliBili and reviewed functional dependencies precede the fixed mobile ad boundary.",
-    f"# > Static repository rules are pinned to commit {RELEASE_REF} (2026.08.29).",
-    "# > REQUIRED: replace only Subscription.policy-path locally; never publish subscription tokens.",
+    f"# {PROFILE_NAME}",
+    "# 作者 .ᐣ | https://t.me/shenjlngbIng",
+    "# 仓库 https://github.com/shenjlngbIng/surge",
+    "# 更新 2026.09.08 | Surge iOS 5.14.6+，建议 5.21.0+ | 规则模式",
+    "# 29 份外置规则；仅替换 Subscription 的订阅地址，勿公开凭据。",
 ]
-if text.splitlines()[:11] != expected_header:
+if text.splitlines()[:len(expected_header)] != expected_header:
     fail("profile attribution, version, snapshot or token warning changed")
 if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF):
     fail("runtime snapshot must be a full lowercase Git SHA")
@@ -217,7 +211,6 @@ if list(sections) != ["General", "Host", "Proxy", "Proxy Group", "Rule"]:
 general = key_values(sections["General"], "General")
 expected_general = {
     "loglevel": "notify",
-    "auto-suspend": "true",
     "internet-test-url": "http://connectivitycheck.platform.hicloud.com/generate_204",
     "proxy-test-url": "http://cp.cloudflare.com/generate_204",
     "test-timeout": "5",
@@ -225,15 +218,11 @@ expected_general = {
     "ipv6": "true",
     "ipv6-vif": "auto",
     "compatibility-mode": "3",
-    "wifi-assist": "false",
-    "all-hybrid": "false",
     "include-all-networks": "true",
     "include-local-networks": "false",
     "include-apns": "true",
     "include-cellular-services": "false",
-    "show-error-page-for-reject": "false",
     "icmp-forwarding": "false",
-    "disable-geoip-db-auto-update": "false",
     "always-real-ip": "<simple-hostname>, *.local, *.cmpassport.com, id6.me, open.e.189.cn, mdn.open.wo.cn, opencloud.wostore.cn, auth.wosms.cn, *.10099.com.cn, *.srv.nintendo.net, *.stun.playstation.net, xbox.*.microsoft.com, *.xboxlive.com",
     "skip-proxy": "192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12, 100.64.0.0/10, 127.0.0.0/8, 169.254.0.0/16, localhost, *.local, ::1/128, fc00::/7, fe80::/10",
     "exclude-simple-hostnames": "true",
@@ -247,9 +236,6 @@ expected_general = {
     "use-local-host-item-for-proxy": "false",
     "allow-wifi-access": "false",
     "allow-hotspot-access": "false",
-    "http-api-web-dashboard": "false",
-    "proxy-restricted-to-lan": "true",
-    "gateway-restricted-to-lan": "true",
     "udp-policy-not-supported-behaviour": "REJECT",
     "block-quic": "per-policy",
 }
@@ -282,9 +268,12 @@ if tuple(groups) != GROUP_ORDER or len(groups) != 40:
 if "AllServer" in groups:
     fail("retired duplicate automatic group returned")
 for name in groups:
-    option_keys = [part.split("=", 1)[0] for part in group_parts(groups, name)[1:] if "=" in part]
+    options = [part for part in group_parts(groups, name)[1:] if "=" in part]
+    option_keys = [part.split("=", 1)[0] for part in options]
     if len(option_keys) != len(set(option_keys)):
         fail(f"{name} contains duplicate policy-group options")
+    if set(options) & {"no-alert=0", "hidden=0", "include-all-proxies=0"}:
+        fail(f"{name} repeats an omitted default option")
 
 if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final") != ["Proxy", "DIRECT"]:
     fail("Final policy changed")
@@ -309,7 +298,7 @@ elif policy_paths[0] != f"policy-path={SUBSCRIPTION_PLACEHOLDER}":
     fail("public profile must contain the reviewed subscription placeholder")
 require_exact_options(source, "Subscription", (
     policy_paths[0], "update-interval=3600", 'external-policy-modifier="udp-relay=true"',
-    "no-alert=0", "hidden=1", "include-all-proxies=0",
+    "hidden=1",
 ))
 node_pool = group_parts(groups, "NodePool")
 if node_pool[0] != "select" or group_members(groups, "NodePool") != ["Auto"]:
@@ -321,7 +310,7 @@ auto = group_parts(groups, "Auto")
 if auto[0] != "smart" or group_members(groups, "Auto") != ["Fail-Closed"] or included_groups(groups, "Auto") != ["Subscription"]:
     fail("Auto must retain a proxy-policy guard and include the Subscription members")
 require_exact_options(auto, "Auto", (
-    "evaluate-before-use=true", "no-alert=0", "hidden=0", "include-all-proxies=0",
+    "evaluate-before-use=true",
     "include-other-group=Subscription",
 ))
 for name, members in {
@@ -332,12 +321,12 @@ for name, members in {
 }.items():
     if group_parts(groups, name)[0] != "select" or group_members(groups, name) != members:
         fail(f"{name} control defaults or choices changed")
-    require_exact_options(group_parts(groups, name), name, ("no-alert=0", "hidden=1", "include-all-proxies=0"))
+    require_exact_options(group_parts(groups, name), name, ("hidden=1",))
 
 if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
     fail("ApplePush fallback exception changed")
 require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
-    "interval=60", "evaluate-before-use=true", "no-alert=0", "hidden=1",
+    "interval=60", "evaluate-before-use=true", "hidden=1",
 ))
 
 for name in SERVICE_GROUPS:
@@ -353,7 +342,7 @@ for name in REGIONS:
         fail(f"{source} must contain a REJECT guard plus filtered Subscription policies")
     require_options(source_parts, source, (
         "interval=600", "tolerance=100", "evaluate-before-use=true",
-        "no-alert=0", "hidden=1", "include-all-proxies=0", "include-other-group=Subscription",
+        "hidden=1", "include-other-group=Subscription",
     ))
     if not any(part.startswith("policy-regex-filter=") for part in source_parts):
         fail(f"{source} missing regional policy filter")
@@ -361,7 +350,7 @@ for name in REGIONS:
     if visible[0] != "fallback" or group_members(groups, name) != [source, "Auto"]:
         fail(f"{name} must fall back from its strict source to Auto")
     require_exact_options(visible, name, (
-        "interval=600", "evaluate-before-use=true", "no-alert=0", "hidden=0",
+        "interval=600", "evaluate-before-use=true",
     ))
 
 automatic = {
@@ -401,7 +390,7 @@ for group in groups:
 
 expanded_rules = active(sections["Rule"])
 rules = active(parse(validate_remote_profile(text))["Rule"])
-if len(rules) != 144 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
+if len(rules) != 142 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
@@ -417,7 +406,7 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.19 must not load mutable runtime supplements")
+    fail("R13.20 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -513,7 +502,7 @@ for rule in expanded_rules:
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (144, 29, 29, 0, 29)
+    expected_counts = (142, 29, 29, 0, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
@@ -526,7 +515,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.19 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
+    f"PASS R13.20 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
     f"local_sources={len(REPOSITORY_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

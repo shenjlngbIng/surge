@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.19 rule snapshots, locks and optional online resources."""
+"""Validate R13.20 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -110,7 +110,7 @@ counts = tuple(lock.get(key) for key in (
     "active_rules", "runtime_resources", "immutable_repository_resources",
     "dynamic_runtime_resources", "local_rule_files",
 ))
-if counts != (144, 29, 29, 0, 29):
+if counts != (142, 29, 29, 0, 29):
     fail(f"runtime lock counts mismatch: {counts}")
 
 invariants = dict(lock.get("required_invariants", {}))
@@ -261,7 +261,7 @@ if seen_remote != set(expected_sources):
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
 if dynamic_sources or DYNAMIC_RULES:
-    fail("R13.19 must not declare dynamic runtime sources")
+    fail("R13.20 must not declare dynamic runtime sources")
 
 if lock.get("runtime_order") != [line.split(",")[1] for line in expected_remote_order()]:
     fail("external runtime rule order is stale")
@@ -360,7 +360,7 @@ if CHECK_RUNTIME_REMOTE:
     from concurrent.futures import ThreadPoolExecutor
 
     def verify_remote(item: dict) -> str:
-        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.19"})
+        request = urllib.request.Request(item["url"], headers={"User-Agent": "Surge-Rule-Audit/13.20"})
         with urllib.request.urlopen(request, timeout=20) as response:
             if response.status != 200:
                 fail(f"{item['file']} HTTP status {response.status}")
@@ -373,4 +373,4 @@ if CHECK_RUNTIME_REMOTE:
         verified = list(pool.map(verify_remote, raw_sources))
     print(f"PASS live GitHub raw resources={len(verified)} HTTP=200 SHA256=matched")
 
-print("PASS R13.19 remote_rule_resources=29 local_rule_files=29 rules=144 embedded_rule_contents=0")
+print("PASS R13.20 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")

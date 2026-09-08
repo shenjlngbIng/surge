@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.19 external-rule runtime lock."""
+"""Regenerate the R13.20 external-rule runtime lock."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ profile_rules = [
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 validate_remote_profile(text)
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.19 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.20 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
