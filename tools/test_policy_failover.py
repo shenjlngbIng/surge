@@ -6,6 +6,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from test_runtime_rules import domain_route, reference_records
+
 ROOT = Path(__file__).resolve().parent.parent
 TEXT = (ROOT / "Surge.conf").read_text()
 GROUPS: dict[str, tuple[str, list[str], dict[str, str]]] = {}
@@ -53,7 +55,7 @@ def resolve(name: str, nodes: list[str], healthy: set[str], choices: dict[str, s
     candidates = members(name, nodes)
     if not candidates:
         return "DIRECT"  # Official empty-group SUBSTITUTE behavior.
-    if kind == "select":
+    if kind == "select" or name in (choices or {}):
         selected = (choices or {}).get(name, candidates[0])
         assert selected in candidates, (name, selected, candidates)
         return resolve(selected, nodes, healthy, choices)
@@ -65,6 +67,33 @@ def resolve(name: str, nodes: list[str], healthy: set[str], choices: dict[str, s
         return results[0]
     assert options.get("evaluate-before-use") == "true"
     return "FAILED"
+
+
+def check_delivery_recovery() -> int:
+    """Do not let a failed manual exit strand downloads or bypass healthy proxies.
+
+    This models fresh availability results, not APNs-specific reachability or
+    delivery. A temporary Smart override deliberately disables its recovery.
+    """
+    nodes = ["Hong Kong healthy", "Japan unavailable"]
+    healthy, failed = nodes
+    pinned = {"Proxy": "NodePool", "NodePool": failed}
+    transport = domain_route(reference_records(TEXT), "raw.githubusercontent.com", port=443)
+    assert transport == "Auto", ("resource download depends on manual exit", transport)
+    assert resolve("Proxy", nodes, {healthy}, pinned) == "FAILED"
+    assert resolve(transport, nodes, {healthy}, pinned) == healthy
+    assert resolve("ApplePush", nodes, {healthy}, pinned) == healthy
+    # Healthy manual choices are still preferred for APNs.
+    assert resolve("ApplePush", nodes, set(nodes), pinned) == failed
+    assert resolve("ApplePush", [], set()) == "DIRECT"
+    assert resolve("ApplePush", nodes, set(), pinned) == "DIRECT"
+    assert resolve(transport, [], set()) == "FAILED"
+    assert resolve(transport, nodes, set(), pinned) == "FAILED"
+    # A user override is an explicit limitation, not silently ignored by tests.
+    override = {**pinned, "Auto": failed}
+    assert resolve(transport, nodes, {healthy}, override) == "FAILED"
+    assert resolve("ApplePush", nodes, {healthy}, override) == "DIRECT"
+    return 11
 
 
 def main() -> int:
@@ -114,7 +143,19 @@ def main() -> int:
         assert resolve(switch, nodes, set(nodes), {switch: "DIRECT"}) == "DIRECT"
     assert resolve("Domestic", [japan], {japan}, {"Domestic": "Proxy"}) == japan
     assert resolve("UDP", nodes, set(nodes), {"UDP": "REJECT"}) == "REJECT"
-    print("PASS policy model: 15 region names, empty/failed sources, single-region fallback, manual selection and control switches; no device claim")
+    delivery_cases = check_delivery_recovery()
+    current_push = GROUPS["ApplePush"]
+    try:
+        GROUPS["ApplePush"] = (current_push[0], ["Proxy", "DIRECT"], current_push[2])
+        try:
+            check_delivery_recovery()
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError("delivery cases accepted the old premature DIRECT fallback")
+    finally:
+        GROUPS["ApplePush"] = current_push
+    print(f"PASS policy model: 15 region names, empty/failed sources, single-region fallback, manual selection and control switches; delivery_cases={delivery_cases} delivery_mutations=1; no device claim")
     return 0
 
 

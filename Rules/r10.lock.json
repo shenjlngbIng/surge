@@ -1,10 +1,10 @@
 {
-  "schema": 34,
+  "schema": 35,
   "mode": "remote-rules-guarded-single-subscription",
-  "profile": "Surge iOS Privacy + Push R13.22 External Rules + Sentinel",
+  "profile": "Surge iOS Privacy + Push R13.23 External Rules + Sentinel",
   "generated": "2026-09-08",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "b287cf999b80be3c699df729256083b047d154bf7a275748ecc7c7eac4c0ea77",
+  "profile_sha256": "205b450a36605e1667cf76edd003838f6704f710f651648b6c366270c2668b02",
   "profile_lines": 313,
   "active_rules": 142,
   "runtime_resources": 29,
@@ -264,6 +264,28 @@
       "udp_requires_policy_and_server_support": true
     },
     "runtime_rulesets_no_resolve": true,
+    "apple_push": {
+      "policy": "ApplePush",
+      "mode": "fallback",
+      "members": [
+        "Proxy",
+        "Auto",
+        "DIRECT"
+      ],
+      "interval_seconds": 60,
+      "evaluate_before_use": true,
+      "before_apple_rules": true,
+      "per_app_notification_routing": false,
+      "apns_delivery_verified": false
+    },
+    "resource_download": {
+      "hostname": "raw.githubusercontent.com",
+      "policy": "Auto",
+      "independent_of_manual_proxy": true,
+      "requires_loaded_proxy": true,
+      "requires_active_rule_mode": true,
+      "automatic_direct_fallback": false
+    },
     "public_ip_literals": {
       "china": "GEOIP,CN,Domestic,no-resolve",
       "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",

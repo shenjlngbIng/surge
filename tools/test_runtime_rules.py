@@ -130,6 +130,102 @@ def check_behavior(records: list[tuple]) -> tuple[int, int, int]:
     return len(normal_sites), len(ads), len(dns_cases)
 
 
+def literal_route(records: list[tuple], address: str, port: int) -> str:
+    """Model explicit IP/port rules only; no GeoIP, ASN, DNS or live traffic.
+
+    Push/Telegram fixtures match explicit CIDRs before the GeoIP tail. Negative
+    fixtures only assert that unrelated IPs do not acquire the APNs policy.
+    """
+    target = ipaddress.ip_address(address)
+    for kind, value, policy, _extended, _no_resolve in records:
+        if kind == "FINAL":
+            return policy
+        if kind == "DEST-PORT" and int(value) == port:
+            return policy
+        if kind in {"IP-CIDR", "IP-CIDR6"} and target in ipaddress.ip_network(value):
+            return policy
+    raise AssertionError("missing FINAL")
+
+
+def check_push_and_downloads(records: list[tuple]) -> tuple[int, int, int]:
+    """Independent endpoint fixtures from Apple guidance and the reviewed lists."""
+    push_hosts = (
+        "courier.push.apple.com", "api.push.apple.com",
+        "init-p01st.push.apple.com", "init-p01st-lb.push-apple.com.akadns.net",
+        "init-p01md-lb.push-apple.com.akadns.net", "push-apple.com",
+    )
+    host_cases = [(host, port, "ApplePush") for host in push_hosts for port in (443, 5223)]
+    host_cases += [(host, 443, "Telegram") for host in ("t.me", "api.telegram.org", "telegram.org")]
+    for host, port, expected in host_cases:
+        assert domain_route(records, host, port=port) == expected, (host, port, expected)
+    # Keep shared CDNs, Apple services and lookalike domains outside APNs.
+    not_push = (
+        "www.apple.com", "identity.apple.com", "mesu.apple.com",
+        "adcdownload.apple.com.akadns.net", "store.apple.com.edgekey.net",
+        "example.akadns.net", "courier.push.apple.com.evil.example",
+        "notpush.apple.com", "push-apple.com.akadns.net.evil.example",
+    )
+    for host in not_push:
+        assert domain_route(records, host, port=443) != "ApplePush", host
+    for host in ("raw.githubusercontent.com",):
+        assert domain_route(records, host, port=443) == "Auto", host
+    for host in ("raw.githubusercontent.com.evil.example", "notraw.githubusercontent.com"):
+        assert domain_route(records, host, port=443) != "Auto", host
+    host_count = len(host_cases) + len(not_push) + 3
+
+    # Apple publishes these five IPv4 and four IPv6 networks for APNs.
+    networks = (
+        "17.249.0.0/16", "17.252.0.0/16", "17.57.144.0/22",
+        "17.188.128.0/18", "17.188.20.0/23", "2620:149:a44::/48",
+        "2403:300:a42::/48", "2403:300:a51::/48", "2a01:b740:a42::/48",
+    )
+    ip_count = 0
+    for cidr in networks:
+        network = ipaddress.ip_network(cidr)
+        for port in (443, 5223):
+            for address in (network.network_address, network.broadcast_address):
+                assert literal_route(records, str(address), port) == "ApplePush", (address, port)
+                ip_count += 1
+            for address in (network.network_address - 1, network.broadcast_address + 1):
+                assert literal_route(records, str(address), port) != "ApplePush", (address, port)
+                ip_count += 1
+    for address in ("149.154.167.50", "91.108.4.1", "2001:b28:f23d::1", "2001:67c:4e8::1"):
+        assert literal_route(records, address, 443) == "Telegram", address
+        ip_count += 1
+    for port in (53, 853, 8853):
+        assert literal_route(records, "17.249.0.1", port) == "REJECT", port
+        ip_count += 1
+    sni_count = 0
+    for host in push_hosts:
+        assert domain_route(records, "203.0.113.8", host, port=443) == "ApplePush", host
+        sni_count += 1
+    return host_count, ip_count, sni_count
+
+
+def check_push_regressions(records: list[tuple]) -> int:
+    """Catch missing APNs, early Apple matching, overly broad lists and old routing."""
+    no_push = [row for row in records if row[2] != "ApplePush"]
+    raw_manual = [
+        (kind, value, "Proxy" if kind == "DOMAIN" and value == "raw.githubusercontent.com" else policy, extended, no_resolve)
+        for kind, value, policy, extended, no_resolve in records
+    ]
+    mutants = [
+        no_push,
+        [record("DOMAIN-SUFFIX,apple.com", "Apple"), *records],
+        [record("DOMAIN-SUFFIX,akadns.net", "ApplePush"), *records],
+        [record("DOMAIN-KEYWORD,apple.com.edgekey.net", "ApplePush"), *records],
+        [record("IP-CIDR,17.0.0.0/8,no-resolve", "ApplePush"), *records],
+        raw_manual,
+    ]
+    for index, candidate in enumerate(mutants):
+        try:
+            check_push_and_downloads(candidate)
+        except AssertionError:
+            continue
+        raise AssertionError(f"push/download fixtures accepted regression {index}")
+    return len(mutants)
+
+
 def reject_bad_profile(text: str) -> None:
     try:
         validate_remote_profile(text)
@@ -202,12 +298,14 @@ def main() -> int:
         ("unknown.example", "", "Final"),
         ("x-ad.sm.cn", "", "AdBlock"),
         ("www.1688.com", "", "Domestic"),
-        ("raw.githubusercontent.com", "", "Proxy"),
+        ("raw.githubusercontent.com", "", "Auto"),
     ]
     for hostname, sni, policy in cases:
         assert domain_route(actual, hostname, sni) == policy, (hostname, sni, policy)
     normal_count, ad_count, dns_count = check_behavior(actual)
     behavior_mutations = check_behavior_regressions(text, actual)
+    push_hosts, push_ips, push_sni = check_push_and_downloads(actual)
+    push_mutations = check_push_regressions(actual)
 
     rules = active_rule_lines(text)
     remote = [row for row in rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
@@ -222,7 +320,9 @@ def main() -> int:
         f"PASS external rules={len(remote)} semantic_rules={len(actual)} "
         f"routing_cases={len(cases)} normal_sites={normal_count} advertising={ad_count} "
         f"dns_port_cases={dns_count} corruption_cases=6 "
-        f"behavior_mutations={behavior_mutations}; offline model only"
+        f"behavior_mutations={behavior_mutations} push_download_hosts={push_hosts} "
+        f"push_telegram_ip_cases={push_ips} push_sni_cases={push_sni} "
+        f"push_download_mutations={push_mutations}; offline model only"
     )
     return 0
 

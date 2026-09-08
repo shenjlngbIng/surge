@@ -1,4 +1,4 @@
-# Surge iOS Privacy + Push R13.22
+# Surge iOS Privacy + Push R13.23
 
 面向 Surge iOS 的规则模式配置，采用单订阅入口、外部规则快照和分层策略组。日常使用只需填写一处 Surge 格式订阅地址，随后通过策略组选择出口。本文依据当前 [Surge.conf](Surge.conf) 编写，参数含义对照 Surge 官方手册。
 
@@ -49,7 +49,7 @@
 | HongKong、TaiWan、Japan、Singapore、America | fallback | 优先相应地区的测速组，失效后回退 Auto |
 | 桔子 | select，隐藏 | 唯一订阅源，仅向其他组提供成员 |
 | 五个 `地区-Nodes` 组 | url-test，隐藏 | 按节点名称筛选地区，设置 600 秒间隔和 100 ms 切换容差 |
-| ApplePush | fallback，隐藏 | APNs 优先 Proxy，失败后允许 DIRECT，间隔设置为 60 秒 |
+| ApplePush | fallback，隐藏 | 依次尝试 Proxy、Auto、DIRECT，间隔设置为 60 秒 |
 
 地区筛选依赖节点名称中的中文、英文、旗帜或地区缩写。名称识别无法核实服务器真实地理位置。地区组允许回退 Auto，因此不能保证账号或流媒体请求始终从指定地区出站。需要固定出口时，选择明确的真实节点，并检查该服务组的当前选项。
 
@@ -121,7 +121,7 @@ Smart 会忽略内置策略和嵌套组，因而不能仅靠向 Smart 填入 REJ
 | 顺序 | 处理内容 |
 | --- | --- |
 | 1 | 本地发现放行，其他组播与广播拒绝，局域网和门户检测直连 |
-| 2 | STUN 进入 UDP 组，GitHub raw 与 jsDelivr 域名优先使用 Proxy |
+| 2 | STUN 进入 UDP 组，GitHub raw 使用 Auto，jsDelivr 使用 Proxy |
 | 3 | 国内 DNS 例外、53 端口拒绝、境外加密 DNS 例外、853/8853 拒绝，随后处理定位引导与出口检测 |
 | 4 | Pegasus、APNs、Apple 流媒体例外、AppleCN、WeChat、Direct |
 | 5 | 功能域名及 BiliBili 国际站例外优先，随后匹配广告规则 |
@@ -163,6 +163,20 @@ Surge 自身使用 AliDNS 和 DNSPod 的独立直连 DoH，保留证书校验。
 
 `include-all-networks=true` 与 `include-apns=true` 保留较广的接管范围；局域网和蜂窝服务扩展接管仍关闭。这可能影响 AirDrop、Xcode 或 USB 控制台。`icmp-forwarding=false` 禁止直接转发 ICMP，因而 ping 失败不能单独证明代理不可用。[全局参数](https://manual.nssurge.com/profile/general.html)
 
+## Telegram 后台推送
+
+Telegram 应用数据由 Telegram 组处理，iOS 的系统推送连接由 ApplePush 组处理。两条路径都需要检查。ApplePush 隐藏只影响卡片显示，APNs 外部规则仍先于 AppleCN 生效。
+
+本版 ApplePush 按 `Proxy → Auto → DIRECT` 选择出口。手动选中的 Proxy 节点被判定不可用时，先通过 Auto 尝试其他节点；代理全部不可用时保留直连，以兼顾其他应用通知。fallback 依据通用连通性测试选择出口，测试成功不能证明 APNs 或 Telegram 通知一定送达；直连回退也可能无法恢复海外应用推送。[Fallback](https://manual.nssurge.com/policy-groups/fallback.html)
+
+`include-apns=true` 必须配合 `include-all-networks=true`。事件中的“包含所有网络请求已开启”是兼容性警告，关闭该项会同时影响 APNs 接管。两项继续保留，也不关闭警告日志。[接管参数](https://manual.nssurge.com/profile/general.html)
+
+APNs.list 覆盖 Apple 公布的 5 个 IPv4、4 个 IPv6 网段以及推送域名。未把整个 Apple、akadns.net 或 Apple 的共享 CDN 归入推送组。参考方案里的 identity.apple.com 是证书申请门户，缺少证据时不将其当作普通通知连接的必需修正。[Apple 推送网络范围](https://support.apple.com/en-us/102266)、[Apple 企业网络服务](https://support.apple.com/en-us/101555)
+
+升级后先确认真实节点可用、APNs.list 已加载，再开关一次飞行模式并恢复 Surge，促使系统推送长连接重新建立。保持 Telegram 通知权限开启、关闭会静音通知的专注模式，分别在 Wi-Fi 和蜂窝网络下锁屏，让另一账号发送新消息。旧连接不会仅因下载了新配置就必然迁移。[APNs 长连接说明](https://support.apple.com/en-us/102266)
+
+验收时查看请求中的 ApplePush 命中及实际出口，并确认 Telegram 通知到达。APNs 是系统共享连接，本配置不能仅代理 Telegram 的系统通知。不要把普通节点测速或一条警告消失当作推送验收结果。
+
 ## UDP 与 QUIC
 
 | 设置 | 含义 |
@@ -178,7 +192,11 @@ UDP 仍依赖节点协议、服务端能力和链路状态。Shadowsocks 与 SOC
 
 ## 外部资源与更新
 
-运行时共有 29 份规则和 1 个 桔子 订阅资源。规则使用本仓库 [固定提交](https://github.com/shenjlngbIng/surge/tree/6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51/Rules) 的 GitHub raw URL，快照日期为 2026-09-08。R13.22 沿用 R13.21 的全部规则文件与固定地址。没有使用 jsDelivr 下载规则；配置中的 jsDelivr 域名规则仅保留普通访问分流。
+运行时共有 29 份规则和 1 个 桔子 订阅资源。规则使用本仓库 [固定提交](https://github.com/shenjlngbIng/surge/tree/6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51/Rules) 的 GitHub raw URL，快照日期为 2026-09-08。R13.23 沿用 R13.21 的全部规则文件与固定地址。没有使用 jsDelivr 下载规则；配置中的 jsDelivr 域名规则仅保留普通访问分流。
+
+GitHub raw 的前置规则改用现有 Auto，避免 Proxy 手选坏节点时一起阻断规则下载，不增加新的策略组或下载脚本。该规则只对经过当前配置规则系统的请求生效，首次导入、Surge 未开启或全局直连模式不受它保证。Auto 若被临时手动固定到坏节点，也需先取消覆盖。[Smart 与临时覆盖](https://manual.nssurge.com/policy-groups/smart.html)
+
+首次导入仍需要一条可工作的下载路径。保留旧的可用配置和已缓存资源，先加载订阅并确认 Auto 有健康节点，再启用新配置、更新失败的规则。不要清空缓存或反复重装。当前事件里出现过“加载失败”时，应以外部资源页的现状、重新更新后的时间和详细错误判断；历史事件不会因后来下载成功而自动变成成功记录。
 
 规则的 `update-interval=-1` 禁止定期刷新，客户端会缓存已下载资源。手动更新同一固定 URL 仍得到同一份快照。上游变化需要维护者复核并发布新快照，再升级主配置才能采用。[外部规则参数](https://manual.nssurge.com/rules/ruleset.html)
 
@@ -189,7 +207,9 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 | 现象 | 如何判断与处理 |
 | --- | --- |
 | 桔子 返回 HTTP 500 | 检查 Sub-Store 或订阅服务的响应；修改分流注释无法修复服务端错误 |
-| 规则资源超时 | 先检查可用节点和网络，再更新失败资源；本版规则地址应为 GitHub raw 固定提交 |
+| 规则资源加载失败或超时 | 确认规则模式及 Auto 有健康节点、无临时手动覆盖；再更新失败资源。仍失败时检查资源页的具体 HTTP、DNS、TLS 或超时信息 |
+| Telegram 前台正常、锁屏无推送 | 确认 APNs.list 已加载，检查 ApplePush 实际出口，重建系统推送连接并发送新消息验证 |
+| 包含所有网络请求警告 | APNs 接管依赖此项；保留警告和开关，了解 AirDrop/Xcode 兼容性代价 |
 | 某个地区没有节点 | 检查订阅节点名称是否匹配地区；地区组可能回退 Auto |
 | Fail-Closed 或 REJECT 显示失败 | 属于保护项的预期结果，继续检查真实节点 |
 | 真实节点测速全部失败 | 检查订阅更新、节点连接错误和测试地址，不以规则数目判断可用性 |
@@ -199,7 +219,13 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 | 升级后没有生效 | 确认启用的是新主配置；外部资源更新不替换旧主配置 |
 | 国内流量仍直连 | 属于国内、局域网和明确直连例外的设计行为 |
 
-## R13.22 订阅源简称
+## R13.23 推送与规则下载恢复
+
+- ApplePush 在 Proxy 和 DIRECT 之间增加 Auto，手选节点失效时先尝试其他代理。
+- GitHub raw 改用 Auto，规则下载不再跟随 Proxy 的手动节点选择。
+- 补充 APNs 域名、IP 边界、Telegram、下载分流和失效恢复测试。29 份外置列表及地址不变，仍保留 40 个组和 142 条分流指令。
+
+### 沿用 R13.22 的订阅源简称
 
 订阅源从 `Subscription` 改为 `桔子`，节点池、Auto 和五个地区源的 7 处引用已同步修改。仅缩短名称，订阅地址、更新间隔、节点筛选、隐藏设置及分流行为不变。
 
@@ -227,7 +253,7 @@ Pegasus 是历史 IOC，Ads 是固定广告规则快照，两者均不能替代�
 
 ## 验证与维护
 
-本版检查涵盖 104 项配置故障注入、23 个原有域名/SNI 案例、16 个正常网站案例、8 个广告案例、132 个 DNS 端口案例和 10 个行为退化案例。地区筛选、空订阅、全部失效和手动选择模型继续保留。执行结果与验证边界见 [AUDIT_REPORT.md](AUDIT_REPORT.md)。
+本版检查涵盖 107 项配置故障注入、原有广告及 DNS 测试，以及新增的 27 个推送和下载域名案例、79 个 IP/端口案例、6 个推送 SNI 案例、11 项交付路径检查和 7 个退化案例。地区筛选、空订阅、全部失效和手动选择模型继续保留。执行结果与验证边界见 [AUDIT_REPORT.md](AUDIT_REPORT.md)。
 
 ```bash
 python3 tools/convert_to_remote_rules.py

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.22 rule snapshots, locks and optional online resources."""
+"""Validate R13.23 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 34 or lock.get("mode") != "remote-rules-guarded-single-subscription":
+if lock.get("schema") != 35 or lock.get("mode") != "remote-rules-guarded-single-subscription":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -145,6 +145,17 @@ expected_invariants = {
     "apple_captive_direct": "DOMAIN,captive.apple.com,DIRECT",
     "apple_bootstrap_direct": "DOMAIN,configuration.ls.apple.com,DIRECT",
     "runtime_rulesets_no_resolve": True,
+    "apple_push": {
+        "policy": "ApplePush", "mode": "fallback", "members": ["Proxy", "Auto", "DIRECT"],
+        "interval_seconds": 60, "evaluate_before_use": True,
+        "before_apple_rules": True, "per_app_notification_routing": False,
+        "apns_delivery_verified": False,
+    },
+    "resource_download": {
+        "hostname": "raw.githubusercontent.com", "policy": "Auto",
+        "independent_of_manual_proxy": True, "requires_loaded_proxy": True,
+        "requires_active_rule_mode": True, "automatic_direct_fallback": False,
+    },
 }
 for key, expected in expected_invariants.items():
     if invariants.get(key) != expected:
@@ -262,7 +273,7 @@ if seen_remote != set(expected_sources):
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
 if dynamic_sources or DYNAMIC_RULES:
-    fail("R13.22 must not declare dynamic runtime sources")
+    fail("R13.23 must not declare dynamic runtime sources")
 
 if lock.get("runtime_order") != [line.split(",")[1] for line in expected_remote_order()]:
     fail("external runtime rule order is stale")
@@ -374,4 +385,4 @@ if CHECK_RUNTIME_REMOTE:
         verified = list(pool.map(verify_remote, raw_sources))
     print(f"PASS live GitHub raw resources={len(verified)} HTTP=200 SHA256=matched")
 
-print("PASS R13.22 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")
+print("PASS R13.23 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.22 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.23 profile."""
 
 from __future__ import annotations
 
@@ -323,7 +323,7 @@ for name, members in {
         fail(f"{name} control defaults or choices changed")
     require_exact_options(group_parts(groups, name), name, ("hidden=1",))
 
-if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "DIRECT"]:
+if group_parts(groups, "ApplePush")[0] != "fallback" or group_members(groups, "ApplePush") != ["Proxy", "Auto", "DIRECT"]:
     fail("ApplePush fallback exception changed")
 require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
     "interval=60", "evaluate-before-use=true", "hidden=1",
@@ -406,7 +406,7 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.22 must not load mutable runtime supplements")
+    fail("R13.23 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -426,7 +426,7 @@ if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "
     fail("international compatibility guard must precede domestic BiliBili parent suffixes")
 
 stun = index("PROTOCOL,STUN,UDP")
-resource_transport = index("DOMAIN,raw.githubusercontent.com,Proxy")
+resource_transport = index("DOMAIN,raw.githubusercontent.com,Auto")
 index("DOMAIN-SUFFIX,jsdelivr.net,Proxy")
 if SURGE_DNS_PROTOCOL_RULES or any(rule.startswith(tuple(f"PROTOCOL,{kind}," for kind in ("DOH", "DOH3", "DOQ", "DOT", "DNS"))) for rule in rules):
     fail("inactive own-DNS protocol rules must not return")
@@ -460,6 +460,9 @@ if rules[diagnostics_start:diagnostics_start + len(diagnostics)] != list(diagnos
     fail("public egress diagnostic block changed")
 if not foreign_start < encrypted_start < diagnostics_start < index(ads_line):
     fail("public egress diagnostic block order changed")
+
+if index(repository_line("RULE-SET", "APNs.list", "ApplePush")) >= index(repository_line("RULE-SET", "AppleCN.list", "Apple")):
+    fail("APNs must precede ordinary Apple routing")
 
 shared_domestic = (
     "DOMAIN-SUFFIX,alibabausercontent.com,DIRECT", "DOMAIN-SUFFIX,aliyuncs.com,DIRECT",
@@ -512,7 +515,7 @@ if PROFILE == ROOT / "Surge.conf":
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 34 or lock.get("mode") != "remote-rules-guarded-single-subscription":
+    if lock.get("schema") != 35 or lock.get("mode") != "remote-rules-guarded-single-subscription":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -520,7 +523,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.22 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
+    f"PASS R13.23 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
     f"local_sources={len(REPOSITORY_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )

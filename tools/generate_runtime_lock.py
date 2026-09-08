@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.22 external-rule runtime lock."""
+"""Regenerate the R13.23 external-rule runtime lock."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ profile_rules = [
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 validate_remote_profile(text)
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.22 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.23 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -86,7 +86,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 34,
+    "schema": 35,
     "mode": "remote-rules-guarded-single-subscription",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -213,6 +213,17 @@ lock = {
             "udp_requires_policy_and_server_support": True,
         },
         "runtime_rulesets_no_resolve": True,
+        "apple_push": {
+            "policy": "ApplePush", "mode": "fallback", "members": ["Proxy", "Auto", "DIRECT"],
+            "interval_seconds": 60, "evaluate_before_use": True,
+            "before_apple_rules": True, "per_app_notification_routing": False,
+            "apns_delivery_verified": False,
+        },
+        "resource_download": {
+            "hostname": "raw.githubusercontent.com", "policy": "Auto",
+            "independent_of_manual_proxy": True, "requires_loaded_proxy": True,
+            "requires_active_rule_mode": True, "automatic_direct_fallback": False,
+        },
         "public_ip_literals": {
             "china": DOMESTIC_GEOIP_RULE,
             "ipv4": "IP-CIDR,0.0.0.0/0,Proxy,no-resolve",

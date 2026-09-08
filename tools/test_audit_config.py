@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.22 configuration auditor."""
+"""Fault-injection regression tests for the R13.23 configuration auditor."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.22 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
+    ("version", "R13.23 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
     ("date", "# 更新 2026.09.08", "# 更新 2026.09.01"),
     ("layout_claim", "29 份外置规则", "内嵌规则"),
     ("subscription_claim", "桔子 的订阅地址", "NodePool 的订阅地址"),
@@ -96,7 +96,9 @@ for name, old, new in (
     ("loopback_diagnostics", "[Proxy]\n", "[Proxy]\nDiagnostics = socks5, 127.0.0.1, 6153, udp-relay=true\n"),
     ("final_members", "Final = select, Proxy, DIRECT\n", "Final = select, Proxy, REJECT\n"),
     ("final_hidden", "Final = select, Proxy, DIRECT\n", "Final = select, Proxy, DIRECT, hidden=1\n"),
-    ("applepush_order", "ApplePush = fallback, Proxy, DIRECT", "ApplePush = fallback, DIRECT, Proxy"),
+    ("applepush_order", "ApplePush = fallback, Proxy, Auto, DIRECT", "ApplePush = fallback, DIRECT, Proxy, Auto"),
+    ("applepush_missing_auto", "ApplePush = fallback, Proxy, Auto, DIRECT", "ApplePush = fallback, Proxy, DIRECT"),
+    ("applepush_missing_direct", "ApplePush = fallback, Proxy, Auto, DIRECT", "ApplePush = fallback, Proxy, Auto"),
     ("apple_order", "Apple = select, DIRECT, Proxy,", "Apple = select, Proxy, DIRECT,"),
     ("unexpected_allserver", "[Proxy Group]\n", "[Proxy Group]\nAllServer = smart, include-other-group=桔子\n"),
 ):
@@ -167,7 +169,8 @@ for name, group, old, new in (
     ("security_default", "Security", "select, REJECT,", "select, DIRECT,"),
 ):
     replace_group_fragment(name, group, old, new)
-replace_once("raw_transport", "DOMAIN,raw.githubusercontent.com,Proxy", "DOMAIN,raw.githubusercontent.com,DIRECT")
+replace_once("raw_transport", "DOMAIN,raw.githubusercontent.com,Auto", "DOMAIN,raw.githubusercontent.com,DIRECT")
+replace_once("raw_manual_dependency", "DOMAIN,raw.githubusercontent.com,Auto", "DOMAIN,raw.githubusercontent.com,Proxy")
 replace_once("udp_control", "PROTOCOL,UDP,UDP", "PROTOCOL,UDP,Proxy")
 replace_once("domestic_control", "Rules/China.list,Domestic,", "Rules/China.list,DIRECT,")
 replace_once("sentinel_deleted", "Fail-Closed = http, 127.0.0.1, 1, no-error-alert=true\n", "")
@@ -208,4 +211,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.22 mutations={len(MUTATIONS)}")
+print(f"PASS R13.23 mutations={len(MUTATIONS)}")
