@@ -51,13 +51,24 @@
     },
     {
       "file": "BiliBili.list",
-      "active_entries": 16,
-      "sha256": "dd865bf4c993b94ed07c5fae2801695990173a41772bf829038ca9f2f4ae5f14",
+      "active_entries": 27,
+      "sha256": "87cd80625ca7d094dfc6b5f0f58700b959ec2e95b4b5b2f8e9320b11c1550b6d",
       "maintenance": "repository-maintained-reviewed-set",
-      "sources": [],
-      "license_status": "repository maintenance claim",
-      "notes": "Sixteen explicit domestic Bilibili suffixes; exact set is enforced by audit_rules.py. International hosts are excluded and handled only by generic Proxy compatibility guards.",
-      "last_review": "2026-08-29"
+      "sources": [
+        {
+          "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/0fa60782abfe70f58da510e90d9086136cf0d855/rule/Surge/BiliBili/BiliBili.list",
+          "kind": "reviewed CDN hostname additions; shared CDN suffixes narrowed to exact hosts",
+          "pinned_commit": "0fa60782abfe70f58da510e90d9086136cf0d855"
+        },
+        {
+          "url": "https://github.com/yt-dlp/yt-dlp/issues/12421",
+          "kind": "first-hand Bilibili PCDN observation for szbdyd.com; hostname fact only",
+          "pinned_commit": null
+        }
+      ],
+      "license_status": "Existing repository-curated entries; Blackmatrix7 additions retain GPL-2.0 attribution and the existing license copy; PCDN hostname independently curated from public observations.",
+      "notes": "27 exact/suffix routes: retain 16 domestic entries, add 10 reviewed CDN hostnames and szbdyd.com. Shared Akamai/YF CDN domains use exact hosts only. No broad CDN domains, shared HTTPDNS IP ranges, process rules, or international entries. Domestic list precedes Ads; seven international host/SNI guards remain Proxy. No PCDN rejection or endpoint rewrite.",
+      "last_review": "2026-09-09"
     },
     {
       "file": "China.list",

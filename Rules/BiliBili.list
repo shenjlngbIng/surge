@@ -1,9 +1,12 @@
 # 规则名称: BiliBili Domestic
-# 规则统计: 16
+# 规则统计: 27
 # 维护方式: 仓库审阅
 # 分流策略: DIRECT
-# 用途说明: 国内版 API、页面、图片与视频 CDN；国际域名由主配置的通用 Proxy 兼容护栏接管。
+# 用途说明: 国内版 API、评论、图片与视频 CDN；国际站由前置例外处理。
+# 来源与审阅: maintained_sources.lock.json
 
+DOMAIN,upos-hz-mirrorakam.akamaized.net
+DOMAIN,uposdash-302-bilivideo.yfcdn.net
 DOMAIN-SUFFIX,acgvideo.com
 DOMAIN-SUFFIX,b23.tv
 DOMAIN-SUFFIX,biliapi.com
@@ -11,6 +14,10 @@ DOMAIN-SUFFIX,biliapi.net
 DOMAIN-SUFFIX,bilibili.cn
 DOMAIN-SUFFIX,bilibili.com
 DOMAIN-SUFFIX,bilicdn1.com
+DOMAIN-SUFFIX,bilicdn2.com
+DOMAIN-SUFFIX,bilicdn3.com
+DOMAIN-SUFFIX,bilicdn4.com
+DOMAIN-SUFFIX,bilicdn5.com
 DOMAIN-SUFFIX,bilicomic.com
 DOMAIN-SUFFIX,bilicomics.com
 DOMAIN-SUFFIX,biligame.com
@@ -20,3 +27,8 @@ DOMAIN-SUFFIX,bilivideo.cn
 DOMAIN-SUFFIX,bilivideo.com
 DOMAIN-SUFFIX,bilivideo.net
 DOMAIN-SUFFIX,hdslb.com
+DOMAIN-SUFFIX,hdslb.com.w.kunlunhuf.com
+DOMAIN-SUFFIX,hdslb.com.w.kunlunpi.com
+DOMAIN-SUFFIX,hdslb.net
+DOMAIN-SUFFIX,hdslb.org
+DOMAIN-SUFFIX,szbdyd.com
