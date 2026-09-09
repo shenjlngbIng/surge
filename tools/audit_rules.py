@@ -308,17 +308,30 @@ for filename in sorted(expected_local):
             validate_rule_row(filename, row)
 
 exact_bilibili = {
+    "DOMAIN,upos-hz-mirrorakam.akamaized.net", "DOMAIN,uposdash-302-bilivideo.yfcdn.net",
     "DOMAIN-SUFFIX,acgvideo.com", "DOMAIN-SUFFIX,b23.tv",
     "DOMAIN-SUFFIX,biliapi.com", "DOMAIN-SUFFIX,biliapi.net",
     "DOMAIN-SUFFIX,bilibili.cn", "DOMAIN-SUFFIX,bilibili.com",
     "DOMAIN-SUFFIX,bilicdn1.com", "DOMAIN-SUFFIX,bilicomic.com",
+    "DOMAIN-SUFFIX,bilicdn2.com", "DOMAIN-SUFFIX,bilicdn3.com",
+    "DOMAIN-SUFFIX,bilicdn4.com", "DOMAIN-SUFFIX,bilicdn5.com",
     "DOMAIN-SUFFIX,bilicomics.com", "DOMAIN-SUFFIX,biligame.com",
     "DOMAIN-SUFFIX,biligame.net", "DOMAIN-SUFFIX,biliimg.com",
     "DOMAIN-SUFFIX,bilivideo.cn", "DOMAIN-SUFFIX,bilivideo.com",
     "DOMAIN-SUFFIX,bilivideo.net", "DOMAIN-SUFFIX,hdslb.com",
+    "DOMAIN-SUFFIX,hdslb.com.w.kunlunhuf.com", "DOMAIN-SUFFIX,hdslb.com.w.kunlunpi.com",
+    "DOMAIN-SUFFIX,hdslb.net", "DOMAIN-SUFFIX,hdslb.org", "DOMAIN-SUFFIX,szbdyd.com",
 }
 if set(active_lines(RULES / "BiliBili.list")) != exact_bilibili:
     fail("BiliBili domestic exact set changed")
+if invariants.get("bilibili") != {
+    "domestic": {"file": "BiliBili.list", "policy": "DIRECT", "entries": 27},
+    "functional_guards": list(FUNCTIONAL_GUARDS[:2]),
+    "international_ruleset_retired": True,
+    "international_compatibility_policy": "Proxy",
+    "international_compatibility_guards": list(RETIRED_BILIBILI_INTL_GUARDS),
+}:
+    fail("BiliBili direct routing or international boundary invariant mismatch")
 if (RULES / "BiliBiliIntl.list").exists():
     fail("retired BiliBili international ruleset returned")
 intl_markers = ("apiintl.biliapi.net", "bilibili.tv", "biliintl.com", "bstarstatic")

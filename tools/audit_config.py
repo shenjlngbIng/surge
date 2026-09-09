@@ -166,14 +166,14 @@ except UnicodeDecodeError as exc:
     fail(f"profile is not valid UTF-8: {exc}")
 
 expected_header = [
-    f"# {PROFILE_NAME}",
     "# 作者 .ᐣ | https://t.me/shenjlngbIng",
     "# 仓库 https://github.com/shenjlngbIng/surge",
-    "# 更新 2026.09.09 | Surge iOS 5.14.6+，建议 5.21.0+ | 规则模式",
-    "# 29 份外置规则；仅替换 桔子 的订阅地址，勿公开凭据。",
+    "# 更新 2026.09.09",
+    "",
+    "[General]",
 ]
 if text.splitlines()[:len(expected_header)] != expected_header:
-    fail("profile attribution, version, snapshot or token warning changed")
+    fail("profile must start with the reviewed three-line attribution header")
 if not re.fullmatch(r"[0-9a-f]{40}", RELEASE_REF):
     fail("runtime snapshot must be a full lowercase Git SHA")
 if text.count("policy-path=") != 1:
@@ -419,6 +419,8 @@ if rules[intl_start:intl_start + len(RETIRED_BILIBILI_INTL_GUARDS)] != list(RETI
     fail("retired BiliBili international compatibility guards changed")
 if index(RETIRED_BILIBILI_INTL_GUARDS[0]) >= index(repository_line("RULE-SET", "BiliBili.list", "DIRECT")):
     fail("international compatibility guard must precede domestic BiliBili parent suffixes")
+if index(repository_line("RULE-SET", "BiliBili.list", "DIRECT")) >= index(ads_line):
+    fail("domestic BiliBili API and CDN routing must precede Ads")
 
 stun = index("PROTOCOL,STUN,UDP")
 resource_transport = index("DOMAIN,raw.githubusercontent.com,Auto")

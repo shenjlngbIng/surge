@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RULE_SNAPSHOT_COMMIT: 6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51
+  RULE_SNAPSHOT_COMMIT: 4057ea435ece7617cabec5b7ac5a49c1d93937de
 
 jobs:
   install:

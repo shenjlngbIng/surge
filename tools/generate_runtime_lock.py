@@ -237,7 +237,7 @@ lock = {
             "ipv6": "IP-CIDR6,::/0,Proxy,no-resolve",
         },
         "bilibili": {
-            "domestic": {"file": "BiliBili.list", "policy": "DIRECT", "entries": 16},
+            "domestic": {"file": "BiliBili.list", "policy": "DIRECT", "entries": 27},
             "functional_guards": list(FUNCTIONAL_GUARDS[:2]),
             "international_ruleset_retired": True,
             "international_compatibility_policy": "Proxy",

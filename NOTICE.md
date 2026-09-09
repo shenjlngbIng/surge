@@ -1,12 +1,14 @@
 # 第三方来源与许可说明
 
-本仓库发布 Surge iOS Privacy + Push R13.23 External Rules + Sentinel 配置、固定规则副本和维护工具。规则与第三方数据的权利归各自作者或项目所有。根目录 MIT License 只覆盖本仓库有权以该许可发布的代码和内容，不改变第三方材料原有的许可或权利状态。
+本仓库发布 Surge iOS Privacy + Push R13.25 Service Regions + Latency + Sentinel 配置、固定规则副本和维护工具。规则与第三方数据的权利归各自作者或项目所有。根目录 MIT License 只覆盖本仓库有权以该许可发布的代码和内容，不改变第三方材料原有的许可或权利状态。
 
 ## Blackmatrix7 规则来源
 
 18 份服务规则以 `blackmatrix7/ios_rule_script` 的固定提交为维护输入。具体仓库、提交、文件路径、Git Blob、上游 SHA-256、本地增删边界和本地 SHA-256 记录在 `Rules/upstreams.lock.json`。
 
 相关上游内容采用 GPL-2.0。完整许可副本见 `THIRD_PARTY_LICENSES/blackmatrix7-GPL-2.0.txt`。运行时不会直接访问 Blackmatrix7 地址，设备通过本仓库固定提交的 GitHub raw URL 读取审阅副本。
+
+BiliBili.list 在原有仓库维护条目上，依据 Blackmatrix7 固定提交 `0fa60782abfe70f58da510e90d9086136cf0d855` 补充 10 个 CDN 域名；共享 CDN 的两个后缀收窄为精确主机。另据公开请求记录补入 `szbdyd.com` 域名事实。新增来源、取舍与哈希记录在 `Rules/maintained_sources.lock.json`，Blackmatrix7 部分保留上述 GPL-2.0 许可。
 
 ## SukkaW 来源
 
@@ -26,7 +28,7 @@
 
 ## 运行时交付范围
 
-R13.23 通过 GitHub raw URL 引用本仓库固定提交 `6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51` 的 29 个规则快照，保留来源内容、顺序和匹配选项。Ads、Pegasus 和 China 分别连接到对应控制组，默认处理方式不变。主配置没有内嵌列表；完整维护包附原始来源文件与许可信息。
+当前发布通过 GitHub raw URL 引用本仓库固定提交 `4057ea435ece7617cabec5b7ac5a49c1d93937de` 的 29 个规则快照。此次更新 BiliBili.list 及其前置顺序，另外 28 份规则内容保持。Ads、Pegasus 和 China 分别连接到对应控制组，默认处理方式不变。主配置没有内嵌列表；完整维护包附原始来源文件与许可信息。
 
 下面这些在线系统属于配置依赖或交付基础设施，不属于本地规则数据许可范围。
 

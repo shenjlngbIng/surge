@@ -9,7 +9,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from convert_to_remote_rules import FOREIGN_DNS_RULES
+from convert_to_remote_rules import FOREIGN_DNS_RULES, RELEASE_REF, repository_line
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,13 +39,11 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.25 Service Regions + Latency + Sentinel", "R13.16 Fail-Closed Sentinel"),
     ("date", "# 更新 2026.09.09", "# 更新 2026.09.01"),
-    ("layout_claim", "29 份外置规则", "内嵌规则"),
-    ("subscription_claim", "桔子 的订阅地址", "NodePool 的订阅地址"),
     ("attribution", "# 作者 .ᐣ", "# 作者 unknown"),
-    ("snapshot_ref", "6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51", "de744020e1a5ecab82a87f0749493f6adf405dd4"),
-    ("token_warning", "勿公开凭据", "可公开凭据"),
+    ("repository", "# 仓库 https://github.com/shenjlngbIng/surge", "# 仓库 https://example.invalid"),
+    ("extra_header", "# 作者 .ᐣ", "# Extra profile title\n# 作者 .ᐣ"),
+    ("snapshot_ref", RELEASE_REF, "de744020e1a5ecab82a87f0749493f6adf405dd4"),
     ("missing_policy_path", "policy-path=https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL, ", ""),
     ("duplicate_policy_path", "桔子 = select, REJECT, policy-path=", "桔子 = select, REJECT, policy-path=https://example.invalid/SECOND, policy-path="),
     ("wrong_placeholder", "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL", "https://example.invalid/WRONG_SUBSCRIPTION_URL"),
@@ -54,6 +52,11 @@ for name, old, new in (
 
 replace_once("mutable_main", "[Rule]\n", "[Rule]\nRULE-SET,https://raw.githubusercontent.com/shenjlngbIng/surge/main/Rules/Ads.list,AdBlock,no-resolve\n")
 replace_once("mobile_dynamic_ads", "[Rule]\n", "[Rule]\nDOMAIN-SET,https://ruleset.skk.moe/List/domainset/reject.conf,REJECT,update-interval=86400\n")
+
+bili_line = repository_line("RULE-SET", "BiliBili.list", "DIRECT")
+ads_line = repository_line("RULE-SET", "Ads.list", "AdBlock")
+MUTATIONS.append(("bilibili_after_ads", SOURCE.replace(bili_line + "\n", "", 1).replace(ads_line, ads_line + "\n" + bili_line, 1)))
+replace_once("intl_sni_guard", "DOMAIN,apiintl.biliapi.net,Proxy,extended-matching", "DOMAIN,apiintl.biliapi.net,Proxy")
 
 # General, DNS and access invariants.
 for name, old, new in (

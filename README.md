@@ -27,7 +27,7 @@
 ## 2. 安装与升级
 
 1. 保留手机上仍可使用的配置、私人订阅地址及外部资源缓存。
-2. 在 Surge 中通过 [主配置 URL](https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf) 导入模板，确认顶部版本为 R13.25。
+2. 在 Surge 中通过 [主配置 URL](https://raw.githubusercontent.com/shenjlngbIng/surge/main/Surge.conf) 导入模板。文件头保留作者、仓库和更新日期三行；本次 B 站修复的规则地址含 `4057ea4`。
 3. 搜索 `桔子 =`，将 `policy-path=` 后的完整占位地址替换成自己的 Surge 格式订阅地址，其余参数保留。
 4. 更新订阅，确认 NodePool 能列出真实节点，Auto/Fast 有可用节点；随后确认 29 份外部规则均已加载。
 5. 启用规则模式，选择 `Final → Proxy`、`Proxy → Fast`。设备可能保留以前的手动选择，不能仅凭文件中的排列顺序判断当前选项。
@@ -178,7 +178,7 @@ Surge 按首次匹配确定策略。当前有效规则分为以下阶段：
 | 3 | 国内应用 DNS 例外、53 拒绝、境外加密 DNS 例外、853/8853 拒绝 |
 | 4 | Apple 定位引导、出口检测、Pegasus、APNs |
 | 5 | Apple 流媒体例外、AppleCN、WeChat、Direct |
-| 6 | 功能域名与 BiliBili 国际站例外，随后广告规则 |
+| 6 | 功能域名、BiliBili 国际站例外、国内 BiliBili 直连，随后广告规则 |
 | 7 | AI、Google 共享资源、流媒体地区例外、影音服务 |
 | 8 | 社交、开发、Google、微软公共登录、游戏、OneDrive 与 Microsoft |
 | 9 | 国内云服务、China、Global、CN GeoIP |
@@ -187,6 +187,25 @@ Surge 按首次匹配确定策略。当前有效规则分为以下阶段：
 少量前置域名用于解决实际重叠：APNs 先于 AppleCN，Spotify 等功能端点先于广告，香港 Now 先于 HBO，微软公共登录先于游戏。国内 BiliBili、WeChat、Direct 固定直连，BiliBili 国际站兼容域名归 Proxy。
 
 共享 Cloudflare 验证、Stripe、WorkOS 等部分依赖仍按现有 ChatGPT 规则处理，未将整个共享平台随意拆散。新增例外应验证父域名、共享 CDN 及规则先后关系，避免整站放行或归区。
+
+### 国内哔哩哔哩
+
+国内版固定直连，无需新增或手选策略组。`BiliBili.list` 包含 27 条域名规则，位于广告和通用流媒体规则之前，覆盖 API、评论、登录、图片和视频 CDN；保留 `extended-matching`，供可识别的 TLS SNI/HTTP Host 参与匹配。[Surge 规则匹配](https://manual.nssurge.com/rules/overview.html)
+
+| 路径 | 处理 |
+| --- | --- |
+| `api.bilibili.com`、`app.bilibili.com`、`grpc.biliapi.net` 等 | DIRECT；评论与应用 API 不随 Fast 切换出口 |
+| 原有视频域名、`bilicdn2–5.com`、`hdslb.net`、`hdslb.org` 及两个指定昆仑 CDN 后缀 | DIRECT，补齐图片与视频路径 |
+| `upos-hz-mirrorakam.akamaized.net`、`uposdash-302-bilivideo.yfcdn.net` | 仅这两个主机直连，不放行整个共享 CDN |
+| `szbdyd.com` 及子域名 | DIRECT；保留播放路径，不阻断 PCDN、不重写播放地址 |
+| `httpdns.bilivideo.com` | 保留直连；Surge 自身 DNS 设置保持 |
+| 国际站兼容域名 | 更早命中 Proxy；同时覆盖可识别的 SNI/Host |
+
+本轮离线核对确认，原配置中部分 CDN 域名会落到 Final，按默认选择经 Proxy 出口。常见评论 API 原本已直连，未在当前广告快照中发现这些接口被拦截；缺少设备请求日志，不能把评论卡顿全部归因于这次漏项。
+
+更新主配置并确认新规则下载成功后，完全退出并重新打开 B 站，检查视频、拖动进度、评论和图片。若仍异常，查看失败请求的域名、命中规则和错误信息，区分运营商/CDN 链路、解析失败、纯 IP 请求及另外启用的模块。本次未修改全局 IPv6、QUIC 或加密 DNS。
+
+CDN 范围参考 [Blackmatrix7 固定规则](https://github.com/blackmatrix7/ios_rule_script/blob/0fa60782abfe70f58da510e90d9086136cf0d855/rule/Surge/BiliBili/BiliBili.list)，`szbdyd.com` 根据 [B 站 PCDN 请求记录](https://github.com/yt-dlp/yt-dlp/issues/12421) 补入。来源、审阅边界及哈希记于 `Rules/maintained_sources.lock.json`。
 
 ## 7. DNS、IPv6 与接管范围
 
@@ -224,11 +243,11 @@ APNs.list 位于 AppleCN 前，覆盖推送域名及已核对的 5 个 IPv4、4 
 
 ## 10. 外部资源与版本管理
 
-运行时资源包括 29 份固定规则及 1 个私人订阅。全部规则继续引用提交 [`6e8e1bf`](https://github.com/shenjlngbIng/surge/tree/6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51/Rules)，规则快照日期为 2026-09-08；此次没有更换规则文件或固定地址。
+运行时资源包括 29 份固定规则及 1 个私人订阅。全部规则引用提交 [`4057ea4`](https://github.com/shenjlngbIng/surge/tree/4057ea435ece7617cabec5b7ac5a49c1d93937de/Rules)，规则快照日期为 2026-09-09；本次仅修改 BiliBili.list，另外 28 份规则内容保持。先发布规则快照，再由主配置引用该提交。
 
 | 资源层次 | 更新方式 |
 | --- | --- |
-| 主配置 Surge.conf | 通过 main 分支 URL 获得当前发布版；需核对顶部版本和私人订阅 |
+| 主配置 Surge.conf | 通过 main 分支 URL 获得当前发布版；核对更新日期、规则快照和私人订阅 |
 | 桔子 节点订阅 | 设置 3,600 秒刷新间隔，实际调度由客户端决定 |
 | 29 份外部规则 | `update-interval=-1`，固定提交；手动更新同一地址仍是同一快照 |
 | 规则维护来源 | 通过来源锁、哈希与许可记录审核，再发布新的固定提交 |
@@ -249,10 +268,11 @@ Pegasus 是历史 IOC，Ads 是固定快照，不代替持续维护的安全产�
 | 地区不对 | 区分外层 fallback 与严格地区源；以服务请求详情为准 |
 | 出口检测与服务不同 | net.coffee 等检测跟随 Proxy，独立服务组可能另选节点 |
 | 测速正常但无法登录/播放 | 验证实际 IP、账号地区、代理限制、产品版本和具体内容授权 |
+| 国内 B 站视频或评论不加载 | 更新主配置及 BiliBili.list，重开应用；检查失败请求是否命中 DIRECT、具体错误及其他模块 |
 | 前台 Telegram 正常、锁屏无通知 | 检查 ApplePush/APNs 命中、系统连接、通知权限与专注模式 |
 | “包含所有网络请求”提示 | 保留 APNs 依赖组合，按兼容性需求判断，不直接关闭接管 |
 | TCP 正常但 UDP 无结果 | 单独验证真实节点的 UDP 能力与日志 |
-| 升级后没有变化 | 确认活动主配置为 R13.25；更新外部资源不会替换主配置 |
+| 升级后没有变化 | 确认活动主配置中的规则地址含 `4057ea4`；仅更新旧地址的外部资源不会获得本次修复 |
 | 服务频繁切换 IP | 零容差优先最低测试值；需要会话稳定时在该服务组临时固定合格节点 |
 
 ## 12. 验证与维护

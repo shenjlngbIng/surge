@@ -12,7 +12,7 @@ PROFILE = ROOT / "Surge.conf"
 PROFILE_NAME = "Surge iOS Privacy + Push R13.25 Service Regions + Latency + Sentinel"
 RELEASE_DATE = "2026-09-09"
 RULE_SNAPSHOT_TAG = None  # This snapshot is pinned by commit, not a legacy tag.
-RELEASE_REF = "6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51"
+RELEASE_REF = "4057ea435ece7617cabec5b7ac5a49c1d93937de"
 REMOTE_BASE = f"https://raw.githubusercontent.com/shenjlngbIng/surge/{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
@@ -102,13 +102,13 @@ FUNCTIONAL_GUARDS: tuple[str, ...] = (
 )
 
 RETIRED_BILIBILI_INTL_GUARDS: tuple[str, ...] = (
-    "DOMAIN,apiintl.biliapi.net,Proxy",
-    "DOMAIN,p-bstarstatic.akamaized.net,Proxy",
-    "DOMAIN,p.bstarstatic.com,Proxy",
-    "DOMAIN,upos-bstar-mirrorakam.akamaized.net,Proxy",
-    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net,Proxy",
-    "DOMAIN-SUFFIX,bilibili.tv,Proxy",
-    "DOMAIN-SUFFIX,biliintl.com,Proxy",
+    "DOMAIN,apiintl.biliapi.net,Proxy,extended-matching",
+    "DOMAIN,p-bstarstatic.akamaized.net,Proxy,extended-matching",
+    "DOMAIN,p.bstarstatic.com,Proxy,extended-matching",
+    "DOMAIN,upos-bstar-mirrorakam.akamaized.net,Proxy,extended-matching",
+    "DOMAIN,upos-bstar1-mirrorakam.akamaized.net,Proxy,extended-matching",
+    "DOMAIN-SUFFIX,bilibili.tv,Proxy,extended-matching",
+    "DOMAIN-SUFFIX,biliintl.com,Proxy,extended-matching",
 )
 
 REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
@@ -117,6 +117,7 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("RULE-SET", "AppleCN.list", "AppleCN · Apple", "Apple"),
     ("RULE-SET", "WeChat.list", "WeChat · DIRECT", "DIRECT"),
     ("RULE-SET", "Direct.list", "Direct · DIRECT", "DIRECT"),
+    ("RULE-SET", "BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
     ("RULE-SET", "Ads.list", "Ads · AdBlock", "AdBlock"),
     ("RULE-SET", "ChatGPT.list", "ChatGPT", "ChatGPT"),
     ("RULE-SET", "Claude.list", "Claude", "Claude"),
@@ -129,7 +130,6 @@ REPOSITORY_RULES: tuple[tuple[str, str, str, str], ...] = (
     ("RULE-SET", "Emby.list", "Emby", "Emby"),
     ("RULE-SET", "TikTok.list", "TikTok", "TikTok"),
     ("RULE-SET", "Bahamut.list", "Bahamut", "Bahamut"),
-    ("RULE-SET", "BiliBili.list", "BiliBili domestic API and video CDN", "DIRECT"),
     ("RULE-SET", "Spotify.list", "Spotify", "Spotify"),
     ("RULE-SET", "ProxyMedia.list", "ProxyMedia · Streaming", "Streaming"),
     ("RULE-SET", "Telegram.list", "Telegram", "Telegram"),

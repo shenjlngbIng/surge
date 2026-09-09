@@ -7,7 +7,7 @@ import fnmatch
 import ipaddress
 from pathlib import Path
 
-from convert_to_remote_rules import FOREIGN_DNS_RULES, active_rule_lines, validate_remote_profile
+from convert_to_remote_rules import FOREIGN_DNS_RULES, RELEASE_REF, active_rule_lines, validate_remote_profile
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -265,11 +265,83 @@ def check_behavior_regressions(text: str, records: list[tuple]) -> int:
     return len(mutants)
 
 
+def check_bilibili(records: list[tuple]) -> int:
+    """Exercise app API/comment hosts, CDN omissions and international boundaries.
+
+    Literal-address fixtures model a visible TLS SNI/HTTP Host only; they do not
+    claim that Surge can recover a hostname from opaque IP/QUIC traffic.
+    """
+    domestic = (
+        "api.bilibili.com", "app.bilibili.com", "grpc.biliapi.net",
+        "api.biliapi.net", "comment.bilibili.com", "api.vc.bilibili.com",
+        "passport.bilibili.com", "httpdns.bilivideo.com", "i0.hdslb.com",
+        "upos-sz-mirrorcoso1.bilivideo.com", "video.bilivideo.cn",
+        "video.bilivideo.net", "upos-hz-mirrorakam.akamaized.net",
+        "uposdash-302-bilivideo.yfcdn.net", "video.bilicdn2.com",
+        "video.bilicdn3.com", "video.bilicdn4.com", "video.bilicdn5.com",
+        "img.hdslb.net", "img.hdslb.org", "i0.hdslb.com.w.kunlunhuf.com",
+        "i0.hdslb.com.w.kunlunpi.com", "xy-test.v1d.szbdyd.com",
+    )
+    international = (
+        "apiintl.biliapi.net", "p-bstarstatic.akamaized.net", "p.bstarstatic.com",
+        "upos-bstar-mirrorakam.akamaized.net", "upos-bstar1-mirrorakam.akamaized.net",
+        "www.bilibili.tv", "api.biliintl.com",
+    )
+    shared_or_lookalike = (
+        "akamaized.net", "other.akamaized.net", "other.yfcdn.net",
+        "other.kunlunhuf.com", "other.kunlunpi.com", "other.ksyungslb.com",
+        "upos-hz-mirrorakam.akamaized.net.evil.example",
+        "api.bilibili.com.evil.example", "notbilibili.com", "notszbdyd.com",
+    )
+    count = 0
+    for hostname, expected in [(host, "DIRECT") for host in domestic] + [(host, "Proxy") for host in international]:
+        for port in (80, 443):
+            for address, sni in ((hostname, ""), ("203.0.113.8", hostname), ("2001:db8::8", hostname)):
+                actual = domain_route(records, address, sni, port=port)
+                assert actual == expected, ("Bilibili routing", hostname, address, port, actual, expected)
+                count += 1
+    for hostname in shared_or_lookalike:
+        actual = domain_route(records, hostname, port=443)
+        assert actual != "DIRECT", ("Bilibili overbroad CDN bypass", hostname)
+        count += 1
+    for port in (4480, 9305, 9400):
+        assert domain_route(records, "xy-test.v1d.szbdyd.com", port=port) == "DIRECT", port
+        count += 1
+    for hostname in ("api.bilibili.com", "httpdns.bilivideo.com", "xy-test.v1d.szbdyd.com"):
+        for port in (53, 853, 8853):
+            assert domain_route(records, hostname, port=port) == "REJECT", (hostname, port)
+            count += 1
+    return count
+
+
+def check_bilibili_regressions(records: list[tuple]) -> int:
+    additions = {
+        "upos-hz-mirrorakam.akamaized.net", "uposdash-302-bilivideo.yfcdn.net",
+        "bilicdn2.com", "bilicdn3.com", "bilicdn4.com", "bilicdn5.com",
+        "hdslb.com.w.kunlunhuf.com", "hdslb.com.w.kunlunpi.com",
+        "hdslb.net", "hdslb.org", "szbdyd.com",
+    }
+    mutants = [[row for row in records if row[1] not in additions]]
+    mutants.append([
+        (kind, value, policy, False if value == "apiintl.biliapi.net" else extended, no_resolve)
+        for kind, value, policy, extended, no_resolve in records
+    ])
+    # A shared CDN parent must never inherit the domestic service exception.
+    mutants.append([("DOMAIN-SUFFIX", "akamaized.net", "DIRECT", True, False)] + records)
+    for number, candidate in enumerate(mutants):
+        try:
+            check_bilibili(candidate)
+        except AssertionError:
+            continue
+        raise AssertionError(f"Bilibili fixtures accepted routing regression {number}")
+    return len(mutants)
+
+
 def main() -> int:
     text = (ROOT / "Surge.conf").read_text()
     validate_remote_profile(text)
     actual = reference_records(text)
-    assert len(actual) == 5665
+    assert len(actual) == 5676
     for kind, value, _policy, _extended, no_resolve in actual:
         if kind in {"IP-CIDR", "IP-CIDR6"}:
             ipaddress.ip_network(value, strict=False)
@@ -336,6 +408,8 @@ def main() -> int:
     behavior_mutations = check_behavior_regressions(text, actual)
     push_hosts, push_ips, push_sni = check_push_and_downloads(actual)
     push_mutations = check_push_regressions(actual)
+    bili_cases = check_bilibili(actual)
+    bili_mutations = check_bilibili_regressions(actual)
 
     rules = active_rule_lines(text)
     remote = [row for row in rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
@@ -343,7 +417,7 @@ def main() -> int:
     reject_bad_profile(text.replace(remote[0] + "\n", "", 1))
     reject_bad_profile(text.replace(remote[0], remote[0].replace(",Security,", ",Proxy,"), 1))
     reject_bad_profile(text.replace(remote[0], remote[0].replace(",extended-matching", ""), 1))
-    reject_bad_profile(text.replace(remote[0], remote[0].replace("6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51", "main"), 1))
+    reject_bad_profile(text.replace(remote[0], remote[0].replace(RELEASE_REF, "main"), 1))
     reject_bad_profile(text.replace("[Rule]\n", "[Rule]\nDOMAIN,123tramites.com,Security\n", 1))
     reject_bad_profile(text.replace(remote[1], remote[1].replace(",no-resolve", ""), 1))
     print(
@@ -352,7 +426,8 @@ def main() -> int:
         f"dns_port_cases={dns_count} corruption_cases=6 "
         f"behavior_mutations={behavior_mutations} push_download_hosts={push_hosts} "
         f"push_telegram_ip_cases={push_ips} push_sni_cases={push_sni} "
-        f"push_download_mutations={push_mutations} media_mutations=3; offline model only"
+        f"push_download_mutations={push_mutations} media_mutations=3 "
+        f"bilibili_cases={bili_cases} bilibili_mutations={bili_mutations}; offline model only"
     )
     return 0
 
