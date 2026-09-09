@@ -1,12 +1,12 @@
 {
-  "schema": 35,
+  "schema": 36,
   "mode": "remote-rules-guarded-single-subscription",
-  "profile": "Surge iOS Privacy + Push R13.23 External Rules + Sentinel",
-  "generated": "2026-09-08",
+  "profile": "Surge iOS Privacy + Push R13.25 Service Regions + Latency + Sentinel",
+  "generated": "2026-09-09",
   "source_repository": "shenjlngbIng/surge",
-  "profile_sha256": "205b450a36605e1667cf76edd003838f6704f710f651648b6c366270c2668b02",
-  "profile_lines": 313,
-  "active_rules": 142,
+  "profile_sha256": "75c852844344773ed95d0ec37096934ad487056c18607505b7221514c3ccc6ef",
+  "profile_lines": 345,
+  "active_rules": 157,
   "runtime_resources": 29,
   "immutable_repository_resources": 29,
   "dynamic_runtime_resources": 0,
@@ -61,6 +61,7 @@
       "Games",
       "NodePool",
       "Auto",
+      "Fast",
       "HongKong",
       "TaiWan",
       "Japan",
@@ -75,6 +76,107 @@
       "smart_groups": [
         "Auto"
       ],
+      "fast": {
+        "mode": "url-test",
+        "source": "桔子",
+        "explicit_members": [
+          "Fail-Closed"
+        ]
+      },
+      "service_sources": {
+        "ChatGPT": [
+          "America-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "TaiWan-Nodes"
+        ],
+        "Claude": [
+          "America-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "TaiWan-Nodes"
+        ],
+        "Gemini": [
+          "America-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "TaiWan-Nodes"
+        ],
+        "GitHub": [
+          "桔子"
+        ],
+        "YouTube": [
+          "桔子"
+        ],
+        "NETFLIX": [
+          "HongKong-Nodes",
+          "TaiWan-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "America-Nodes"
+        ],
+        "Disney+": [
+          "HongKong-Nodes",
+          "TaiWan-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "America-Nodes"
+        ],
+        "HBO": [
+          "America-Nodes",
+          "Singapore-Nodes",
+          "HongKong-Nodes",
+          "TaiWan-Nodes"
+        ],
+        "PrimeVideo": [
+          "HongKong-Nodes",
+          "TaiWan-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "America-Nodes"
+        ],
+        "Emby": [
+          "桔子"
+        ],
+        "TikTok": [
+          "America-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "TaiWan-Nodes"
+        ],
+        "Bahamut": [
+          "TaiWan-Nodes"
+        ],
+        "Spotify": [
+          "HongKong-Nodes",
+          "TaiWan-Nodes",
+          "Japan-Nodes",
+          "Singapore-Nodes",
+          "America-Nodes"
+        ],
+        "Streaming": [
+          "桔子"
+        ],
+        "Telegram": [
+          "桔子"
+        ],
+        "X": [
+          "桔子"
+        ],
+        "Google": [
+          "桔子"
+        ],
+        "Microsoft": [
+          "桔子"
+        ],
+        "Games": [
+          "桔子"
+        ]
+      },
+      "service_mode": "url-test",
+      "url_test_interval_seconds": 300,
+      "url_test_tolerance_ms": 0,
+      "service_cross_region_fallback": false,
       "subscription": {
         "mode": "select",
         "hidden": true,
@@ -83,7 +185,7 @@
           "REJECT"
         ],
         "update_interval_seconds": 3600,
-        "external_policy_modifier": "udp-relay=true",
+        "external_policy_modifier": "udp-relay=true,test-url=http://cp.cloudflare.com/generate_204,test-timeout=5",
         "routed_directly": false
       },
       "node_pool": {

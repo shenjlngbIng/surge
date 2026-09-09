@@ -269,7 +269,7 @@ def main() -> int:
     text = (ROOT / "Surge.conf").read_text()
     validate_remote_profile(text)
     actual = reference_records(text)
-    assert len(actual) == 5650
+    assert len(actual) == 5665
     for kind, value, _policy, _extended, no_resolve in actual:
         if kind in {"IP-CIDR", "IP-CIDR6"}:
             ipaddress.ip_network(value, strict=False)
@@ -284,7 +284,27 @@ def main() -> int:
         ("rum.browser-intake-datadoghq.com", "", "ChatGPT"),
         ("chatgpt.com", "", "ChatGPT"),
         ("hls.itunes.apple.com", "", "Streaming"),
-        ("viu.now.com", "", "Streaming"),
+        ("viu.now.com", "", "HongKong-Nodes"),
+        ("api.nowe.com", "", "HongKong-Nodes"),
+        ("now.com", "", "HongKong-Nodes"),
+        ("now.com.hk", "", "HongKong-Nodes"),
+        ("now-tv.com", "", "HongKong-Nodes"),
+        ("now-ashare.com", "", "HongKong-Nodes"),
+        ("nowe.hk", "", "HongKong-Nodes"),
+        ("mytvsuper.com", "", "HongKong-Nodes"),
+        ("api.viu.tv", "", "HongKong-Nodes"),
+        ("api.tver.jp", "", "Japan-Nodes"),
+        ("hulu.com", "", "America-Nodes"),
+        ("vod.hulustream.com", "", "America-Nodes"),
+        ("hulu.tv", "", "America-Nodes"),
+        ("hulu.us", "", "America-Nodes"),
+        ("huluim.com", "", "America-Nodes"),
+        ("max.com", "", "HBO"),
+        ("hbomax.com", "", "HBO"),
+        ("ani.gamer.com.tw", "", "Bahamut"),
+        ("hulu.com.not-hulu.example", "", "Final"),
+        ("tver.jp.not-tver.example", "", "Final"),
+        ("now.com.not-now.example", "", "Final"),
         ("login.live.com", "", "Microsoft"),
         ("123tramites.com", "", "Security"),
         ("203.0.113.8", "123tramites.com", "Security"),
@@ -302,6 +322,16 @@ def main() -> int:
     ]
     for hostname, sni, policy in cases:
         assert domain_route(actual, hostname, sni) == policy, (hostname, sni, policy)
+    for domain, wrong in (("hulu.com", "HongKong-Nodes"), ("tver.jp", "America-Nodes"), ("now.com", "HBO")):
+        mutant = [(kind, value, wrong if kind == "DOMAIN-SUFFIX" and value == domain else policy, extended, no_resolve)
+                  for kind, value, policy, extended, no_resolve in actual]
+        try:
+            for hostname, sni, policy in cases:
+                assert domain_route(mutant, hostname, sni) == policy
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError(f"media cases accepted an incorrect country for {domain}")
     normal_count, ad_count, dns_count = check_behavior(actual)
     behavior_mutations = check_behavior_regressions(text, actual)
     push_hosts, push_ips, push_sni = check_push_and_downloads(actual)
@@ -322,7 +352,7 @@ def main() -> int:
         f"dns_port_cases={dns_count} corruption_cases=6 "
         f"behavior_mutations={behavior_mutations} push_download_hosts={push_hosts} "
         f"push_telegram_ip_cases={push_ips} push_sni_cases={push_sni} "
-        f"push_download_mutations={push_mutations}; offline model only"
+        f"push_download_mutations={push_mutations} media_mutations=3; offline model only"
     )
     return 0
 

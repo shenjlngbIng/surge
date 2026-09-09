@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the R13.23 external rule inventory without embedding rule lists."""
+"""Validate the R13.25 external rule inventory without embedding rule lists."""
 
 from __future__ import annotations
 
@@ -9,13 +9,47 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 PROFILE = ROOT / "Surge.conf"
-PROFILE_NAME = "Surge iOS Privacy + Push R13.23 External Rules + Sentinel"
-RELEASE_DATE = "2026-09-08"
+PROFILE_NAME = "Surge iOS Privacy + Push R13.25 Service Regions + Latency + Sentinel"
+RELEASE_DATE = "2026-09-09"
 RULE_SNAPSHOT_TAG = None  # This snapshot is pinned by commit, not a legacy tag.
 RELEASE_REF = "6e8e1bfbbdda66ee8ad0a5ad3979b6de8b5b7a51"
 REMOTE_BASE = f"https://raw.githubusercontent.com/shenjlngbIng/surge/{RELEASE_REF}/Rules/"
 UPDATE_OPTION = "update-interval=-1"
 DYNAMIC_UPDATE_OPTION = "update-interval=86400"
+
+
+# Reviewed service candidates within the five supported name classifiers.
+# None means the service has no common country whitelist in this profile.
+REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
+AI_REGIONS = ("America", "Japan", "Singapore", "TaiWan")
+SERVICE_REGIONS = {
+    "ChatGPT": AI_REGIONS, "Claude": AI_REGIONS, "Gemini": AI_REGIONS,
+    "GitHub": None, "YouTube": None,
+    "NETFLIX": REGIONS, "Disney+": REGIONS,
+    "HBO": ("America", "Singapore", "HongKong", "TaiWan"),
+    "PrimeVideo": REGIONS, "Emby": None,
+    "TikTok": AI_REGIONS, "Bahamut": ("TaiWan",), "Spotify": REGIONS,
+    "Streaming": None, "Telegram": None, "X": None,
+    "Google": None, "Microsoft": None, "Games": None,
+}
+SERVICE_SOURCE_GROUPS = {
+    name: [region + "-Nodes" for region in regions] if regions is not None else ["桔子"]
+    for name, regions in SERVICE_REGIONS.items()
+}
+AUTO_TEST_OPTIONS = (
+    "policy-regex-filter=^(?!REJECT$).+", "interval=300", "tolerance=0",
+    "evaluate-before-use=true", "no-alert=true",
+)
+MEDIA_REGION_RULES = (
+    "DOMAIN-SUFFIX,hulu.com,America-Nodes", "DOMAIN-SUFFIX,hulu.tv,America-Nodes",
+    "DOMAIN-SUFFIX,hulu.us,America-Nodes", "DOMAIN-SUFFIX,huluim.com,America-Nodes",
+    "DOMAIN-SUFFIX,hulustream.com,America-Nodes", "DOMAIN-SUFFIX,tver.jp,Japan-Nodes",
+    "USER-AGENT,TVer-Release*,Japan-Nodes", "DOMAIN-SUFFIX,mytvsuper.com,HongKong-Nodes",
+    "DOMAIN-SUFFIX,viu.tv,HongKong-Nodes", "DOMAIN-SUFFIX,viu.now.com,HongKong-Nodes",
+    "DOMAIN-SUFFIX,now-ashare.com,HongKong-Nodes", "DOMAIN-SUFFIX,now-tv.com,HongKong-Nodes",
+    "DOMAIN-SUFFIX,now.com,HongKong-Nodes", "DOMAIN-SUFFIX,now.com.hk,HongKong-Nodes",
+    "DOMAIN-SUFFIX,nowe.com,HongKong-Nodes", "DOMAIN-SUFFIX,nowe.hk,HongKong-Nodes",
+)
 
 DOMESTIC_DNS_RULES: tuple[str, ...] = (
     "DOMAIN,dns.pub,Proxy",
@@ -163,8 +197,8 @@ def validate_remote_profile(text: str, root: Path = ROOT) -> str:
     references = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if references != expected_remote_order():
         raise ValueError("external rule URLs, order, policies or options differ from the reviewed inventory")
-    if "EMBEDDED-RULES" in text or len(rules) != 142:
-        raise ValueError("profile must contain 142 routing rules with 29 external references and no embedded lists")
+    if "EMBEDDED-RULES" in text or len(rules) != 157:
+        raise ValueError("profile must contain 157 routing rules with 29 external references and no embedded lists")
     return text
 
 
@@ -173,7 +207,7 @@ def main() -> int:
     rules = active_rule_lines(validate_remote_profile(text))
     external = [line for line in rules if line.startswith(("RULE-SET,", "DOMAIN-SET,"))]
     if external != expected_remote_order():
-        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.23 inventory")
+        raise SystemExit("runtime rule inventory or order differs from the reviewed R13.25 inventory")
 
     repository_urls = {
         f"{REMOTE_BASE}{filename}" for _kind, filename, _label, _policy in REPOSITORY_RULES
@@ -193,7 +227,7 @@ def main() -> int:
     if any(marker in text for marker in forbidden):
         raise SystemExit("profile contains a mutable, mobile-heavy or unreviewed runtime source")
     print(
-        "PASS: remote_runtime_rules=29 embedded_rule_contents=0 rules=142"
+        "PASS: remote_runtime_rules=29 embedded_rule_contents=0 rules=157"
     )
     return 0
 

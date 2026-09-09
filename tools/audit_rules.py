@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate R13.23 rule snapshots, locks and optional online resources."""
+"""Validate R13.25 rule snapshots, locks and optional online resources."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ import urllib.request
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    SERVICE_SOURCE_GROUPS,
     DOMESTIC_DNS_RULES,
     DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
@@ -102,7 +103,7 @@ def validate_rule_row(filename: str, row: str) -> None:
 
 
 lock = json.loads(LOCK.read_text(encoding="utf-8"))
-if lock.get("schema") != 35 or lock.get("mode") != "remote-rules-guarded-single-subscription":
+if lock.get("schema") != 36 or lock.get("mode") != "remote-rules-guarded-single-subscription":
     fail("runtime lock schema or mode mismatch")
 if lock.get("profile") != PROFILE_NAME:
     fail("runtime lock profile mismatch")
@@ -110,7 +111,7 @@ counts = tuple(lock.get(key) for key in (
     "active_rules", "runtime_resources", "immutable_repository_resources",
     "dynamic_runtime_resources", "local_rule_files",
 ))
-if counts != (142, 29, 29, 0, 29):
+if counts != (157, 29, 29, 0, 29):
     fail(f"runtime lock counts mismatch: {counts}")
 
 invariants = dict(lock.get("required_invariants", {}))
@@ -133,7 +134,7 @@ expected_invariants = {
         "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
         "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
         "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-        "Microsoft", "Games", "NodePool", "Auto", "HongKong", "TaiWan",
+        "Microsoft", "Games", "NodePool", "Auto", "Fast", "HongKong", "TaiWan",
         "Japan", "Singapore", "America",
     ],
     "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
@@ -165,10 +166,16 @@ architecture = dict(invariants.get("policy_architecture", {}))
 if architecture != {
     "automatic_empty_group_behavior": "nonempty local HTTP sentinel; never rely on empty Smart fallback",
     "smart_groups": ["Auto"],
+    "fast": {"mode": "url-test", "source": "桔子", "explicit_members": ["Fail-Closed"]},
+    "service_sources": SERVICE_SOURCE_GROUPS,
+    "service_mode": "url-test",
+    "url_test_interval_seconds": 300,
+    "url_test_tolerance_ms": 0,
+    "service_cross_region_fallback": False,
     "subscription": {
         "mode": "select", "hidden": True, "source": "external-policy-path",
         "explicit_members": ["REJECT"], "update_interval_seconds": 3600,
-        "external_policy_modifier": "udp-relay=true", "routed_directly": False,
+        "external_policy_modifier": "udp-relay=true,test-url=http://cp.cloudflare.com/generate_204,test-timeout=5", "routed_directly": False,
     },
     "node_pool": {
         "mode": "select", "hidden": False, "source": "桔子", "explicit_members": ["Auto"],
@@ -273,7 +280,7 @@ if seen_remote != set(expected_sources):
 
 dynamic_sources = list(lock.get("dynamic_sources", []))
 if dynamic_sources or DYNAMIC_RULES:
-    fail("R13.23 must not declare dynamic runtime sources")
+    fail("R13.25 must not declare dynamic runtime sources")
 
 if lock.get("runtime_order") != [line.split(",")[1] for line in expected_remote_order()]:
     fail("external runtime rule order is stale")
@@ -385,4 +392,4 @@ if CHECK_RUNTIME_REMOTE:
         verified = list(pool.map(verify_remote, raw_sources))
     print(f"PASS live GitHub raw resources={len(verified)} HTTP=200 SHA256=matched")
 
-print("PASS R13.23 remote_rule_resources=29 local_rule_files=29 rules=142 embedded_rule_contents=0")
+print("PASS R13.25 remote_rule_resources=29 local_rule_files=29 rules=157 embedded_rule_contents=0")

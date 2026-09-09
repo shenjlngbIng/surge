@@ -19,7 +19,7 @@ from release_inventory import validate_release_tree
 
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.23-External-Rules-20260908.zip"
+DEFAULT_OUTPUT = ROOT.parent / "Surge-R13.25-External-Rules-20260909.zip"
 
 
 def active_rule_lines(text: str) -> list[str]:
@@ -48,7 +48,7 @@ def validate_profile_sources() -> None:
     )
     if any(source in profile for source in forbidden_mobile_sources):
         raise ValueError("Surge.conf contains a forbidden mobile reject source")
-    if len(active) != 142 or active[-1] != "FINAL,Final,dns-failed":
+    if len(active) != 157 or active[-1] != "FINAL,Final,dns-failed":
         raise ValueError("Surge.conf reviewed rule count or FINAL invariant changed")
     if any(marker in profile for marker in ("/surge/main/Rules/", "cdn.jsdelivr.net/gh/")):
         raise ValueError("Surge.conf contains a mutable or unreviewed runtime rule URL")

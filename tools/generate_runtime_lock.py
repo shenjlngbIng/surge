@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Regenerate the R13.23 external-rule runtime lock."""
+"""Regenerate the R13.25 external-rule runtime lock."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    SERVICE_SOURCE_GROUPS,
     DOMESTIC_DNS_RULES,
     DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
@@ -55,7 +56,7 @@ profile_rules = [
 external = [row for row in profile_rules if row.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 validate_remote_profile(text)
 if external != expected_remote_order():
-    raise SystemExit("profile runtime resource order differs from the reviewed R13.23 inventory")
+    raise SystemExit("profile runtime resource order differs from the reviewed R13.25 inventory")
 if any(marker in text for marker in ("reject_phishing.conf", "/domainset/reject.conf")):
     raise SystemExit("mobile profile contains a forbidden mutable reject source")
 
@@ -86,7 +87,7 @@ for source in DYNAMIC_RULES:
 
 local_lists = sorted(RULES.glob("*.list"))
 lock = {
-    "schema": 35,
+    "schema": 36,
     "mode": "remote-rules-guarded-single-subscription",
     "profile": PROFILE_NAME,
     "generated": RELEASE_DATE,
@@ -118,7 +119,7 @@ lock = {
             "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
             "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
             "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-            "Microsoft", "Games", "NodePool", "Auto", "HongKong", "TaiWan",
+            "Microsoft", "Games", "NodePool", "Auto", "Fast", "HongKong", "TaiWan",
             "Japan", "Singapore", "America",
         ],
         "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
@@ -127,10 +128,16 @@ lock = {
         "policy_architecture": {
             "automatic_empty_group_behavior": "nonempty local HTTP sentinel; never rely on empty Smart fallback",
             "smart_groups": ["Auto"],
+            "fast": {"mode": "url-test", "source": "桔子", "explicit_members": ["Fail-Closed"]},
+            "service_sources": SERVICE_SOURCE_GROUPS,
+            "service_mode": "url-test",
+            "url_test_interval_seconds": 300,
+            "url_test_tolerance_ms": 0,
+            "service_cross_region_fallback": False,
             "subscription": {
                 "mode": "select", "hidden": True, "source": "external-policy-path",
                 "explicit_members": ["REJECT"], "update_interval_seconds": 3600,
-                "external_policy_modifier": "udp-relay=true",
+                "external_policy_modifier": "udp-relay=true,test-url=http://cp.cloudflare.com/generate_204,test-timeout=5",
                 "routed_directly": False,
             },
             "node_pool": {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fault-injection regression tests for the R13.23 configuration auditor."""
+"""Fault-injection regression tests for the R13.25 configuration auditor."""
 
 from __future__ import annotations
 
@@ -39,8 +39,8 @@ def replace_group_fragment(name: str, group: str, old: str, new: str) -> None:
 
 # Header, source and subscription boundary.
 for name, old, new in (
-    ("version", "R13.23 External Rules + Sentinel", "R13.16 Fail-Closed Sentinel"),
-    ("date", "# 更新 2026.09.08", "# 更新 2026.09.01"),
+    ("version", "R13.25 Service Regions + Latency + Sentinel", "R13.16 Fail-Closed Sentinel"),
+    ("date", "# 更新 2026.09.09", "# 更新 2026.09.01"),
     ("layout_claim", "29 份外置规则", "内嵌规则"),
     ("subscription_claim", "桔子 的订阅地址", "NodePool 的订阅地址"),
     ("attribution", "# 作者 .ᐣ", "# 作者 unknown"),
@@ -124,11 +124,27 @@ for name, group, old, new in (
     ("region_source_wrong_group", "HongKong-Nodes", "include-other-group=桔子", "include-other-group=Auto"),
     ("region_fallback_deleted", "HongKong", "HongKong-Nodes, Auto", "HongKong-Nodes"),
     ("chatgpt_hidden", "ChatGPT", "\n", ", hidden=1\n"),
-    ("chatgpt_direct", "ChatGPT", "select, Proxy,", "select, DIRECT, Proxy,"),
-    ("bahamut_no_proxy", "Bahamut", "TaiWan, Proxy,", "TaiWan,"),
-    ("telegram_auto", "Telegram", "select", "url-test"),
+    ("chatgpt_direct", "ChatGPT", "url-test, Fail-Closed,", "url-test, DIRECT, Fail-Closed,"),
+    ("bahamut_cross_region", "Bahamut", "TaiWan-Nodes", "HongKong-Nodes"),
+    ("telegram_manual", "Telegram", "url-test", "select"),
 ):
     replace_group_fragment(name, group, old, new)
+
+for name, group, old, new in (
+    ("fast_missing_sentinel", "Fast", "url-test, Fail-Closed,", "url-test,"),
+    ("fast_old_tolerance", "Fast", "tolerance=0", "tolerance=100"),
+    ("fast_wrong_interval", "Fast", "interval=300", "interval=600"),
+    ("service_old_tolerance", "ChatGPT", "tolerance=0", "tolerance=100"),
+    ("service_missing_sentinel", "ChatGPT", "url-test, Fail-Closed,", "url-test,"),
+    ("service_outer_fallback", "ChatGPT", "America-Nodes", "America"),
+    ("service_wrong_region", "ChatGPT", "TaiWan-Nodes", "HongKong-Nodes"),
+    ("hbo_wrong_region", "HBO", "TaiWan-Nodes", "Japan-Nodes"),
+    ("test_url_override", "桔子", "test-url=http://cp.cloudflare.com/generate_204", "test-url=http://example.invalid/"),
+    ("test_timeout_override", "桔子", "test-timeout=5", "test-timeout=10"),
+):
+    replace_group_fragment(name, group, old, new)
+replace_once("hulu_wrong_region", "DOMAIN-SUFFIX,hulu.com,America-Nodes", "DOMAIN-SUFFIX,hulu.com,HongKong-Nodes")
+replace_once("now_cross_region_fallback", "DOMAIN-SUFFIX,now.com,HongKong-Nodes", "DOMAIN-SUFFIX,now.com,HongKong")
 
 # DNS privacy, rule order and fixed-resource boundary.
 for name, old, new in (
@@ -211,4 +227,4 @@ with tempfile.TemporaryDirectory(prefix="surge-audit-mutations-") as temporary:
         if result.returncode == 0:
             raise AssertionError(f"auditor accepted mutation {name}:\n{result.stdout}")
 
-print(f"PASS R13.23 mutations={len(MUTATIONS)}")
+print(f"PASS R13.25 mutations={len(MUTATIONS)}")

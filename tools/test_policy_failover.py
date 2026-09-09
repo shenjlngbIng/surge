@@ -22,6 +22,13 @@ for row in TEXT.split("[Proxy Group]", 1)[1].split("[Rule]", 1)[0].splitlines():
 
 BUILTINS = {"DIRECT", "REJECT", "REJECT-DROP"}
 REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
+AI_REGIONS = {"America", "Japan", "Singapore", "TaiWan"}
+SERVICE_REGIONS = {
+    "ChatGPT": AI_REGIONS, "Claude": AI_REGIONS, "Gemini": AI_REGIONS,
+    "NETFLIX": set(REGIONS), "Disney+": set(REGIONS), "PrimeVideo": set(REGIONS), "Spotify": set(REGIONS),
+    "HBO": {"America", "Singapore", "HongKong", "TaiWan"},
+    "TikTok": AI_REGIONS, "Bahamut": {"TaiWan"},
+}
 
 
 def members(name: str, nodes: list[str], visiting: tuple[str, ...] = ()) -> list[str]:
@@ -96,10 +103,40 @@ def check_delivery_recovery() -> int:
     return 11
 
 
+def check_service_regions(fixtures: dict[str, list[str]]) -> int:
+    """Check country isolation even when excluded nodes are the healthy ones."""
+    unclassified = ["Germany-1", "NOTHKWORD", "RUSSIAN-1", "🇨🇳 上海-01", "英国-01", "剩余流量 500GB",
+                    "South America-1", "Latin America", "North America", "LatinAmerican", "新西兰-01"]
+    ambiguous = ["HK JP-01", "🇭🇰 美国-01", "日本/台湾 01", "新加坡-美国", "🇺🇸 日本-01",
+                 "香港->日本", "香港→美国", "美国中转01", "日本中轉01", "US=>UK-01"]
+    pool = [node for names in fixtures.values() for node in names] + unclassified + ambiguous
+    checks = 0
+    for region, expected in fixtures.items():
+        assert members(region + "-Nodes", pool) == ["REJECT", *expected], region
+        checks += 1
+    for service, allowed in SERVICE_REGIONS.items():
+        eligible = {node for region in allowed for node in fixtures[region]}
+        assert set(members(service, pool)) == {"Fail-Closed", *eligible}, service
+        assert resolve(service, [], set()) == "FAILED", service
+        assert resolve(service, pool, set()) == "FAILED", service
+        wrong = [node for node in pool if node not in eligible]
+        assert members(service, wrong) == ["Fail-Closed"], service
+        assert resolve(service, wrong, set(wrong)) == "FAILED", service
+        assert resolve(service, pool, set(wrong)) == "FAILED", service
+        checks += 6
+        for region in allowed:
+            only = fixtures[region][0]
+            assert resolve(service, [only, *wrong], {only, *wrong}) == only, (service, region)
+            # Changing the global exit cannot widen a service's eligible pool.
+            assert resolve(service, [only, *wrong], {only, *wrong}, {"Proxy": "NodePool", "NodePool": wrong[0]}) == only
+            checks += 2
+    return checks
+
+
 def main() -> int:
     assert GROUPS["桔子"][1] == ["REJECT"]
     assert GROUPS["桔子"][2]["hidden"] == "1"
-    assert GROUPS["桔子"][2]["external-policy-modifier"] == '"udp-relay=true"'
+    assert GROUPS["桔子"][2]["external-policy-modifier"] == '"udp-relay=true,test-url=http://cp.cloudflare.com/generate_204,test-timeout=5"'
     for name, (_kind, explicit, _options) in GROUPS.items():
         assert "桔子" not in explicit, f"raw subscription source is routed by {name}"
     for row in TEXT.split("[Rule]", 1)[1].splitlines():
@@ -107,11 +144,11 @@ def main() -> int:
             assert ",桔子" not in row
 
     fixtures = {
-        "HongKong": ["🇭🇰 香港-1", "Hong Kong 2", "HKG-3"],
-        "TaiWan": ["🇹🇼 台灣-1", "台湾 2", "TPE-3"],
-        "Japan": ["🇯🇵 日本-1", "Tokyo 2", "NRT-3"],
-        "Singapore": ["🇸🇬 新加坡-1", "Lion City 2", "SIN-3"],
-        "America": ["🇺🇸 美国-1", "Los Angeles 2", "JFK-3"],
+        "HongKong": ["🇭🇰 香港-1", "Hong Kong 2", "HKG-3", "香港-优化", "香港-优化 2", "香港 WAP-优化 2"],
+        "TaiWan": ["🇹🇼 台灣-1", "台湾 2", "TPE-3", "台湾-优化", "臺灣-优化", "Taipei-01"],
+        "Japan": ["🇯🇵 日本-1", "Tokyo 2", "NRT-3", "日本-优化", "日本-优化 2", "日本-优化 3"],
+        "Singapore": ["🇸🇬 新加坡-1", "Lion City 2", "SIN-3", "新加坡-优化-GPT", "新加坡-优化 2-GPT", "新加坡-优化 3"],
+        "America": ["🇺🇸 美国-1", "Los Angeles 2", "JFK-3", "美国-优化", "美國-优化 2", "Seattle-4"],
     }
     nodes = [node for group in fixtures.values() for node in group] + ["Germany-1", "NOTHKWORD"]
     for region, expected in fixtures.items():
@@ -122,7 +159,7 @@ def main() -> int:
     assert members("NodePool", []) == ["Auto"]
     assert members("桔子", []) == ["REJECT"]
 
-    protected = ["Final", "Proxy", "Auto", "NodePool", "UDP", *REGIONS]
+    protected = ["Final", "Proxy", "Auto", "Fast", "NodePool", "UDP", *REGIONS]
     protected += ["ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
                   "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
                   "Spotify", "Streaming", "Telegram", "X", "Google", "Microsoft", "Games"]
@@ -132,9 +169,11 @@ def main() -> int:
         assert resolve("ApplePush", imported, set()) == "DIRECT"  # Deliberate APNs exception.
         assert resolve("Domestic", imported, set()) == "DIRECT"
 
-    for only in (fixtures["HongKong"][0], fixtures["Japan"][0]):
+    for region in ("HongKong", "Japan"):
+        only = fixtures[region][0]
         for group in protected:
-            assert resolve(group, [only], {only}) == only, (group, only)
+            expected = only if group not in SERVICE_REGIONS or region in SERVICE_REGIONS[group] else "FAILED"
+            assert resolve(group, [only], {only}) == expected, (group, only)
     hongkong, japan = fixtures["HongKong"][0], fixtures["Japan"][0]
     assert resolve("NodePool", [hongkong, japan], {hongkong, japan}, {"NodePool": japan}) == japan
     assert resolve("NodePool", [hongkong, japan], {hongkong}, {"NodePool": japan}) == "FAILED"
@@ -155,7 +194,25 @@ def main() -> int:
             raise AssertionError("delivery cases accepted the old premature DIRECT fallback")
     finally:
         GROUPS["ApplePush"] = current_push
-    print(f"PASS policy model: 15 region names, empty/failed sources, single-region fallback, manual selection and control switches; delivery_cases={delivery_cases} delivery_mutations=1; no device claim")
+    region_cases = check_service_regions(fixtures)
+    mutations = [
+        ("ChatGPT", "include-other-group", '"HongKong-Nodes,America-Nodes,Japan-Nodes,Singapore-Nodes,TaiWan-Nodes"'),
+        ("HBO", "include-other-group", '"Japan-Nodes,America-Nodes,Singapore-Nodes,HongKong-Nodes,TaiWan-Nodes"'),
+        ("Bahamut", "include-other-group", "Auto"),
+    ]
+    for group, option, wrong in mutations:
+        original = GROUPS[group]
+        GROUPS[group] = (original[0], original[1], {**original[2], option: wrong})
+        try:
+            try:
+                check_service_regions(fixtures)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError(f"country boundary tests accepted {group} cross-region regression")
+        finally:
+            GROUPS[group] = original
+    print(f"PASS policy model: 30 region names, 21 negative/ambiguous names, empty/failed sources, single-region fallback, manual selection and control switches; service_region_cases={region_cases} service_mutations={len(mutations)} delivery_cases={delivery_cases} delivery_mutations=1; no device claim")
     return 0
 
 

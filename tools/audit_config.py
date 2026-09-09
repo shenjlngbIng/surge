@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Audit the complete Surge iOS Privacy + Push R13.23 profile."""
+"""Audit the complete Surge iOS Privacy + Push R13.25 profile."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from convert_to_remote_rules import (
+    AUTO_TEST_OPTIONS, MEDIA_REGION_RULES, SERVICE_SOURCE_GROUPS,
     DOMESTIC_DNS_RULES,
     DOMESTIC_GEOIP_RULE,
     DYNAMIC_RULES,
@@ -40,7 +41,7 @@ GROUP_ORDER = (
     "ChatGPT", "Claude", "Gemini", "GitHub",
     "YouTube", "NETFLIX", "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok",
     "Bahamut", "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-    "Microsoft", "Games", "桔子", "NodePool", "Auto",
+    "Microsoft", "Games", "桔子", "NodePool", "Auto", "Fast",
     "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes", "Singapore-Nodes", "America-Nodes",
     "HongKong", "TaiWan", "Japan", "Singapore", "America",
 )
@@ -49,28 +50,6 @@ SERVICE_GROUPS = (
     "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut", "Spotify", "Streaming",
     "Telegram", "X", "Apple", "Google", "Microsoft", "Games",
 )
-SERVICE_MEMBERS = {
-    "ChatGPT": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
-    "Claude": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
-    "Gemini": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
-    "GitHub": ["Proxy", "HongKong", "Japan", "Singapore", "America", "Auto"],
-    "YouTube": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "NETFLIX": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Disney+": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "HBO": ["Proxy", "America", "Singapore", "Japan", "HongKong", "TaiWan", "Auto"],
-    "PrimeVideo": ["Proxy", "America", "Japan", "Singapore", "HongKong", "TaiWan", "Auto"],
-    "Emby": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "TikTok": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Bahamut": ["TaiWan", "Proxy", "HongKong", "Japan", "Auto"],
-    "Spotify": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Streaming": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Telegram": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "X": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Apple": ["DIRECT", "Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Google": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Microsoft": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-    "Games": ["Proxy", "HongKong", "TaiWan", "Japan", "Singapore", "America", "Auto"],
-}
 REGIONS = ("HongKong", "TaiWan", "Japan", "Singapore", "America")
 VISIBLE_SELECT_OPTIONS: tuple[str, ...] = ()
 
@@ -190,7 +169,7 @@ expected_header = [
     f"# {PROFILE_NAME}",
     "# 作者 .ᐣ | https://t.me/shenjlngbIng",
     "# 仓库 https://github.com/shenjlngbIng/surge",
-    "# 更新 2026.09.08 | Surge iOS 5.14.6+，建议 5.21.0+ | 规则模式",
+    "# 更新 2026.09.09 | Surge iOS 5.14.6+，建议 5.21.0+ | 规则模式",
     "# 29 份外置规则；仅替换 桔子 的订阅地址，勿公开凭据。",
 ]
 if text.splitlines()[:len(expected_header)] != expected_header:
@@ -263,7 +242,7 @@ if proxy_includes:
     fail("[Proxy] must not use detached or remote includes")
 
 groups = key_values(sections["Proxy Group"], "Proxy Group")
-if tuple(groups) != GROUP_ORDER or len(groups) != 40:
+if tuple(groups) != GROUP_ORDER or len(groups) != 41:
     fail(f"policy group order or count mismatch: {tuple(groups)}")
 if "AllServer" in groups:
     fail("retired duplicate automatic group returned")
@@ -280,8 +259,8 @@ if group_parts(groups, "Final")[0] != "select" or group_members(groups, "Final")
 require_exact_options(group_parts(groups, "Final"), "Final", VISIBLE_SELECT_OPTIONS)
 
 proxy_parts = group_parts(groups, "Proxy")
-if proxy_parts[0] != "select" or group_members(groups, "Proxy") != ["Auto", "NodePool", *REGIONS]:
-    fail("Proxy must expose Auto, NodePool and the five visible region groups")
+if proxy_parts[0] != "select" or group_members(groups, "Proxy") != ["Fast", "Auto", "NodePool", *REGIONS]:
+    fail("Proxy must default to Fast and expose Auto, NodePool and the five visible region groups")
 require_exact_options(proxy_parts, "Proxy", VISIBLE_SELECT_OPTIONS)
 
 source = group_parts(groups, "桔子")
@@ -297,7 +276,7 @@ if READY_MODE:
 elif policy_paths[0] != f"policy-path={SUBSCRIPTION_PLACEHOLDER}":
     fail("public profile must contain the reviewed subscription placeholder")
 require_exact_options(source, "桔子", (
-    policy_paths[0], "update-interval=3600", 'external-policy-modifier="udp-relay=true"',
+    policy_paths[0], "update-interval=3600", 'external-policy-modifier="udp-relay=true,test-url=http://cp.cloudflare.com/generate_204,test-timeout=5"',
     "hidden=1",
 ))
 node_pool = group_parts(groups, "NodePool")
@@ -331,9 +310,23 @@ require_exact_options(group_parts(groups, "ApplePush"), "ApplePush", (
 
 for name in SERVICE_GROUPS:
     parts = group_parts(groups, name)
-    if parts[0] != "select" or group_members(groups, name) != SERVICE_MEMBERS[name]:
-        fail(f"{name} visible service policy membership changed")
-    require_exact_options(parts, name, VISIBLE_SELECT_OPTIONS)
+    if name == "Apple":
+        if parts[0] != "select" or group_members(groups, name) != ["DIRECT", "Proxy", *REGIONS, "Auto"]:
+            fail("Apple default direct policy changed")
+        require_exact_options(parts, name, VISIBLE_SELECT_OPTIONS)
+        continue
+    expected_sources = SERVICE_SOURCE_GROUPS[name]
+    if parts[0] != "url-test" or group_members(groups, name) != ["Fail-Closed"]:
+        fail(f"{name} must use guarded URL testing")
+    if included_groups(groups, name) != expected_sources:
+        fail(f"{name} service region boundary changed")
+    source_option = next(part for part in parts if part.startswith("include-other-group="))
+    require_exact_options(parts, name, (*AUTO_TEST_OPTIONS, source_option))
+
+fast = group_parts(groups, "Fast")
+if fast[0] != "url-test" or group_members(groups, "Fast") != ["Fail-Closed"]:
+    fail("Fast must use guarded URL testing")
+require_exact_options(fast, "Fast", (*AUTO_TEST_OPTIONS, "include-other-group=桔子"))
 
 for name in REGIONS:
     source = f"{name}-Nodes"
@@ -341,7 +334,7 @@ for name in REGIONS:
     if source_parts[0] != "url-test" or group_members(groups, source) != ["REJECT"]:
         fail(f"{source} must contain a REJECT guard plus filtered 桔子 policies")
     require_options(source_parts, source, (
-        "interval=600", "tolerance=100", "evaluate-before-use=true",
+        "interval=300", "tolerance=0", "evaluate-before-use=true", "no-alert=true",
         "hidden=1", "include-other-group=桔子",
     ))
     if not any(part.startswith("policy-regex-filter=") for part in source_parts):
@@ -358,7 +351,9 @@ automatic = {
     for name in groups
     if group_parts(groups, name)[0] in {"smart", "url-test", "load-balance"}
 }
-expected_automatic = {"Auto": "smart", **{f"{name}-Nodes": "url-test" for name in REGIONS}}
+expected_automatic = {"Auto": "smart", "Fast": "url-test",
+    **{name: "url-test" for name in SERVICE_SOURCE_GROUPS},
+    **{f"{name}-Nodes": "url-test" for name in REGIONS}}
 if automatic != expected_automatic:
     fail(f"automatic node-source inventory changed: {automatic}")
 
@@ -390,7 +385,7 @@ for group in groups:
 
 expanded_rules = active(sections["Rule"])
 rules = active(parse(validate_remote_profile(text))["Rule"])
-if len(rules) != 142 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
+if len(rules) != 157 or rules[-1] != "FINAL,Final,dns-failed" or rules.count("FINAL,Final,dns-failed") != 1:
     fail("reviewed rule count or unique FINAL changed")
 external = [rule for rule in rules if rule.startswith(("RULE-SET,", "DOMAIN-SET,"))]
 if external != expected_remote_order():
@@ -406,7 +401,7 @@ for kind, filename, _label, policy in REPOSITORY_RULES:
         fail(f"immutable resource is not pinned: {filename}")
 
 if DYNAMIC_RULES:
-    fail("R13.23 must not load mutable runtime supplements")
+    fail("R13.25 must not load mutable runtime supplements")
 
 def index(line: str) -> int:
     if rules.count(line) != 1:
@@ -495,11 +490,15 @@ ordered_overlap_guards = (
 )
 if max(index(line) for line in ordered_overlap_guards) >= index(repository_line("RULE-SET", "AppleCN.list", "Apple")):
     fail("Apple streaming exceptions must precede AppleCN")
-if index("DOMAIN-SUFFIX,viu.now.com,Streaming") >= index(repository_line("RULE-SET", "HBO.list", "HBO")):
+if index("DOMAIN-SUFFIX,viu.now.com,HongKong-Nodes") >= index(repository_line("RULE-SET", "HBO.list", "HBO")):
     fail("Viu exception must precede HBO parent suffix")
 for line in ("DOMAIN,img-prod-cms-rt-microsoft-com.akamaized.net,Microsoft", "DOMAIN,login.live.com,Microsoft", "DOMAIN,logincdn.msauth.net,Microsoft", "DOMAIN,store-images.s-microsoft.com,Microsoft", "IP-CIDR,35.192.0.0/12,Proxy,no-resolve"):
     if index(line) >= index(repository_line("RULE-SET", "Game.list", "Games")):
         fail("Microsoft/shared cloud guard must precede Game")
+
+for line in MEDIA_REGION_RULES:
+    if index(line) >= index(repository_line("RULE-SET", "HBO.list", "HBO")):
+        fail("strict media region rules must precede mixed media lists")
 
 valid_policies = set(groups) | set(proxies) | {"DIRECT", "REJECT", "REJECT-DROP"}
 for rule in expanded_rules:
@@ -510,12 +509,12 @@ for rule in expanded_rules:
 
 if PROFILE == ROOT / "Surge.conf":
     lock = json.loads(LOCK.read_text(encoding="utf-8"))
-    expected_counts = (142, 29, 29, 0, 29)
+    expected_counts = (157, 29, 29, 0, 29)
     actual_counts = tuple(lock.get(key) for key in (
         "active_rules", "runtime_resources", "immutable_repository_resources",
         "dynamic_runtime_resources", "local_rule_files",
     ))
-    if lock.get("schema") != 35 or lock.get("mode") != "remote-rules-guarded-single-subscription":
+    if lock.get("schema") != 36 or lock.get("mode") != "remote-rules-guarded-single-subscription":
         fail("runtime lock schema or mode mismatch")
     if actual_counts != expected_counts or lock.get("profile") != PROFILE_NAME:
         fail("runtime lock profile or counts mismatch")
@@ -523,7 +522,7 @@ if PROFILE == ROOT / "Surge.conf":
         fail("runtime lock profile hash is stale")
 
 print(
-    f"PASS R13.23 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
+    f"PASS R13.25 groups={len(groups)} rules={len(expanded_rules)} remote_rule_resources=29 "
     f"local_sources={len(REPOSITORY_RULES)} "
     f"embedded_rule_contents=0 sha256={hashlib.sha256(payload).hexdigest()}"
 )
