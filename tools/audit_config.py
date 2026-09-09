@@ -326,7 +326,7 @@ for name in SERVICE_GROUPS:
 fast = group_parts(groups, "Fast")
 if fast[0] != "url-test" or group_members(groups, "Fast") != ["Fail-Closed"]:
     fail("Fast must use guarded URL testing")
-require_exact_options(fast, "Fast", (*AUTO_TEST_OPTIONS, "include-other-group=桔子"))
+require_exact_options(fast, "Fast", (*AUTO_TEST_OPTIONS, "include-other-group=桔子", "hidden=1"))
 
 for name in REGIONS:
     source = f"{name}-Nodes"

@@ -109,7 +109,7 @@ lock = {
         "local_rule_file_count": 29,
         "embedded_rule_contents": 0,
         "hidden_function_groups": [
-            "AdBlock", "Security", "UDP", "Domestic",
+            "AdBlock", "Security", "UDP", "Domestic", "Fast",
             "ApplePush", "桔子", "HongKong-Nodes", "TaiWan-Nodes", "Japan-Nodes",
             "Singapore-Nodes", "America-Nodes",
         ],
@@ -119,7 +119,7 @@ lock = {
             "ChatGPT", "Claude", "Gemini", "GitHub", "YouTube", "NETFLIX",
             "Disney+", "HBO", "PrimeVideo", "Emby", "TikTok", "Bahamut",
             "Spotify", "Streaming", "Telegram", "X", "Apple", "Google",
-            "Microsoft", "Games", "NodePool", "Auto", "Fast", "HongKong", "TaiWan",
+            "Microsoft", "Games", "NodePool", "Auto", "HongKong", "TaiWan",
             "Japan", "Singapore", "America",
         ],
         "subscription_policy_path": "https://example.invalid/REPLACE_WITH_SURGE_SUBSCRIPTION_URL",
